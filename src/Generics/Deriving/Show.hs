@@ -5,7 +5,7 @@
 {-# LANGUAGE IncoherentInstances #-} -- :-/
 {-# LANGUAGE CPP #-}
 
-module Show (
+module Generics.Deriving.Show (
   -- * Generic show class
     GShow(..)
 
@@ -15,7 +15,7 @@ module Show (
   ) where
 
 
-import Representation
+import Generics.Deriving.Base
 
 --------------------------------------------------------------------------------
 -- Generic show

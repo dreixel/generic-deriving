@@ -1,9 +1,9 @@
 {-# LANGUAGE Rank2Types #-}
 
-module Data where
+module Generics.Deriving.Data where
 
 
-import Representation
+import Generics.Deriving.Base
 import Data.Data
 
 --------------------------------------------------------------------------------

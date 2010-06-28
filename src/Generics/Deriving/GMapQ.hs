@@ -5,7 +5,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE CPP #-}
 
-module GMapQ (
+module Generics.Deriving.GMapQ (
   -- * Generic show class
     GMapQ(..)
 
@@ -15,7 +15,7 @@ module GMapQ (
   ) where
 
 
-import Representation
+import Generics.Deriving.Base
 
 -- Does not work
 

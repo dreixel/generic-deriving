@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
 
-module Functor (
+module Generics.Deriving.Functor (
   -- * GFunctor class
     GFunctor(..)
 
@@ -11,7 +11,7 @@ module Functor (
 
   ) where
 
-import Representation
+import Generics.Deriving.Base
 
 --------------------------------------------------------------------------------
 -- Generic fmap
@@ -21,13 +21,13 @@ class GFunctor' f where
   gmap' :: (a -> b) -> f a -> f b
 
 instance GFunctor' U1 where
-  gmap' f U1 = U1
+  gmap' _ U1 = U1
 
 instance GFunctor' Par1 where
   gmap' f (Par1 a) = Par1 (f a)
 
 instance GFunctor' (K1 i c) where
-  gmap' f (K1 a) = K1 a
+  gmap' _ (K1 a) = K1 a
 
 instance (GFunctor f) => GFunctor' (Rec1 f) where
   gmap' f (Rec1 a) = Rec1 (gmap f a)

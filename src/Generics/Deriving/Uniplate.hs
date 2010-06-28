@@ -5,7 +5,7 @@
 {-# LANGUAGE IncoherentInstances #-} -- :-/
 {-# LANGUAGE CPP #-}
 
-module Uniplate (
+module Generics.Deriving.Uniplate (
     Uniplate(..)
 
   -- * Default definition
@@ -14,7 +14,7 @@ module Uniplate (
   ) where
 
 
-import Representation
+import Generics.Deriving.Base
 
 --------------------------------------------------------------------------------
 -- Generic Uniplate
@@ -30,7 +30,7 @@ instance Uniplate' (K1 i a) a where
   children' (K1 a) = [a]
 
 instance Uniplate' (K1 i a) b where
-  children' (K1 a) = []
+  children' (K1 _) = []
 
 instance (Uniplate' f b) => Uniplate' (M1 i c f) b where
   children' (M1 a) = children' a

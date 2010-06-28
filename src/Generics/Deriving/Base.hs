@@ -5,15 +5,15 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE CPP #-}
 
-module Representation (
+module Generics.Deriving.Base (
 #ifndef __UHC__
   -- * Generic representation types
     V1, U1(..), Par1(..), Rec1(..), K1(..), M1(..)
   , (:+:)(..), (:*:)(..), (:.:)(..)
 
   -- ** Synonyms for convenience
-  , Rec0(..), Par0(..), R, P
-  , D1(..), C1(..), S1(..), D, C, S
+  , Rec0, Par0, R, P
+  , D1, C1, S1, D, C, S
 
   -- * Meta-information
   , Datatype(..), Constructor(..), Selector(..)

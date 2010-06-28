@@ -4,7 +4,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Typeable (
+module Generics.Deriving.Typeable (
 
     typeOf0default, typeOf1default,
 
@@ -15,7 +15,7 @@ module Typeable (
   ) where
 
 
-import Representation
+import Generics.Deriving.Base
 
 #ifndef __UHC__
 import Data.Typeable

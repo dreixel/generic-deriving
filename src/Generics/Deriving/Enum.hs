@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
 
-module Enum (
+module Generics.Deriving.Enum (
 
   -- * Generic enum class
     GEnum(..)
@@ -15,7 +15,7 @@ module Enum (
   ) where
 
 
-import Representation
+import Generics.Deriving.Base
 
 
 -----------------------------------------------------------------------------
@@ -48,6 +48,7 @@ combine _ xs     []     = xs
 combine _ []     ys     = ys
 combine f (x:xs) (y:ys) = f x y : combine f xs ys
 
+{-
 intersperse :: [[a]] -> [a]
 intersperse ls = let f :: [[a]] -> ([a], [[a]])
                      f [] = ([], [])
@@ -56,7 +57,7 @@ intersperse ls = let f :: [[a]] -> ([a], [[a]])
                  in case f ls of 
                    (l,[])  -> l 
                    (l,lss) -> l ++ intersperse lss where
-
+-}
 
 --------------------------------------------------------------------------------
 -- Generic enum
