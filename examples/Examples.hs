@@ -6,7 +6,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Examples (
+module Main (
 
   -- * Run all tests
   main
