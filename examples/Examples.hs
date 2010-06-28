@@ -15,12 +15,12 @@ module Examples (
 
 
 import Prelude hiding (Either(..))
-import Representation
-import Show
-import Functor
-import Uniplate
-import Enum
-import Typeable
+import Generics.Deriving.Base
+import Generics.Deriving.Show
+import Generics.Deriving.Functor
+import Generics.Deriving.Uniplate
+import Generics.Deriving.Enum
+import Generics.Deriving.Typeable
 
 
 --------------------------------------------------------------------------------

@@ -84,7 +84,7 @@ class Typeable1' f a where
 
 instance (Typeable a, Datatype d) => Typeable1' (M1 D d f) a where
   typeOf1' x = mkTyConApp (mkTyCon (datatypeName x)) [typeOf (y x)]
-    where y :: M1 D d f a -> a
+    where y :: M1 D d f b -> b
           y _ = undefined
 
 
