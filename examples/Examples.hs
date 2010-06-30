@@ -32,7 +32,9 @@ maybe2 = Just (Just 'p')
 testsStandard = [ gshow hList1
                 , gshow (children maybe2)
                 , gshow (geq hList1 hList1)
-                , gshow (geq maybe1 maybe2) ]
+                , gshow (geq maybe1 maybe2)
+                , gshow (take 5 (genum :: [Maybe Int]))
+                , gshow (take 15 (genum :: [[Int]])) ]
 
 --------------------------------------------------------------------------------
 -- Example: trees of integers (kind *)

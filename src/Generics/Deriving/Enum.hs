@@ -16,6 +16,7 @@ module Generics.Deriving.Enum (
 
 
 import Generics.Deriving.Base
+import Generics.Deriving.Eq
 
 
 -----------------------------------------------------------------------------
@@ -48,8 +49,8 @@ combine _ xs     []     = xs
 combine _ []     ys     = ys
 combine f (x:xs) (y:ys) = f x y : combine f xs ys
 
-elemIndex :: Eq a => a -> [a] -> Maybe Int
-elemIndex x xs = let l = [ i | (y,i) <- zip xs [0..], x == y]
+findIndex :: (a -> Bool) -> [a] -> Maybe Int
+findIndex p xs = let l = [ i | (y,i) <- zip xs [(0::Int)..], p y]
                  in if (null l)
                     then Nothing
                     else Just (head l)
@@ -81,27 +82,53 @@ instance (Enum' f, Enum' g) => Enum' (f :*: g) where
 
 {-# DERIVABLE GEnum genum genumDefault #-}
 deriving instance (GEnum a) => GEnum (Maybe a)
+deriving instance (GEnum a) => GEnum [a]
 
 {-# DERIVABLE Enum toEnum toEnumDefault #-}
--- {-# DERIVABLE Enum fromEnum fromEnumDefault #-}
+{-# DERIVABLE Enum fromEnum fromEnumDefault #-}
+
+#else
+
+instance (GEnum a) => GEnum (Maybe a) where
+  genum = t undefined where
+    t :: (GEnum a) => Rep0Maybe a x -> [Maybe a]
+    t = genumDefault
+
+instance (GEnum a) => GEnum [a] where
+  genum = t undefined where
+    t :: (GEnum a) => Rep0List a x -> [[a]]
+    t = genumDefault
 
 #endif
 
-genumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 a -> [a]
+genumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 x -> [a]
 genumDefault rep = map to0 (enum' `asTypeOf` [rep])
 
-toEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 a -> Int -> a
+toEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 x -> Int -> a
 toEnumDefault rep i = let l = enum' `asTypeOf` [rep]
                       in if (length l > i)
                          then to0 (l !! i)
                          else error "toEnum: invalid index"
+
+fromEnumDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
+                => rep0 x -> a -> Int
+fromEnumDefault rep x = t x (map to0 (enum' `asTypeOf` [rep])) where
+  -- This weird local function is to appease EHC's type checker
+  t :: GEq a => a -> [a] -> Int
+  t y l = case (findIndex (geq y) l) of
+            Nothing -> error "fromEnum: no corresponding index"
+            Just i  -> i
+
 {-
-fromEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 a -> a -> Int
+-- Natural definition
+fromEnumDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
+                => rep0 x -> a -> Int
 fromEnumDefault rep x = let l = map to0 (enum' `asTypeOf` [rep])
-                        in case (elemIndex x l) of
+                        in case (findIndex (geq x) l) of
                              Nothing -> error "fromEnum: no corresponding index"
                              Just i  -> i
 -}
+
 class GEnum a where
   genum :: [a]
 
