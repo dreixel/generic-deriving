@@ -9,8 +9,14 @@ module Generics.Deriving.Enum (
   -- * Generic enum class
     GEnum(..)
 
-  -- * Default definition
-  , genumDefault
+  -- * Default definitions for GEnum
+  , genumDefault, toEnumDefault, fromEnumDefault
+
+  -- * Generic Ix class
+  , GIx(..)
+
+  -- * Default definitions for GIx
+  , rangeDefault, indexDefault, inRangeDefault
 
   ) where
 
@@ -135,3 +141,97 @@ class GEnum a where
 instance GEnum Int where
   genum = [0..] ||| (neg 0) where
     neg n = (n-1) : neg (n-1)
+
+--------------------------------------------------------------------------------
+-- Generic Ix
+--------------------------------------------------------------------------------
+
+-- Minimal complete instance: 'range', 'index' and 'inRange'.
+class (Ord a) => GIx a where
+    -- | The list of values in the subrange defined by a bounding pair.
+    range               :: (a,a) -> [a]
+    -- | The position of a subscript in the subrange.
+    index               :: (a,a) -> a -> Int
+    -- | Returns 'True' the given subscript lies in the range defined
+    -- the bounding pair.
+    inRange             :: (a,a) -> a -> Bool
+
+
+rangeDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
+             => rep0 x -> (a,a) -> [a]
+rangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
+  t :: GEq a => [a] -> (a,a) -> [a]
+  t l (x,y) = 
+    case (findIndex (geq x) l, findIndex (geq y) l) of
+      (Nothing, _)     -> error "rangeDefault: no corresponding index"
+      (_, Nothing)     -> error "rangeDefault: no corresponding index"
+      (Just i, Just j) -> take (j-i) (drop i l)
+
+indexDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
+             => rep0 x -> (a,a) -> a -> Int
+indexDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
+  t :: GEq a => [a] -> (a,a) -> a -> Int
+  t l (x,y) z =
+    case (findIndex (geq x) l, findIndex (geq y) l) of
+      (Nothing, _)     -> error "indexDefault: no corresponding index"
+      (_, Nothing)     -> error "indexDefault: no corresponding index"
+      (Just i, Just j) -> case findIndex (geq z) (take (j-i) (drop i l)) of
+                            Nothing -> error "indexDefault: index out of range"
+                            Just k  -> k
+
+inRangeDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
+               => rep0 x -> (a,a) -> a -> Bool
+inRangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
+  t :: GEq a => [a] -> (a,a) -> a -> Bool
+  t l (x,y) z = 
+    case (findIndex (geq x) l, findIndex (geq y) l) of
+      (Nothing, _)     -> error "indexDefault: no corresponding index"
+      (_, Nothing)     -> error "indexDefault: no corresponding index"
+      (Just i, Just j) -> maybe False (const True)
+                            (findIndex (geq z) (take (j-i) (drop i l)))
+
+#ifdef __UHC__
+
+{-# DERIVABLE GIx range rangeDefault #-}
+{-# DERIVABLE GIx index indexDefault #-}
+{-# DERIVABLE GIx inRange inRangeDefault #-}
+
+deriving instance (GEq a, GEnum a, GIx a) => GIx (Maybe a)
+deriving instance (GEq a, GEnum a, GIx a) => GIx [a]
+
+#else
+
+instance (GEq a, GEnum a, GIx a) => GIx (Maybe a) where
+  range = t undefined where
+    t :: (GEq a, GEnum a, GIx a)
+      => Rep0Maybe a x -> (Maybe a, Maybe a) -> [Maybe a]
+    t = rangeDefault
+  index = t undefined where
+    t :: (GEq a, GEnum a, GIx a)
+      => Rep0Maybe a x -> (Maybe a, Maybe a) -> Maybe a -> Int
+    t = indexDefault
+  inRange = t undefined where
+    t :: (GEq a, GEnum a, GIx a)
+      => Rep0Maybe a x -> (Maybe a, Maybe a) -> Maybe a -> Bool
+    t = inRangeDefault
+
+instance (GEq a, GEnum a, GIx a) => GIx [a] where
+  range = t undefined where
+    t :: (GEq a, GEnum a, GIx a)
+      => Rep0List a x -> ([a], [a]) -> [[a]]
+    t = rangeDefault
+  index = t undefined where
+    t :: (GEq a, GEnum a, GIx a)
+      => Rep0List a x -> ([a], [a]) -> [a] -> Int
+    t = indexDefault
+  inRange = t undefined where
+    t :: (GEq a, GEnum a, GIx a)
+      => Rep0List a x -> ([a], [a]) -> [a] -> Bool
+    t = inRangeDefault
+
+#endif
+
+instance GIx Int where
+    range (m,n) = [m..n]
+    index (m,_n) i = i - m
+    inRange (m,n) i =  m <= i && i <= n

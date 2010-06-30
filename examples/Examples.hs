@@ -34,7 +34,9 @@ testsStandard = [ gshow hList1
                 , gshow (geq hList1 hList1)
                 , gshow (geq maybe1 maybe2)
                 , gshow (take 5 (genum :: [Maybe Int]))
-                , gshow (take 15 (genum :: [[Int]])) ]
+                , gshow (take 15 (genum :: [[Int]]))
+                , gshow (range ([0], [1::Int]))
+                , gshow (inRange ([0], [3,5::Int]) hList1) ]
 
 --------------------------------------------------------------------------------
 -- Example: trees of integers (kind *)
