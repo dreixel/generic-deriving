@@ -48,16 +48,11 @@ combine _ xs     []     = xs
 combine _ []     ys     = ys
 combine f (x:xs) (y:ys) = f x y : combine f xs ys
 
-{-
-intersperse :: [[a]] -> [a]
-intersperse ls = let f :: [[a]] -> ([a], [[a]])
-                     f [] = ([], [])
-                     f ([]:ls) = f ls
-                     f ((h:t):ls) = let (a,b) = f ls in (h:a,t:b)
-                 in case f ls of 
-                   (l,[])  -> l 
-                   (l,lss) -> l ++ intersperse lss where
--}
+elemIndex :: Eq a => a -> [a] -> Maybe Int
+elemIndex x xs = let l = [ i | (y,i) <- zip xs [0..], x == y]
+                 in if (null l)
+                    then Nothing
+                    else Just (head l)
 
 --------------------------------------------------------------------------------
 -- Generic enum
@@ -87,11 +82,26 @@ instance (Enum' f, Enum' g) => Enum' (f :*: g) where
 {-# DERIVABLE GEnum genum genumDefault #-}
 deriving instance (GEnum a) => GEnum (Maybe a)
 
+{-# DERIVABLE Enum toEnum toEnumDefault #-}
+-- {-# DERIVABLE Enum fromEnum fromEnumDefault #-}
+
 #endif
 
 genumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 a -> [a]
 genumDefault rep = map to0 (enum' `asTypeOf` [rep])
 
+toEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 a -> Int -> a
+toEnumDefault rep i = let l = enum' `asTypeOf` [rep]
+                      in if (length l > i)
+                         then to0 (l !! i)
+                         else error "toEnum: invalid index"
+{-
+fromEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 a -> a -> Int
+fromEnumDefault rep x = let l = map to0 (enum' `asTypeOf` [rep])
+                        in case (elemIndex x l) of
+                             Nothing -> error "fromEnum: no corresponding index"
+                             Just i  -> i
+-}
 class GEnum a where
   genum :: [a]
 

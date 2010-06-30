@@ -15,13 +15,24 @@ module Main (
 
 
 import Prelude hiding (Either(..))
-import Generics.Deriving.Base
-import Generics.Deriving.Show
-import Generics.Deriving.Functor
-import Generics.Deriving.Uniplate
-import Generics.Deriving.Enum
-import Generics.Deriving.Typeable
+import Generics.Deriving
 
+
+--------------------------------------------------------------------------------
+-- Example: Haskell's lists and Maybe
+--------------------------------------------------------------------------------
+
+hList1, hList2 :: [Int]
+hList1 = [1..10]
+hList2 = [2,4..]
+
+maybe1 = Nothing
+maybe2 = Just (Just 'p')
+
+testsStandard = [ gshow hList1
+                , gshow (children maybe2)
+                , gshow (geq hList1 hList1)
+                , gshow (geq maybe1 maybe2) ]
 
 --------------------------------------------------------------------------------
 -- Example: trees of integers (kind *)
@@ -95,15 +106,15 @@ instance Datatype List_ where
 instance Constructor Nil_  where conName _ = "Nil"
 instance Constructor Cons_ where conName _ = "Cons"
 
-type Rep0List a = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) (Par0 a) (Rec0 (List a)))))
-instance Representable0 (List a) (Rep0List a) where
+type Rep0List_ a = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) (Par0 a) (Rec0 (List a)))))
+instance Representable0 (List a) (Rep0List_ a) where
   from0 Nil        = M1 (L1 (M1 U1))
   from0 (Cons h t) = M1 (R1 (M1 ((:*:) (K1 h) (K1 t))))
   to0 (M1 (L1 (M1 U1)))                     = Nil
   to0 (M1 (R1 (M1 (K1 h :*: K1 t)))) = Cons h t
 
-type Rep1List = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) Par1 (Rec1 List))))
-instance Representable1 List Rep1List where
+type Rep1List_ = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) Par1 (Rec1 List))))
+instance Representable1 List Rep1List_ where
   from1 Nil        = M1 (L1 (M1 U1))
   from1 (Cons h t) = M1 (R1 (M1 (Par1 h :*: Rec1 t)))
   to1 (M1 (L1 (M1 U1)))                         = Nil
@@ -112,12 +123,12 @@ instance Representable1 List Rep1List where
 -- Instance for generic functions (should be automatically generated)
 instance GFunctor List where
   gmap = t undefined where
-    t :: Rep1List a -> (a -> b) -> List a -> List b
+    t :: Rep1List_ a -> (a -> b) -> List a -> List b
     t = gmapdefault
 {-
 instance (Typeable a) => Typeable1 List where
   typeOf1 = t undefined where
-    t :: (Typeable a) => Rep1List a -> List a -> TypeRep
+    t :: (Typeable a) => Rep1List_ a -> List a -> TypeRep
     t = typeOf1default
 
 
@@ -130,12 +141,12 @@ instance GTraversable List where
 
 instance (GShow a) => GShow (List a) where
   gshows = t undefined where
-    t :: (GShow a) => Rep0List a x -> List a -> ShowS
+    t :: (GShow a) => Rep0List_ a x -> List a -> ShowS
     t = gshowsdefault
 
 instance (Uniplate a) => Uniplate (List a) where
   children = t undefined where
-    t :: (Uniplate a) => Rep0List a x -> List a -> [List a]
+    t :: (Uniplate a) => Rep0List_ a x -> List a -> [List a]
     t = childrendefault
 
 #endif
@@ -478,6 +489,8 @@ testsEither = [ gshow either1
 main :: IO ()
 main = do
         let p = putStrLn . ((++) "- ") . show
+        putStrLn "[] and Maybe tests:"
+        mapM_ p testsStandard
         putStrLn "Tests for Tree:"
         mapM_ p testsTree
         putStrLn "\nTests for List:"

@@ -70,7 +70,7 @@ instance GFunctor Maybe where
 
 instance GFunctor [] where
   gmap = t undefined where
-    t :: Rep1List_ a -> (a -> b) -> [a] -> [b]
+    t :: Rep1List a -> (a -> b) -> [a] -> [b]
     t = gmapdefault
 
 #endif

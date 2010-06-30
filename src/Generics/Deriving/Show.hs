@@ -79,6 +79,7 @@ instance GShow Char   where gshows = shows
 instance GShow Int    where gshows = shows
 instance GShow Float  where gshows = shows
 instance GShow String where gshows = shows
+instance GShow Bool   where gshows = shows
 
 
 showListWith :: (a -> ShowS) -> [a] -> ShowS

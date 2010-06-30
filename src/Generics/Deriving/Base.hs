@@ -29,7 +29,7 @@ module Generics.Deriving.Base (
   -- * Representations for base types
     Rep0Char, Rep0Int, Rep0Float
   , Rep0Maybe, Rep1Maybe
-  , Rep0List_, Rep1List_
+  , Rep0List, Rep1List
 
   ) where
 
@@ -277,15 +277,15 @@ instance Constructor Cons__ where
   conName   _ = ":"
   conFixity _ = Infix RightAssociative 5
 
-type Rep0List_ a = D1 List__ ((C1 Nil__ U1) :+: (C1 Cons__ (Par0 a :*: Rec0 [a])))
-instance Representable0 [a] (Rep0List_ a) where
+type Rep0List a = D1 List__ ((C1 Nil__ U1) :+: (C1 Cons__ (Par0 a :*: Rec0 [a])))
+instance Representable0 [a] (Rep0List a) where
   from0 []    = M1 (L1 (M1 U1))
   from0 (h:t) = M1 (R1 (M1 (K1 h :*: K1 t)))
   to0 (M1 (L1 (M1 U1)))              = []
   to0 (M1 (R1 (M1 (K1 h :*: K1 t)))) = h : t
 
-type Rep1List_ = D1 List__ ((C1 Nil__ U1) :+: (C1 Cons__ (Par1 :*: Rec1 [])))
-instance Representable1 [] Rep1List_ where
+type Rep1List = D1 List__ ((C1 Nil__ U1) :+: (C1 Cons__ (Par1 :*: Rec1 [])))
+instance Representable1 [] Rep1List where
   from1 []    = M1 (L1 (M1 U1))
   from1 (h:t) = M1 (R1 (M1 (Par1 h :*: Rec1 t)))
   to1 (M1 (L1 (M1 U1)))                  = []

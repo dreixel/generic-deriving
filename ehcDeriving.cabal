@@ -39,6 +39,7 @@ library
 
                         -- Generics.Deriving.Data
                         Generics.Deriving.Enum
+                        Generics.Deriving.Eq
                         Generics.Deriving.Functor
                         -- Generics.Deriving.GMapQ
                         Generics.Deriving.Show
