@@ -70,7 +70,7 @@ deriving instance (GShow a) => GShow (Maybe a)
 
 #endif
 
-gshowsdefault :: (Representable0 a rep0, GShow' rep0) => rep0 x -> a -> ShowS
+gshowsdefault :: (Representable0 a rep0, GShow' rep0) => rep0 () -> a -> ShowS
 gshowsdefault rep x = gshows' False (from0 x `asTypeOf` rep)
 
 
@@ -96,7 +96,7 @@ instance (GShow a) => GShow [a] where
 
 instance (GShow a) => GShow (Maybe a) where
   gshows = t undefined where
-    t :: (GShow a) => Rep0Maybe a x -> Maybe a -> ShowS
+    t :: (GShow a) => Rep0Maybe a () -> Maybe a -> ShowS
     t = gshowsdefault
 
 #endif

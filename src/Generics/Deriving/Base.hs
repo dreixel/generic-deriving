@@ -186,9 +186,9 @@ data Associativity =  LeftAssociative
 -- | Representable types of kind *
 class Representable0 a rep where
   -- | Convert from the datatype to its representation
-  from0  :: a -> rep x
+  from0  :: a -> rep ()
   -- | Convert from the representation to the datatype
-  to0    :: rep x -> a
+  to0    :: rep () -> a
 
 -- | Representable types of kind * -> *
 class Representable1 f rep where

@@ -54,7 +54,8 @@ deriving instance (Uniplate a) => Uniplate (Maybe a)
 
 #endif
 
-childrendefault :: (Representable0 a rep0, Uniplate' rep0 a) => rep0 x -> a -> [a]
+childrendefault :: (Representable0 a rep0, Uniplate' rep0 a)
+                => rep0 () -> a -> [a]
 childrendefault rep x = children' (from0 x `asTypeOf` rep)
 
 
@@ -70,6 +71,6 @@ instance Uniplate [a] where
 #ifndef __UHC__
 instance (Uniplate a) => Uniplate (Maybe a) where
   children = t undefined where
-    t :: Rep0Maybe a x -> Maybe a -> [Maybe a]
+    t :: Rep0Maybe a () -> Maybe a -> [Maybe a]
     t = childrendefault
 #endif
