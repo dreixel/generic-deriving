@@ -3,28 +3,18 @@ version:                0.1
 synopsis:               Generic programming library for generalized deriving.
 description:
 
-  This package provides generic functionality for regular datatypes.
-  Regular datatypes are recursive datatypes such as lists, binary trees,
-  etc. This library cannot be used with mutually recursive datatypes or
-  with nested datatypes. The multirec library [1] can deal with mutually
-  recursive datatypes.
-  . 
-  This library has been described in the paper:
+  This package provides functionality for generalizing the deriving mechanism
+  in Haskell to arbitrary classes. It has been described in the paper:
   .
-  *  /A Lightweight Approach to Datatype-Generic Rewriting./
-     Thomas van Noort, Alexey Rodriguez, Stefan Holdermans, Johan Jeuring, Bastiaan Heeren.
-     ACM SIGPLAN Workshop on Generic Programming 2008.
-  .
-  More information about this library can be found at
-  <http://www.cs.uu.nl/wiki/GenericProgramming/Regular>.
-  .
-  \[1] <http://hackage.haskell.org/package/multirec>
+  *  /A generic deriving mechanism for Haskell/
+     José Pedro Magalhães, Atze Dijkstra, Johan Jeuring, and Andres Löh.
+     Haskell'10.
 
 category:               Generics
 copyright:              (c) 2010 Universiteit Utrecht
 license:                BSD3
 license-file:           LICENSE
-author:                 Jose Pedro Magalhaes
+author:                 José Pedro Magalhães
 maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Custom
