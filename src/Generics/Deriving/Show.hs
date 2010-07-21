@@ -102,7 +102,6 @@ class GShow a where
 
 {-# DERIVABLE GShow gshowsPrec gshowsPrecdefault #-}
 deriving instance (GShow a) => GShow (Maybe a)
-deriving instance (GShow a) => GShow [a]
 
 #endif
 
