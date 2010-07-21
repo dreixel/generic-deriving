@@ -17,7 +17,7 @@ module Generics.Deriving.Base (
 
   -- * Meta-information
   , Datatype(..), Constructor(..), Selector(..)
-  , Fixity(..), Associativity(..)
+  , Fixity(..), Associativity(..), Arity(..), prec
 
   -- * Representable type classes
   , Representable0(..), Representable1(..)
@@ -172,10 +172,29 @@ class Constructor c where
 #endif
   conIsRecord = const False
 
+  -- | Marks if this constructor is a tuple, 
+  -- returning arity >=0 if so, <0 if not
+#ifdef __UHC__
+  conIsTuple :: t c f a -> Arity
+#else
+  conIsTuple :: t c (f :: * -> *) a -> Arity
+#endif
+  conIsTuple = const NoArity
+
+
+-- | Datatype to represent the arity of a tuple.
+data Arity = NoArity | Arity Int
+  deriving (Eq, Show, Ord, Read)
+
 -- | Datatype to represent the fixity of a constructor. An infix
 -- | declaration directly corresponds to an application of 'Infix'.
 data Fixity = Prefix | Infix Associativity Int
   deriving (Eq, Show, Ord, Read)
+
+-- | Get the precedence of a fixity value.
+prec :: Fixity -> Int
+prec Prefix      = 10
+prec (Infix _ n) = n
 
 -- | Datatype to represent the associativy of a constructor
 data Associativity =  LeftAssociative 
@@ -186,9 +205,9 @@ data Associativity =  LeftAssociative
 -- | Representable types of kind *
 class Representable0 a rep where
   -- | Convert from the datatype to its representation
-  from0  :: a -> rep ()
+  from0  :: a -> rep x
   -- | Convert from the representation to the datatype
-  to0    :: rep () -> a
+  to0    :: rep x -> a
 
 -- | Representable types of kind * -> *
 class Representable1 f rep where

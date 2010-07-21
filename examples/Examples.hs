@@ -72,7 +72,7 @@ instance Representable0 Tree Rep0Tree where
   to0 (M1 (L1 (M1 U1)))                         = Empty
   to0 (M1 (R1 (M1 (K1 i :*: (K1 l :*: K1 r))))) = Branch i l r
 
-instance GShow Tree where gshows = gshowsdefault (undefined :: Rep0Tree x)
+instance GShow Tree where gshowsPrec = gshowsPrecdefault (undefined :: Rep0Tree x)
 instance Uniplate Tree where children = childrendefault (undefined :: Rep0Tree x)
 instance GEnum Tree where genum = genumDefault (undefined :: Rep0Tree x)
 instance Typeable Tree where typeOf = typeOf0default (undefined :: Rep0Tree x)
@@ -144,9 +144,9 @@ instance GTraversable List where
 -}
 
 instance (GShow a) => GShow (List a) where
-  gshows = t undefined where
-    t :: (GShow a) => Rep0List_ a x -> List a -> ShowS
-    t = gshowsdefault
+  gshowsPrec = t undefined where
+    t :: (GShow a) => Rep0List_ a x -> Int -> List a -> ShowS
+    t = gshowsPrecdefault
 
 instance (Uniplate a) => Uniplate (List a) where
   children = t undefined where
@@ -218,9 +218,9 @@ instance Representable1 Nested RepNested where
 
 -- Instance for gshow (should be automatically generated)
 instance (GShow a) => GShow (Nested a) where
-  gshows = t undefined where
-    t :: (GShow a) => Rep0Nested a x -> Nested a -> ShowS
-    t = gshowsdefault
+  gshowsPrec = t undefined where
+    t :: (GShow a) => Rep0Nested a x -> Int -> Nested a -> ShowS
+    t = gshowsPrecdefault
 
 instance GFunctor Nested where
   gmap = t undefined where
@@ -282,9 +282,9 @@ instance Representable1 Rose RepRose where
 
 -- Instance for gshow (should be automatically generated)
 instance (GShow a) => GShow (Rose a) where
-  gshows = t undefined where
-    t :: (GShow a) => Rep0Rose a x -> Rose a -> ShowS
-    t = gshowsdefault
+  gshowsPrec = t undefined where
+    t :: (GShow a) => Rep0Rose a x -> Int -> Rose a -> ShowS
+    t = gshowsPrecdefault
 
 instance GFunctor Rose where
   gmap = t undefined where
@@ -342,9 +342,9 @@ instance (GFunctor f) => Representable1 (GRose f) (Rep1GRose f) where
 
 -- Requires UndecidableInstances
 instance (GShow (f a), GShow (f (GRose f a))) => GShow (GRose f a) where
-  gshows = t undefined where
-    t :: (GShow (f a), GShow (f (GRose f a))) => Rep0GRose f a x -> GRose f a -> ShowS
-    t = gshowsdefault
+  gshowsPrec = t undefined where
+    t :: (GShow (f a), GShow (f (GRose f a))) => Rep0GRose f a x -> Int -> GRose f a -> ShowS
+    t = gshowsPrecdefault
 
 instance (GFunctor f) => GFunctor (GRose f) where
   gmap = t undefined where
@@ -397,14 +397,14 @@ instance (GFunctor f) => Representable1 (NGRose f) (Rep1NGRose f) where
   to1 (Par1 a :*: Comp1 x) = NGNode a (gmap unRec1 x)
 
 instance (GShow a, GShow (f (NGRose (Comp f f) a))) => GShow (NGRose f a) where
-  gshows = t undefined where
+  gshowsPrec = t undefined where
     t :: (GShow a, GShow (f (NGRose (Comp f f) a))) => Rep0NGRose f a x -> NGRose f a -> ShowS
-    t = gshowsdefault
+    t = gshowsPrecdefault
 
 instance (GShow a) => GShow (Comp f g a) where
-  gshows = t undefined where
+  gshowsPrec = t undefined where
     t :: (GShow a) => Rep0Comp f g a x -> Comp f g a -> ShowS
-    t = gshowsdefault
+    t = gshowsPrecdefault
 
 instance (GFunctor f, GFunctor (Comp f f)) => GFunctor (NGRose f) where
   gmap = t undefined where
@@ -468,9 +468,9 @@ instance (Show a) => Representable1 (Either a) (RepEither a) where
 
 -- Instance for gshow (should be automatically generated)
 instance (Show a, GShow a, GShow b) => GShow (Either a b) where
-  gshows = t undefined where
-    t :: (Show a, GShow a, GShow b) => Rep0Either a b x -> Either a b -> ShowS
-    t = gshowsdefault
+  gshowsPrec = t undefined where
+    t :: (Show a, GShow a, GShow b) => Rep0Either a b x -> Int -> Either a b -> ShowS
+    t = gshowsPrecdefault
 
 instance (Show a) => GFunctor (Either a) where
   gmap = t undefined where

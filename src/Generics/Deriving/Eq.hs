@@ -54,7 +54,7 @@ deriving instance (GEq a) => GEq [a]
 
 #endif
 
-geqdefault :: (Representable0 a rep0, GEq' rep0) => rep0 () -> a -> a -> Bool
+geqdefault :: (Representable0 a rep0, GEq' rep0) => rep0 x -> a -> a -> Bool
 geqdefault rep x y = geq' (from0 x `asTypeOf` rep) (from0 y `asTypeOf` rep)
 
 
@@ -68,12 +68,12 @@ instance GEq Float  where geq = (==)
 
 instance (GEq a) => GEq (Maybe a) where
   geq = t undefined where
-    t :: (GEq a) => Rep0Maybe a () -> Maybe a -> Maybe a -> Bool
+    t :: (GEq a) => Rep0Maybe a x -> Maybe a -> Maybe a -> Bool
     t = geqdefault
 
 instance (GEq a) => GEq [a] where
   geq = t undefined where
-    t :: (GEq a) => Rep0List a () -> [a] -> [a] -> Bool
+    t :: (GEq a) => Rep0List a x -> [a] -> [a] -> Bool
     t = geqdefault
 
 #endif

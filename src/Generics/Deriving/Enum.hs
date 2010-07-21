@@ -97,27 +97,27 @@ deriving instance (GEnum a) => GEnum [a]
 
 instance (GEnum a) => GEnum (Maybe a) where
   genum = t undefined where
-    t :: (GEnum a) => Rep0Maybe a () -> [Maybe a]
+    t :: (GEnum a) => Rep0Maybe a x -> [Maybe a]
     t = genumDefault
 
 instance (GEnum a) => GEnum [a] where
   genum = t undefined where
-    t :: (GEnum a) => Rep0List a () -> [[a]]
+    t :: (GEnum a) => Rep0List a x -> [[a]]
     t = genumDefault
 
 #endif
 
-genumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 () -> [a]
+genumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 x -> [a]
 genumDefault rep = map to0 (enum' `asTypeOf` [rep])
 
-toEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 () -> Int -> a
+toEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 x -> Int -> a
 toEnumDefault rep i = let l = enum' `asTypeOf` [rep]
                       in if (length l > i)
                          then to0 (l !! i)
                          else error "toEnum: invalid index"
 
 fromEnumDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-                => rep0 () -> a -> Int
+                => rep0 x -> a -> Int
 fromEnumDefault rep x = t x (map to0 (enum' `asTypeOf` [rep])) where
   -- This weird local function is to appease EHC's type checker
   t :: GEq a => a -> [a] -> Int
@@ -128,7 +128,7 @@ fromEnumDefault rep x = t x (map to0 (enum' `asTypeOf` [rep])) where
 {-
 -- Natural definition
 fromEnumDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-                => rep0 () -> a -> Int
+                => rep0 x -> a -> Int
 fromEnumDefault rep x = let l = map to0 (enum' `asTypeOf` [rep])
                         in case (findIndex (geq x) l) of
                              Nothing -> error "fromEnum: no corresponding index"
@@ -158,7 +158,7 @@ class (Ord a) => GIx a where
 
 
 rangeDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-             => rep0 () -> (a,a) -> [a]
+             => rep0 x -> (a,a) -> [a]
 rangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
   t :: GEq a => [a] -> (a,a) -> [a]
   t l (x,y) = 
@@ -168,7 +168,7 @@ rangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
       (Just i, Just j) -> take (j-i) (drop i l)
 
 indexDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-             => rep0 () -> (a,a) -> a -> Int
+             => rep0 x -> (a,a) -> a -> Int
 indexDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
   t :: GEq a => [a] -> (a,a) -> a -> Int
   t l (x,y) z =
@@ -180,7 +180,7 @@ indexDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
                             Just k  -> k
 
 inRangeDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-               => rep0 () -> (a,a) -> a -> Bool
+               => rep0 x -> (a,a) -> a -> Bool
 inRangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
   t :: GEq a => [a] -> (a,a) -> a -> Bool
   t l (x,y) z = 
@@ -204,29 +204,29 @@ deriving instance (GEq a, GEnum a, GIx a) => GIx [a]
 instance (GEq a, GEnum a, GIx a) => GIx (Maybe a) where
   range = t undefined where
     t :: (GEq a, GEnum a, GIx a)
-      => Rep0Maybe a () -> (Maybe a, Maybe a) -> [Maybe a]
+      => Rep0Maybe a x -> (Maybe a, Maybe a) -> [Maybe a]
     t = rangeDefault
   index = t undefined where
     t :: (GEq a, GEnum a, GIx a)
-      => Rep0Maybe a () -> (Maybe a, Maybe a) -> Maybe a -> Int
+      => Rep0Maybe a x -> (Maybe a, Maybe a) -> Maybe a -> Int
     t = indexDefault
   inRange = t undefined where
     t :: (GEq a, GEnum a, GIx a)
-      => Rep0Maybe a () -> (Maybe a, Maybe a) -> Maybe a -> Bool
+      => Rep0Maybe a x -> (Maybe a, Maybe a) -> Maybe a -> Bool
     t = inRangeDefault
 
 instance (GEq a, GEnum a, GIx a) => GIx [a] where
   range = t undefined where
     t :: (GEq a, GEnum a, GIx a)
-      => Rep0List a () -> ([a], [a]) -> [[a]]
+      => Rep0List a x -> ([a], [a]) -> [[a]]
     t = rangeDefault
   index = t undefined where
     t :: (GEq a, GEnum a, GIx a)
-      => Rep0List a () -> ([a], [a]) -> [a] -> Int
+      => Rep0List a x -> ([a], [a]) -> [a] -> Int
     t = indexDefault
   inRange = t undefined where
     t :: (GEq a, GEnum a, GIx a)
-      => Rep0List a () -> ([a], [a]) -> [a] -> Bool
+      => Rep0List a x -> ([a], [a]) -> [a] -> Bool
     t = inRangeDefault
 
 #endif

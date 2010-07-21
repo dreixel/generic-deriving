@@ -75,7 +75,7 @@ instance (Datatype d) => Typeable0' (M1 D d a) where
 
 
 typeOf0default :: (Representable0 a rep, Typeable0' rep)
-              => rep () -> a -> TypeRep
+              => rep x -> a -> TypeRep
 typeOf0default rep x = typeOf0' (from0 x `asTypeOf` rep)
 
 
