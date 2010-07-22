@@ -103,6 +103,13 @@ class GShow a where
 {-# DERIVABLE GShow gshowsPrec gshowsPrecdefault #-}
 deriving instance (GShow a) => GShow (Maybe a)
 
+#else
+
+instance (GShow a) => GShow (Maybe a) where
+  gshowsPrec = t undefined where
+    t :: (GShow a) => Rep0Maybe a x -> Int -> Maybe a -> ShowS
+    t = gshowsPrecdefault
+
 #endif
 
 gshowsPrecdefault :: (Representable0 a rep0, GShow' rep0)
@@ -119,7 +126,7 @@ instance GShow Bool   where gshowsPrec = showsPrec
 
 intersperse :: a -> [a] -> [a]
 intersperse _ []    = []
-intersperse _ [x]   = [x]
+intersperse _ [h]   = [h]
 intersperse x (h:t) = h : x : (intersperse x t)
 
 instance (GShow a) => GShow [a] where
@@ -127,12 +134,3 @@ instance (GShow a) => GShow [a] where
                    . foldr (.) id
                       (intersperse (showChar ',') (map (gshowsPrec 0) l))
                    . showChar ']'
-
-#ifndef __UHC__
-
-instance (GShow a) => GShow (Maybe a) where
-  gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0Maybe a x -> Int -> Maybe a -> ShowS
-    t = gshowsPrecdefault
-
-#endif
