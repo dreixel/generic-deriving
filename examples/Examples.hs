@@ -5,18 +5,31 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Main (
-
   -- * Run all tests
   main
-
   ) where
-
 
 import Prelude hiding (Either(..))
 import Generics.Deriving
+import Generics.Deriving.TH
 
+
+--------------------------------------------------------------------------------
+-- Temporary tests for TH generation
+--------------------------------------------------------------------------------
+
+data (:/:) f a = MyType1Nil
+               | MyType1Cons { myType1Rec :: (f :/: a), myType2Rec :: MyType2 }
+               | MyType1Cons2 (f :/: a) Int a (f a)
+
+data MyType2 = MyType2 Float ([] :/: Int)
+
+$(deriveAll ''(:/:))
+$(deriveAll ''MyType2)
 
 --------------------------------------------------------------------------------
 -- Example: Haskell's lists and Maybe
@@ -51,7 +64,7 @@ deriving instance Uniplate Tree
 deriving instance GEnum Tree
 
 #else
-
+{-
 data Tree_
 data Empty_
 data Branch_
@@ -71,11 +84,14 @@ instance Representable0 Tree Rep0Tree where
   from0 (Branch i l r) = M1 (R1 (M1 (K1 i :*: (K1 l :*: K1 r))))
   to0 (M1 (L1 (M1 U1)))                         = Empty
   to0 (M1 (R1 (M1 (K1 i :*: (K1 l :*: K1 r))))) = Branch i l r
+-}
 
-instance GShow Tree where gshowsPrec = gshowsPrecdefault (undefined :: Rep0Tree x)
-instance Uniplate Tree where children = childrendefault (undefined :: Rep0Tree x)
-instance GEnum Tree where genum = genumDefault (undefined :: Rep0Tree x)
-instance Typeable Tree where typeOf = typeOf0default (undefined :: Rep0Tree x)
+$(deriveAll ''Tree)
+
+instance GShow Tree where gshowsPrec = gshowsPrecdefault (undefined :: Rep0Tree_ x)
+instance Uniplate Tree where children = childrendefault (undefined :: Rep0Tree_ x)
+instance GEnum Tree where genum = genumDefault (undefined :: Rep0Tree_ x)
+instance Typeable Tree where typeOf = typeOf0default (undefined :: Rep0Tree_ x)
 
 #endif
 
@@ -179,7 +195,7 @@ deriving instance (GShow a) => GShow (Nested a)
 deriving instance GFunctor Nested
 
 #else
-
+{-
 data NestedD
 data NestedC
 data Leaf_
@@ -208,8 +224,11 @@ instance Representable0 (Nested a) (Rep0Nested a) where
   from0 (Nested a l) = M1 (R1 (M1 (M1 (K1 a) :*: M1 (K1 l))))
   to0 (M1 (L1 (M1 U1))) = Leaf
   to0 (M1 (R1 (M1 (M1 (K1 a) :*: M1 (K1 l))))) = Nested a l
+-}
 
-type RepNested = D1 NestedD (C1 Leaf_ U1 :+: C1 NestedC (Par1 :*: Nested :.: Rec1 []))
+$(deriveAll ''Nested)
+
+type RepNested = D1 Nested_ (C1 Nested_Leaf_ U1 :+: C1 Nested_Nested_ (Par1 :*: Nested :.: Rec1 []))
 instance Representable1 Nested RepNested where
   from1 Leaf = M1 (L1 (M1 U1))
   from1 (Nested a l) = M1 (R1 (M1 (Par1 a :*: Comp1 (gmap Rec1 l))))
@@ -219,7 +238,7 @@ instance Representable1 Nested RepNested where
 -- Instance for gshow (should be automatically generated)
 instance (GShow a) => GShow (Nested a) where
   gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0Nested a x -> Int -> Nested a -> ShowS
+    t :: (GShow a) => Rep0Nested_ a x -> Int -> Nested a -> ShowS
     t = gshowsPrecdefault
 
 instance GFunctor Nested where
@@ -320,7 +339,7 @@ deriving instance (GShow (f a), GShow (f (GRose f a))) =>  GShow (GRose f a)
 deriving instance (GFunctor f) => GFunctor (GRose f)
 
 #else
-
+{-
 data GRoseD
 data GRoseC
 
@@ -334,8 +353,11 @@ type Rep0GRose f a = D1 GRoseD (C1 GRoseC (Rec0 (f a) :*: Rec0 (f (GRose f a))))
 instance Representable0 (GRose f a) (Rep0GRose f a) where
   from0 (GRose a x) = M1 (M1 (K1 a :*: K1 x))
   to0 (M1 (M1 (K1 a :*: K1 x))) = GRose a x
+-}
 
-type Rep1GRose f = D1 GRoseD (C1 GRoseC (Rec1 f :*: f :.: (Rec1 (GRose f))))
+$(deriveAll ''GRose)
+
+type Rep1GRose f = D1 GRose_ (C1 GRose_GRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
 instance (GFunctor f) => Representable1 (GRose f) (Rep1GRose f) where
   from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
   to1 (M1 (M1 (Rec1 a :*: Comp1 x))) = GRose a (gmap unRec1 x)
@@ -343,7 +365,7 @@ instance (GFunctor f) => Representable1 (GRose f) (Rep1GRose f) where
 -- Requires UndecidableInstances
 instance (GShow (f a), GShow (f (GRose f a))) => GShow (GRose f a) where
   gshowsPrec = t undefined where
-    t :: (GShow (f a), GShow (f (GRose f a))) => Rep0GRose f a x -> Int -> GRose f a -> ShowS
+    t :: (GShow (f a), GShow (f (GRose f a))) => Rep0GRose_ f a x -> Int -> GRose f a -> ShowS
     t = gshowsPrecdefault
 
 instance (GFunctor f) => GFunctor (GRose f) where
@@ -451,6 +473,7 @@ instance GFunctor Weird where
 -- function instances
 data (Show a) => Either a b = Left (Either [a] b) | Right b
 
+
 -- Representable1 instances
 type Rep0Either a b = Rec0 (Either [a] b) :+: Rec0 b
 instance (Show a) => Representable0 (Either a b) (Rep0Either a b) where
@@ -465,6 +488,7 @@ instance (Show a) => Representable1 (Either a) (RepEither a) where
   from1 (Right a) = R1 (Par1 a)
   to1 (L1 (Rec1 a)) = Left a
   to1 (R1 (Par1 a)) = Right a
+
 
 -- Instance for gshow (should be automatically generated)
 instance (Show a, GShow a, GShow b) => GShow (Either a b) where

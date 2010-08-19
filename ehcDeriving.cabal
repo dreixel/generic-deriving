@@ -1,10 +1,10 @@
 name:                   ehcDeriving
-version:                0.2
+version:                0.3
 synopsis:               Generic programming library for generalized deriving.
 description:
 
   This package provides functionality for generalizing the deriving mechanism
-  in Haskell to arbitrary classes. It has been described in the paper:
+  in Haskell to arbitrary classes. It is described in the paper:
   .
   *  /A generic deriving mechanism for Haskell/
      José Pedro Magalhães, Atze Dijkstra, Johan Jeuring, and Andres Löh.
@@ -35,7 +35,8 @@ library
                         Generics.Deriving.Show
                         Generics.Deriving.Typeable
                         Generics.Deriving.Uniplate
+                        Generics.Deriving.TH
                         
-  build-depends:        base <= 4.2.0.0
+  build-depends:        base <= 4.2.0.0, template-haskell == 2.4.*
   extensions:           MultiParamTypeClasses, CPP
   ghc-options:          -Wall
