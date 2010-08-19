@@ -143,7 +143,7 @@ genName :: [Name] -> Name
 genName = mkName . (++"_") . intercalate "_" . map nameBase
 
 genRepName :: Int -> Name -> Name
-genRepName n = mkName . (("Rep" ++ show n) ++) . nameBase
+genRepName n = mkName . (++"_") . (("Rep" ++ show n) ++) . nameBase
 
 mkDataData :: Name -> Q Dec
 mkDataData n = dataD (cxt []) (genName [n]) [] [] []
