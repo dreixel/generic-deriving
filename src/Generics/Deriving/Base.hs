@@ -16,7 +16,7 @@ module Generics.Deriving.Base (
   , D1, C1, S1, D, C, S
 
   -- * Meta-information
-  , Datatype(..), Constructor(..), Selector(..)
+  , Datatype(..), Constructor(..), Selector(..), NoSelector
   , Fixity(..), Associativity(..), Arity(..), prec
 
   -- * Representable type classes
@@ -146,6 +146,11 @@ class Selector s where
 #else
   selName :: t s (f :: * -> *) a -> String
 #endif
+
+-- | Used for constructor fields without a name
+data NoSelector
+
+instance Selector NoSelector where selName _ = ""
 
 -- | Class for datatypes that represent data constructors
 class Constructor c where
