@@ -25,6 +25,7 @@ module Generics.Deriving.TH (
     , deriveSelectors
     , deriveRepresentable0
     , deriveRep0
+    , simplInstance
   ) where
 
 import Generics.Deriving.Base
@@ -34,6 +35,21 @@ import Language.Haskell.TH.Syntax (Lift(..))
 
 import Data.List (intercalate)
 import Control.Monad
+
+-- | Given the names of a generic class, a type to instantiate, a function in
+-- the class and the default implementation, generates the code for a basic
+-- generic instance.
+simplInstance :: Name -> Name -> Name -> Name -> Q [Dec]
+simplInstance cl ty fn df = do
+  i <- reify (genRepName 0 ty)
+  x <- newName "x"
+  let typ = ForallT [PlainTV x] [] 
+    ((foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT (genRepName 0 ty)) 
+      (typeVariables i)) `AppT` (VarT x))
+  fmap (: []) $ instanceD (cxt []) (conT cl `appT` conT ty)
+    [funD fn [clause [] (normalB (varE df `appE` 
+      (sigE (global 'undefined) (return typ)))) []]]
+
 
 -- | Given the type and the name (as string) for the type to derive,
 -- generate the 'Data' instance, the 'Constructor' instances, the 'Selector'
