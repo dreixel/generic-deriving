@@ -44,8 +44,8 @@ simplInstance cl ty fn df = do
   i <- reify (genRepName 0 ty)
   x <- newName "x"
   let typ = ForallT [PlainTV x] [] 
-    ((foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT (genRepName 0 ty)) 
-      (typeVariables i)) `AppT` (VarT x))
+        ((foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT (genRepName 0 ty)) 
+          (typeVariables i)) `AppT` (VarT x))
   fmap (: []) $ instanceD (cxt []) (conT cl `appT` conT ty)
     [funD fn [clause [] (normalB (varE df `appE` 
       (sigE (global 'undefined) (return typ)))) []]]
