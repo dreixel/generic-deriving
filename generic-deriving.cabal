@@ -1,4 +1,4 @@
-name:                   ehcDeriving
+name:                   generic-deriving
 version:                0.3
 synopsis:               Generic programming library for generalized deriving.
 description:
