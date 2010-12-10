@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                0.3
+version:                0.3.1
 synopsis:               Generic programming library for generalized deriving.
 description:
 
@@ -19,7 +19,7 @@ maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Custom
 cabal-version:          >= 1.2.1
-tested-with:            GHC == 6.10.4
+tested-with:            GHC == 6.10.4, GHC == 6.12.1, GHC == 7.0.1
 extra-source-files:     examples/Examples.hs
 
 library
@@ -37,6 +37,6 @@ library
                         Generics.Deriving.Uniplate
                         Generics.Deriving.TH
                         
-  build-depends:        base <= 4.2.0.0, template-haskell >=2.4 && <2.5
+  build-depends:        base < 4.4, template-haskell >=2.4 && <2.6
   extensions:           MultiParamTypeClasses, CPP
   ghc-options:          -Wall
