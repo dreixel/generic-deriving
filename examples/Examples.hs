@@ -463,6 +463,38 @@ instance GFunctor Weird where
     t :: Rep1Weird a -> (a -> b) -> Weird a -> Weird b
     t = gmapdefault
 
+--------------------------------------------------------------------------------
+-- Example: Nested datatype Bush (minimal)
+--------------------------------------------------------------------------------
+
+data Bush a = BushNil | BushCons a (Bush (Bush a))
+
+
+$(deriveAll ''Bush)
+
+type Rep1Bush = U1 :+: Par1 :*: Bush :.: Rec1 Bush
+instance Representable1 Bush Rep1Bush where
+  from1 BushNil = L1 U1
+  from1 (BushCons a b) = R1 (Par1 a :*: Comp1 (gmap Rec1 b))
+  to1 (L1 U1) = BushNil
+  to1 (R1 (Par1 a :*: Comp1 b)) = BushCons a (gmap unRec1 b)
+
+instance GFunctor Bush where
+  gmap = t undefined where
+    t :: Rep1Bush a -> (a -> b) -> Bush a -> Bush b
+    t = gmapdefault
+
+instance (GShow a) => GShow (Bush a) where
+  gshowsPrec = t undefined where
+    t :: (GShow a) => Rep0Bush_ a x -> Int -> Bush a -> ShowS
+    t = gshowsPrecdefault
+
+-- Example usage
+bush1 :: Bush Int
+bush1 = BushCons 0 (BushCons (BushCons 1 BushNil) BushNil)
+
+testsBush = [ gshow bush1
+            , gshow (gmap gshow bush1) ]
 
 --------------------------------------------------------------------------------
 -- Example: Two parameters, datatype constraint, nested on other parameter
@@ -531,3 +563,5 @@ main = do
         mapM_ p testsEither
         putStrLn "\nTests for Nested:"
         mapM_ p testsNested
+        putStrLn "\nTests for Bush:"
+        mapM_ p testsBush
