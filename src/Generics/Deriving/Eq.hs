@@ -15,6 +15,7 @@ module Generics.Deriving.Eq (
 
 
 import Generics.Deriving.Base
+import Generics.Deriving.Instances
 
 --------------------------------------------------------------------------------
 -- Generic show

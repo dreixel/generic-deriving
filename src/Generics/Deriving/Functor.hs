@@ -12,6 +12,7 @@ module Generics.Deriving.Functor (
   ) where
 
 import Generics.Deriving.Base
+import Generics.Deriving.Instances
 
 --------------------------------------------------------------------------------
 -- Generic fmap

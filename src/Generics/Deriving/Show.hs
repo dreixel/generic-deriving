@@ -16,6 +16,7 @@ module Generics.Deriving.Show (
 
 
 import Generics.Deriving.Base
+import Generics.Deriving.Instances
 
 --------------------------------------------------------------------------------
 -- Generic show

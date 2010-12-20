@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                0.3.1
+version:                0.4
 synopsis:               Generic programming library for generalized deriving.
 description:
 
@@ -26,6 +26,7 @@ library
   hs-source-dirs:       src
   exposed-modules:      Generics.Deriving
                         Generics.Deriving.Base
+                        Generics.Deriving.Instances
 
                         -- Generics.Deriving.Data
                         Generics.Deriving.Enum

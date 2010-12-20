@@ -22,6 +22,7 @@ module Generics.Deriving.Enum (
 
 
 import Generics.Deriving.Base
+import Generics.Deriving.Instances
 import Generics.Deriving.Eq
 
 

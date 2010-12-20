@@ -15,6 +15,7 @@ module Generics.Deriving.Uniplate (
 
 
 import Generics.Deriving.Base
+import Generics.Deriving.Instances
 
 --------------------------------------------------------------------------------
 -- Generic Uniplate
