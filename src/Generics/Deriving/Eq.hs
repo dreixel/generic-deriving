@@ -1,21 +1,33 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
+
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE DefaultSignatures #-}
+#endif
+
 
 module Generics.Deriving.Eq (
   -- * Generic show class
     GEq(..)
 
+#if __GLASGOW_HASKELL__ >= 701
+-- Nothing
+#else
   -- * Default definition
   , geqdefault
+#endif
 
   ) where
 
 
 import Generics.Deriving.Base
-import Generics.Deriving.Instances
+import Generics.Deriving.Instances ()
+-- import GHC.Generics
 
 --------------------------------------------------------------------------------
 -- Generic show
@@ -47,17 +59,18 @@ instance (GEq' a, GEq' b) => GEq' (a :*: b) where
 class GEq a where 
   geq :: a -> a -> Bool
 
-#ifdef __UHC__
 
-{-# DERIVABLE GEq geq geqdefault #-}
-deriving instance (GEq a) => GEq (Maybe a)
-deriving instance (GEq a) => GEq [a]
-
+#if __GLASGOW_HASKELL__ >= 701
+  default geq :: (Generic a, GEq' (Rep a)) => a -> a -> Bool
+  geq x y = geq' (from x) (from y)
 #endif
 
-geqdefault :: (Representable0 a rep0, GEq' rep0) => rep0 x -> a -> a -> Bool
-geqdefault rep x y = geq' (from0 x `asTypeOf` rep) (from0 y `asTypeOf` rep)
-
+#if __GLASGOW_HASKELL__ >= 701
+-- Nothing; the default is in the class
+#else
+geqdefault :: (Generic a, GEq' (Rep a)) => a -> a -> Bool
+geqdefault x y = geq' (from x) (from y)
+#endif
 
 -- Base types instances
 instance GEq Char   where geq = (==)
@@ -65,16 +78,17 @@ instance GEq Int    where geq = (==)
 instance GEq Float  where geq = (==)
 
 
-#ifndef __UHC__
+#if __GLASGOW_HASKELL__ < 701
 
 instance (GEq a) => GEq (Maybe a) where
-  geq = t undefined where
-    t :: (GEq a) => Rep0Maybe a x -> Maybe a -> Maybe a -> Bool
-    t = geqdefault
+  geq = geqdefault
 
 instance (GEq a) => GEq [a] where
-  geq = t undefined where
-    t :: (GEq a) => Rep0List a x -> [a] -> [a] -> Bool
-    t = geqdefault
+  geq = geqdefault
+
+#else
+
+instance (GEq a) => GEq (Maybe a)
+instance (GEq a) => GEq [a]
 
 #endif

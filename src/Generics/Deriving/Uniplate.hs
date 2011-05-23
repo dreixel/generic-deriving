@@ -1,9 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE IncoherentInstances #-} -- :-/
 {-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE DefaultSignatures #-}
+#endif
 
 module Generics.Deriving.Uniplate (
     Uniplate(..)
@@ -15,7 +19,7 @@ module Generics.Deriving.Uniplate (
 
 
 import Generics.Deriving.Base
-import Generics.Deriving.Instances
+import Generics.Deriving.Instances ()
 
 --------------------------------------------------------------------------------
 -- Generic Uniplate
@@ -46,31 +50,27 @@ instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :*: g) b where
 
 class Uniplate a where 
   children :: a -> [a]
-  children _ = []
-
-#ifdef __UHC__
-
-{-# DERIVABLE Uniplate children childrendefault #-}
-deriving instance (Uniplate a) => Uniplate (Maybe a)
-
+#if __GLASGOW_HASKELL__ >= 701
+  default children :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
+  children = childrendefault
 #endif
 
-childrendefault :: (Representable0 a rep0, Uniplate' rep0 a) => rep0 x -> a -> [a]
-childrendefault rep x = children' (from0 x `asTypeOf` rep)
+childrendefault :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
+childrendefault = children' . from
 
 
 -- Base types instances
-instance Uniplate Char
-instance Uniplate Int
-instance Uniplate Float
+instance Uniplate Char  where children _ = []
+instance Uniplate Int   where children _ = []
+instance Uniplate Float where children _ = []
 
 instance Uniplate [a] where
   children []    = []
   children (_:t) = [t]
 
-#ifndef __UHC__
+#if __GLASGOW_HASKELL__ < 701
 instance (Uniplate a) => Uniplate (Maybe a) where
-  children = t undefined where
-    t :: Rep0Maybe a x -> Maybe a -> [Maybe a]
-    t = childrendefault
+  children = childrendefault
+#else
+instance (Uniplate a) => Uniplate (Maybe a)
 #endif

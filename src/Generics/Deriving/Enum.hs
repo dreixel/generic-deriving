@@ -1,8 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE DefaultSignatures #-}
+#endif
 
 module Generics.Deriving.Enum (
 
@@ -22,7 +26,7 @@ module Generics.Deriving.Enum (
 
 
 import Generics.Deriving.Base
-import Generics.Deriving.Instances
+import Generics.Deriving.Instances ()
 import Generics.Deriving.Eq
 
 
@@ -85,59 +89,44 @@ instance (Enum' f, Enum' g) => Enum' (f :*: g) where
   enum' = diag [ [ x :*: y | y <- enum' ] | x <- enum' ]
 
 
-#ifdef __UHC__
+#if __GLASGOW_HASKELL__ < 701
 
-{-# DERIVABLE GEnum genum genumDefault #-}
-deriving instance (GEnum a) => GEnum (Maybe a)
-deriving instance (GEnum a) => GEnum [a]
+instance (GEnum a) => GEnum (Maybe a) where
+  genum = genumDefault
 
-{-# DERIVABLE Enum toEnum toEnumDefault #-}
-{-# DERIVABLE Enum fromEnum fromEnumDefault #-}
+instance (GEnum a) => GEnum [a] where
+  genum = genumDefault
 
 #else
 
-instance (GEnum a) => GEnum (Maybe a) where
-  genum = t undefined where
-    t :: (GEnum a) => Rep0Maybe a x -> [Maybe a]
-    t = genumDefault
-
-instance (GEnum a) => GEnum [a] where
-  genum = t undefined where
-    t :: (GEnum a) => Rep0List a x -> [[a]]
-    t = genumDefault
+instance (GEnum a) => GEnum (Maybe a)
+instance (GEnum a) => GEnum [a]
 
 #endif
 
-genumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 x -> [a]
-genumDefault rep = map to0 (enum' `asTypeOf` [rep])
+genumDefault :: (Generic a, Enum' (Rep a)) => [a]
+genumDefault = map to enum'
 
-toEnumDefault :: (Representable0 a rep0, Enum' rep0) => rep0 x -> Int -> a
-toEnumDefault rep i = let l = enum' `asTypeOf` [rep]
-                      in if (length l > i)
-                         then to0 (l !! i)
-                         else error "toEnum: invalid index"
+toEnumDefault :: (Generic a, Enum' (Rep a)) => Int -> a
+toEnumDefault i = let l = enum'
+                  in if (length l > i)
+                      then to (l !! i)
+                       else error "toEnum: invalid index"
 
-fromEnumDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-                => rep0 x -> a -> Int
-fromEnumDefault rep x = t x (map to0 (enum' `asTypeOf` [rep])) where
-  -- This weird local function is to appease EHC's type checker
-  t :: GEq a => a -> [a] -> Int
-  t y l = case (findIndex (geq y) l) of
-            Nothing -> error "fromEnum: no corresponding index"
-            Just i  -> i
+fromEnumDefault :: (GEq a, Generic a, Enum' (Rep a))
+                => a -> Int
+fromEnumDefault x = case findIndex (geq x) (map to enum') of
+      Nothing -> error "fromEnum: no corresponding index"
+      Just i  -> i
 
-{-
--- Natural definition
-fromEnumDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-                => rep0 x -> a -> Int
-fromEnumDefault rep x = let l = map to0 (enum' `asTypeOf` [rep])
-                        in case (findIndex (geq x) l) of
-                             Nothing -> error "fromEnum: no corresponding index"
-                             Just i  -> i
--}
 
 class GEnum a where
   genum :: [a]
+
+#if __GLASGOW_HASKELL__ >= 701
+  default genum :: (Generic a, Enum' (Rep a)) => [a]
+  genum = genumDefault
+#endif
 
 instance GEnum Int where
   genum = [0..] ||| (neg 0) where
@@ -156,22 +145,29 @@ class (Ord a) => GIx a where
     -- | Returns 'True' the given subscript lies in the range defined
     -- the bounding pair.
     inRange             :: (a,a) -> a -> Bool
+#if __GLASGOW_HASKELL__ >= 701
+    default range :: (GEq a, Generic a, Enum' (Rep a)) => (a,a) -> [a]
+    range = rangeDefault
 
+    default index :: (GEq a, Generic a, Enum' (Rep a)) => (a,a) -> a -> Int
+    index = indexDefault
 
-rangeDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-             => rep0 x -> (a,a) -> [a]
-rangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
-  t :: GEq a => [a] -> (a,a) -> [a]
+    default inRange :: (GEq a, Generic a, Enum' (Rep a)) => (a,a) -> a -> Bool
+    inRange = inRangeDefault
+#endif
+
+rangeDefault :: (GEq a, Generic a, Enum' (Rep a))
+             => (a,a) -> [a]
+rangeDefault = t (map to enum') where
   t l (x,y) = 
     case (findIndex (geq x) l, findIndex (geq y) l) of
       (Nothing, _)     -> error "rangeDefault: no corresponding index"
       (_, Nothing)     -> error "rangeDefault: no corresponding index"
       (Just i, Just j) -> take (j-i) (drop i l)
 
-indexDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-             => rep0 x -> (a,a) -> a -> Int
-indexDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
-  t :: GEq a => [a] -> (a,a) -> a -> Int
+indexDefault :: (GEq a, Generic a, Enum' (Rep a))
+             => (a,a) -> a -> Int
+indexDefault = t (map to enum') where
   t l (x,y) z =
     case (findIndex (geq x) l, findIndex (geq y) l) of
       (Nothing, _)     -> error "indexDefault: no corresponding index"
@@ -180,10 +176,9 @@ indexDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
                             Nothing -> error "indexDefault: index out of range"
                             Just k  -> k
 
-inRangeDefault :: (GEq a, Representable0 a rep0, Enum' rep0)
-               => rep0 x -> (a,a) -> a -> Bool
-inRangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
-  t :: GEq a => [a] -> (a,a) -> a -> Bool
+inRangeDefault :: (GEq a, Generic a, Enum' (Rep a))
+               => (a,a) -> a -> Bool
+inRangeDefault = t (map to enum') where
   t l (x,y) z = 
     case (findIndex (geq x) l, findIndex (geq y) l) of
       (Nothing, _)     -> error "indexDefault: no corresponding index"
@@ -191,44 +186,22 @@ inRangeDefault rep = t (map to0 (enum' `asTypeOf` [rep])) where
       (Just i, Just j) -> maybe False (const True)
                             (findIndex (geq z) (take (j-i) (drop i l)))
 
-#ifdef __UHC__
+#if __GLASGOW_HASKELL__ < 701
 
-{-# DERIVABLE GIx range rangeDefault #-}
-{-# DERIVABLE GIx index indexDefault #-}
-{-# DERIVABLE GIx inRange inRangeDefault #-}
+instance (GEq a, GEnum a, GIx a) => GIx (Maybe a) where
+  range = rangeDefault
+  index = indexDefault
+  inRange = inRangeDefault
 
-deriving instance (GEq a, GEnum a, GIx a) => GIx (Maybe a)
-deriving instance (GEq a, GEnum a, GIx a) => GIx [a]
+instance (GEq a, GEnum a, GIx a) => GIx [a] where
+  range = rangeDefault
+  index = indexDefault
+  inRange = inRangeDefault
 
 #else
 
-instance (GEq a, GEnum a, GIx a) => GIx (Maybe a) where
-  range = t undefined where
-    t :: (GEq a, GEnum a, GIx a)
-      => Rep0Maybe a x -> (Maybe a, Maybe a) -> [Maybe a]
-    t = rangeDefault
-  index = t undefined where
-    t :: (GEq a, GEnum a, GIx a)
-      => Rep0Maybe a x -> (Maybe a, Maybe a) -> Maybe a -> Int
-    t = indexDefault
-  inRange = t undefined where
-    t :: (GEq a, GEnum a, GIx a)
-      => Rep0Maybe a x -> (Maybe a, Maybe a) -> Maybe a -> Bool
-    t = inRangeDefault
-
-instance (GEq a, GEnum a, GIx a) => GIx [a] where
-  range = t undefined where
-    t :: (GEq a, GEnum a, GIx a)
-      => Rep0List a x -> ([a], [a]) -> [[a]]
-    t = rangeDefault
-  index = t undefined where
-    t :: (GEq a, GEnum a, GIx a)
-      => Rep0List a x -> ([a], [a]) -> [a] -> Int
-    t = indexDefault
-  inRange = t undefined where
-    t :: (GEq a, GEnum a, GIx a)
-      => Rep0List a x -> ([a], [a]) -> [a] -> Bool
-    t = inRangeDefault
+instance (GEq a, GEnum a, GIx a) => GIx (Maybe a)
+instance (GEq a, GEnum a, GIx a) => GIx [a]
 
 #endif
 

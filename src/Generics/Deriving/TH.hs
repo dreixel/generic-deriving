@@ -13,19 +13,24 @@
 --
 -- This module contains Template Haskell code that can be used to
 -- automatically generate the boilerplate code for the generic deriving
--- library. For now, it generates only the 'Representable0' instance.
+-- library. For now, it generates only the 'Generic' instance.
 -- Empty datatypes are not yet supported.
 -----------------------------------------------------------------------------
 
 -- Adapted from Generics.Regular.TH
 module Generics.Deriving.TH (
-      deriveAll
+      
+      deriveMeta
     , deriveData
     , deriveConstructors
     , deriveSelectors
+
+#if __GLASGOW_HASKELL__ < 701
+    , deriveAll
     , deriveRepresentable0
     , deriveRep0
     , simplInstance
+#endif
   ) where
 
 import Generics.Deriving.Base
@@ -56,11 +61,19 @@ simplInstance cl ty fn df = do
 -- instances, and the 'Representable0' instance.
 deriveAll :: Name -> Q [Dec]
 deriveAll n =
+  do a <- deriveMeta n
+     b <- deriveRepresentable0 n
+     return (a ++ b)
+
+-- | Given the type and the name (as string) for the type to derive,
+-- generate the 'Data' instance, the 'Constructor' instances, and the 'Selector'
+-- instances.
+deriveMeta :: Name -> Q [Dec]
+deriveMeta n =
   do a <- deriveData n
      b <- deriveConstructors n
      c <- deriveSelectors n
-     d <- deriveRepresentable0 n
-     return (a ++ b ++ c ++ d)
+     return (a ++ b ++ c)
 
 -- | Given a datatype name, derive a datatype and instance of class 'Datatype'.
 deriveData :: Name -> Q [Dec]
@@ -95,12 +108,13 @@ deriveInst t = do
   i <- reify t
   let typ q = foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT q) 
                 (typeVariables i)
+  let tyIns = TySynInstD ''Rep [typ t] (typ (genRepName 0 t))
   fcs <- mkFrom t 1 0 t
   tcs <- mkTo   t 1 0 t
   liftM (:[]) $
-    instanceD (cxt [])
-     (conT ''Representable0 `appT` return (typ t) `appT`
-       return (typ (genRepName 0 t))) [funD 'from0 fcs, funD 'to0 tcs]
+    instanceD (cxt []) (conT ''Generic `appT` return (typ t))
+                         [return tyIns, funD 'from fcs, funD 'to tcs]
+
 
 dataInstance :: Name -> Q [Dec]
 dataInstance n = do

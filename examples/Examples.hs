@@ -3,10 +3,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE KindSignatures #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE DeriveGeneric #-}
+#endif
 
 module Main (
   -- * Run all tests
@@ -24,12 +29,25 @@ import Generics.Deriving.TH
 
 data (:/:) f a = MyType1Nil
                | MyType1Cons { myType1Rec :: (f :/: a), myType2Rec :: MyType2 }
-               | MyType1Cons2 (f :/: a) Int a (f a)
+               | MyType1Cons2 (f :/: a) Int a (f a) 
+
+#if __GLASGOW_HASKELL__ >= 701
+  deriving Generic
+#endif
 
 data MyType2 = MyType2 Float ([] :/: Int)
 
+#if __GLASGOW_HASKELL__ < 701
+
 $(deriveAll ''(:/:))
 $(deriveAll ''MyType2)
+
+#else
+
+-- deriving instance Generic (f :/: a)
+deriving instance Generic MyType2
+
+#endif
 
 --------------------------------------------------------------------------------
 -- Example: Haskell's lists and Maybe
@@ -57,41 +75,21 @@ testsStandard = [ gshow hList1
 
 data Tree = Empty | Branch Int Tree Tree
 
-#ifdef __UHC__
+#if __GLASGOW_HASKELL__ >= 701
 
-deriving instance GShow Tree
-deriving instance Uniplate Tree
-deriving instance GEnum Tree
+deriving instance Generic Tree
+
+instance GShow Tree
+instance Uniplate Tree
+instance GEnum Tree
 
 #else
-{-
-data Tree_
-data Empty_
-data Branch_
-
-instance Datatype Tree_ where
-  datatypeName _ = "Tree"
-  moduleName   _ = "Examples"
-
-instance Constructor Empty_  where conName _ = "Empty"
-instance Constructor Branch_ where conName _ = "Branch"
-
--- Only a Representable0 instance is needed (no Representable1)
-type Rep0Tree = D1 Tree_ (C1 Empty_ U1 :+: 
-                          C1 Branch_ (Rec0 Int :*: (Rec0 Tree :*: Rec0 Tree)))
-instance Representable0 Tree Rep0Tree where  
-  from0 Empty          = M1 (L1 (M1 U1))
-  from0 (Branch i l r) = M1 (R1 (M1 (K1 i :*: (K1 l :*: K1 r))))
-  to0 (M1 (L1 (M1 U1)))                         = Empty
-  to0 (M1 (R1 (M1 (K1 i :*: (K1 l :*: K1 r))))) = Branch i l r
--}
 
 $(deriveAll ''Tree)
 
-instance GShow Tree where gshowsPrec = gshowsPrecdefault (undefined :: Rep0Tree_ x)
-instance Uniplate Tree where children = childrendefault (undefined :: Rep0Tree_ x)
-instance GEnum Tree where genum = genumDefault (undefined :: Rep0Tree_ x)
-instance Typeable Tree where typeOf = typeOf0default (undefined :: Rep0Tree_ x)
+instance GShow    Tree where gshowsPrec = gshowsPrecdefault
+instance Uniplate Tree where children   = childrendefault
+instance GEnum    Tree where genum      = genumDefault
 
 #endif
 
@@ -107,13 +105,20 @@ testsTree = [ gshow tree
 
 data List a = Nil | Cons a (List a) 
 
-#ifdef __UHC__
-
-deriving instance (GShow a) => GShow (List a)
-deriving instance GFunctor List
-deriving instance Uniplate (List a)
-
+#if __GLASGOW_HASKELL__ >= 701
+  deriving Generic
+--deriving instance Generic (List a)
 #else
+
+type Rep0List_ a = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) (Par0 a) (Rec0 (List a)))))
+instance Generic (List a) where
+  type Rep (List a) = Rep0List_ a
+  from Nil        = M1 (L1 (M1 U1))
+  from (Cons h t) = M1 (R1 (M1 ((:*:) (K1 h) (K1 t))))
+  to (M1 (L1 (M1 U1)))                     = Nil
+  to (M1 (R1 (M1 (K1 h :*: K1 t)))) = Cons h t
+
+#endif
 
 data List_
 data Nil_
@@ -126,48 +131,30 @@ instance Datatype List_ where
 instance Constructor Nil_  where conName _ = "Nil"
 instance Constructor Cons_ where conName _ = "Cons"
 
-type Rep0List_ a = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) (Par0 a) (Rec0 (List a)))))
-instance Representable0 (List a) (Rep0List_ a) where
-  from0 Nil        = M1 (L1 (M1 U1))
-  from0 (Cons h t) = M1 (R1 (M1 ((:*:) (K1 h) (K1 t))))
-  to0 (M1 (L1 (M1 U1)))                     = Nil
-  to0 (M1 (R1 (M1 (K1 h :*: K1 t)))) = Cons h t
-
 type Rep1List_ = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) Par1 (Rec1 List))))
-instance Representable1 List Rep1List_ where
+instance Generic1 List where
+  type Rep1 List = Rep1List_
   from1 Nil        = M1 (L1 (M1 U1))
   from1 (Cons h t) = M1 (R1 (M1 (Par1 h :*: Rec1 t)))
   to1 (M1 (L1 (M1 U1)))                         = Nil
   to1 (M1 (R1 (M1 (Par1 h :*: Rec1 t)))) = Cons h t
 
+#if __GLASGOW_HASKELL__ < 701
 -- Instance for generic functions (should be automatically generated)
 instance GFunctor List where
-  gmap = t undefined where
-    t :: Rep1List_ a -> (a -> b) -> List a -> List b
-    t = gmapdefault
-{-
-instance (Typeable a) => Typeable1 List where
-  typeOf1 = t undefined where
-    t :: (Typeable a) => Rep1List_ a -> List a -> TypeRep
-    t = typeOf1default
-
-
-instance GFoldable List where
-  gfoldMap = gfoldMapdefault (undefined :: RepList x)
-
-instance GTraversable List where
-  gtraverse = gtraversedefault (undefined :: RepList x)
--}
+  gmap = gmapdefault
 
 instance (GShow a) => GShow (List a) where
-  gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0List_ a x -> Int -> List a -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
 
 instance (Uniplate a) => Uniplate (List a) where
-  children = t undefined where
-    t :: (Uniplate a) => Rep0List_ a x -> List a -> [List a]
-    t = childrendefault
+  children = childrendefault
+
+#else
+
+instance                 GFunctor  List
+instance (GShow a)    => GShow    (List a)
+instance (Uniplate a) => Uniplate (List a)
 
 #endif
 
@@ -189,72 +176,39 @@ testsList = [ gshow (gmap fromEnum list)
 
 data Nested a = Leaf | Nested { value :: a, rec :: Nested [a] }
 
-#ifdef __UHC__
+#if __GLASGOW_HASKELL__ >= 701
+  deriving Generic
+-- deriving instance Generic (Nested a)
+#endif
 
-deriving instance (GShow a) => GShow (Nested a)
-deriving instance GFunctor Nested
+$(deriveMeta ''Nested)
 
-#else
-{-
-data NestedD
-data NestedC
-data Leaf_
-data Value
-data Rec
-
-instance Datatype NestedD where
-  datatypeName _ = "Nested"
-  moduleName   _ = "Examples"
-
-instance Constructor NestedC where
-  conName _     = "Nested"
-  conIsRecord _ = True
-
-instance Constructor Leaf_ where conName _     = "Leaf"
-
-instance Selector Value where selName _ = "value"
-instance Selector Rec   where selName _ = "rec"
-
--- Representable1 instances
-type Rep0Nested a = D1 NestedD (    C1 Leaf_ U1 
-                                :+: C1 NestedC (    S1 Value (Par0 a)
-                                                :*: S1 Rec (Rec0 (Nested [a]))))
-instance Representable0 (Nested a) (Rep0Nested a) where
-  from0 Leaf = M1 (L1 (M1 U1))
-  from0 (Nested a l) = M1 (R1 (M1 (M1 (K1 a) :*: M1 (K1 l))))
-  to0 (M1 (L1 (M1 U1))) = Leaf
-  to0 (M1 (R1 (M1 (M1 (K1 a) :*: M1 (K1 l))))) = Nested a l
--}
-
-$(deriveAll ''Nested)
+#if __GLASGOW_HASKELL__ < 701
+$(deriveRepresentable0 ''Nested)
+#endif
 
 type RepNested = D1 Nested_ (C1 Nested_Leaf_ U1 :+: C1 Nested_Nested_ (Par1 :*: Nested :.: Rec1 []))
-instance Representable1 Nested RepNested where
+instance Generic1 Nested where
+  type Rep1 Nested = RepNested
   from1 Leaf = M1 (L1 (M1 U1))
   from1 (Nested a l) = M1 (R1 (M1 (Par1 a :*: Comp1 (gmap Rec1 l))))
   to1 (M1 (L1 (M1 U1))) = Leaf
   to1 (M1 (R1 (M1 (Par1 a :*: Comp1 l)))) = Nested a (gmap unRec1 l)
 
+#if __GLASGOW_HASKELL__ < 701
 -- Instance for gshow (should be automatically generated)
 instance (GShow a) => GShow (Nested a) where
-  gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0Nested_ a x -> Int -> Nested a -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
 
 instance GFunctor Nested where
-  gmap = t undefined where
-    t :: RepNested a -> (a -> b) -> Nested a -> Nested b
-    t = gmapdefault
-{-
-instance (GFoldable f) => GFoldable (GRose f) where
-  gfoldMap f (x :: GRose f a) = gfoldMapdefault (undefined :: RepGRose f x) f x
+  gmap = gmapdefault
 
-instance (GTraversable f) => GTraversable (GRose f) where
-  gtraverse f (x :: GRose f a) = gtraversedefault (undefined :: RepGRose f x) f x
--}
+#else 
+
+instance (GShow a) => GShow (Nested a)
+instance GFunctor Nested
 
 #endif
-
 
 -- Example usage
 nested :: Nested Int
@@ -265,19 +219,24 @@ nested = Nested 1 (Nested [2] (Nested [[3],[4,5],[]] Leaf))
 testsNested = [ gshow nested
               , gshow (gmap gshow nested) ]
 
-
 --------------------------------------------------------------------------------
 -- Example: Type composition
 --------------------------------------------------------------------------------
 
 data Rose a = Rose [a] [Rose a]
 
-#ifdef __UHC__
-
-deriving instance (GShow a) => GShow (Rose a)
-deriving instance GFunctor Rose
-
+#if __GLASGOW_HASKELL__ >= 701
+  deriving Generic
+-- deriving instance Generic (Rose a)
 #else
+
+type Rep0Rose a = D1 RoseD (C1 RoseC (Rec0 [a] :*: Rec0 [Rose a]))
+instance Generic (Rose a) where
+  type Rep (Rose a) = Rep0Rose a
+  from (Rose a x) = M1 (M1 (K1 a :*: K1 x))
+  to (M1 (M1 (K1 a :*: K1 x))) = Rose a x
+
+#endif
 
 data RoseD
 data RoseC
@@ -288,34 +247,26 @@ instance Datatype RoseD where
 
 instance Constructor RoseC where conName _ = "Rose"
 
--- Representable1 instances
-type Rep0Rose a = D1 RoseD (C1 RoseC (Rec0 [a] :*: Rec0 [Rose a]))
-instance Representable0 (Rose a) (Rep0Rose a) where
-  from0 (Rose a x) = M1 (M1 (K1 a :*: K1 x))
-  to0 (M1 (M1 (K1 a :*: K1 x))) = Rose a x
-
+-- Generic1 instances
 type RepRose = D1 RoseD (C1 RoseC (Rec1 [] :*: [] :.: Rec1 Rose))
-instance Representable1 Rose RepRose where
+instance Generic1 Rose where
+  type Rep1 Rose = RepRose
   from1 (Rose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
   to1 (M1 (M1 (Rec1 a :*: Comp1 x))) = Rose a (gmap unRec1 x)
 
+#if __GLASGOW_HASKELL_ >= 701
+
+instance (GShow a) => GShow (Rose a)
+instance GFunctor Rose
+
+#else
+
 -- Instance for gshow (should be automatically generated)
 instance (GShow a) => GShow (Rose a) where
-  gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0Rose a x -> Int -> Rose a -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
 
 instance GFunctor Rose where
-  gmap = t undefined where
-    t :: RepRose a -> (a -> b) -> Rose a -> Rose b
-    t = gmapdefault
-{-
-instance GFoldable Rose where
-  gfoldMap = gfoldMapdefault (undefined :: RepRose x)
-
-instance GTraversable Rose where
-  gtraverse = gtraversedefault (undefined :: RepRose x)
--}
+  gmap = gmapdefault
 
 #endif
 
@@ -326,59 +277,41 @@ rose1 = Rose [1,2] [Rose [3,4] [], Rose [5] []]
 testsRose = [ gshow rose1
             , gshow (gmap gshow rose1) ]
 
-
 --------------------------------------------------------------------------------
 -- Example: Higher-order kinded datatype, type composition
 --------------------------------------------------------------------------------
 
 data GRose f a = GRose (f a) (f (GRose f a))
 
-#ifdef __UHC__
+#if __GLASGOW_HASKELL__ >= 701
+  deriving Generic
+--deriving instance Generic (GRose f a)
+#endif
 
-deriving instance (GShow (f a), GShow (f (GRose f a))) =>  GShow (GRose f a)
-deriving instance (GFunctor f) => GFunctor (GRose f)
+$(deriveMeta ''GRose)
 
-#else
-{-
-data GRoseD
-data GRoseC
-
-instance Datatype GRoseD where
-  datatypeName _ = "GRose"
-  moduleName   _ = "Examples"
-
-instance Constructor GRoseC where conName _ = "GRose"
-
-type Rep0GRose f a = D1 GRoseD (C1 GRoseC (Rec0 (f a) :*: Rec0 (f (GRose f a))))
-instance Representable0 (GRose f a) (Rep0GRose f a) where
-  from0 (GRose a x) = M1 (M1 (K1 a :*: K1 x))
-  to0 (M1 (M1 (K1 a :*: K1 x))) = GRose a x
--}
-
-$(deriveAll ''GRose)
+#if __GLASGOW_HASKELL__ < 701
+$(deriveRepresentable0 ''GRose)
+#endif
 
 type Rep1GRose f = D1 GRose_ (C1 GRose_GRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
-instance (GFunctor f) => Representable1 (GRose f) (Rep1GRose f) where
+instance (GFunctor f) => Generic1 (GRose f) where
+  type Rep1 (GRose f) = Rep1GRose f
   from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
   to1 (M1 (M1 (Rec1 a :*: Comp1 x))) = GRose a (gmap unRec1 x)
 
+#if __GLASGOW_HASKELL__ < 701
 -- Requires UndecidableInstances
 instance (GShow (f a), GShow (f (GRose f a))) => GShow (GRose f a) where
-  gshowsPrec = t undefined where
-    t :: (GShow (f a), GShow (f (GRose f a))) => Rep0GRose_ f a x -> Int -> GRose f a -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
 
 instance (GFunctor f) => GFunctor (GRose f) where
-  gmap = t undefined where
-    t :: (GFunctor f) => Rep1GRose f a -> (a -> b) -> GRose f a -> GRose f b
-    t = gmapdefault
-{-
-instance (GFoldable f) => GFoldable (GRose f) where
-  gfoldMap f (x :: GRose f a) = gfoldMapdefault (undefined :: RepGRose f x) f x
+  gmap = gmapdefault
 
-instance (GTraversable f) => GTraversable (GRose f) where
-  gtraverse f (x :: GRose f a) = gtraversedefault (undefined :: RepGRose f x) f x
--}
+#else
+
+instance (GShow (f a), GShow (f (GRose f a))) => GShow (GRose f a)
+instance (GFunctor f) => GFunctor (GRose f)
 
 #endif
 
@@ -399,22 +332,22 @@ data NGRose f a = NGNode a (f (NGRose (Comp f f) a))
 data Comp f g a = Comp (f (g a))
 
 type Rep0NGRose f a = Par0 a :*: Rec0 (f (NGRose (Comp f f) a))
-instance Representable0 (NGRose f a) (Rep0NGRose f a) where
-  from0 (NGNode a x) = K1 a :*: K1 x
-  to0 (K1 a :*: K1 x) = NGNode a x
+instance Generic (NGRose f a) (Rep0NGRose f a) where
+  from (NGNode a x) = K1 a :*: K1 x
+  to (K1 a :*: K1 x) = NGNode a x
 
 type Rep0Comp f g a = Rec0 (f (g a))
-instance Representable0 (Comp f g a) (Rep0Comp f g a) where
-  from0 (Comp x) = K1 x
-  to0 (K1 x) = Comp x
+instance Generic (Comp f g a) (Rep0Comp f g a) where
+  from (Comp x) = K1 x
+  to (K1 x) = Comp x
 
 type Rep1Comp f g = f :.: Rec1 g
-instance (GFunctor f) => Representable1 (Comp f g) (Rep1Comp f g) where
+instance (GFunctor f) => Generic1 (Comp f g) (Rep1Comp f g) where
   from1 (Comp x) = Comp1 (gmap Rec1 x)
   to1 (Comp1 x) = Comp (gmap unRec1 x)
 
 type Rep1NGRose f = Par1 :*: f :.: Rec1 (NGRose (Comp f f))
-instance (GFunctor f) => Representable1 (NGRose f) (Rep1NGRose f) where
+instance (GFunctor f) => Generic1 (NGRose f) (Rep1NGRose f) where
   from1 (NGNode a x) = Par1 a :*: (Comp1 (gmap Rec1 x))
   to1 (Par1 a :*: Comp1 x) = NGNode a (gmap unRec1 x)
 
@@ -453,15 +386,21 @@ unComp (Comp1 x) = x
 data Weird a = Weird [[[a]]] deriving Show
 
 type Rep1Weird = [] :.: [] :.: Rec1 []
-instance Representable1 Weird Rep1Weird where
+instance Generic1 Weird where
+  type Rep1 Weird = Rep1Weird
   from1 (Weird x) = Comp1 (gmap (Comp1 . gmap Rec1) x)
   to1 (Comp1 x) = Weird (gmap (gmap unRec1 . unComp) x)
 
+#if __GLASGOW_HASKELL__ >= 701
+
+instance GFunctor Weird
+
+#else 
 
 instance GFunctor Weird where
-  gmap = t undefined where
-    t :: Rep1Weird a -> (a -> b) -> Weird a -> Weird b
-    t = gmapdefault
+  gmap = gmapdefault
+
+#endif
 
 --------------------------------------------------------------------------------
 -- Example: Nested datatype Bush (minimal)
@@ -469,25 +408,41 @@ instance GFunctor Weird where
 
 data Bush a = BushNil | BushCons a (Bush (Bush a))
 
+#if __GLASGOW_HASKELL__ >= 701
+  deriving Generic
+--deriving instance Generic (Bush a)
+#endif
 
-$(deriveAll ''Bush)
+$(deriveMeta ''Bush)
+
+#if __GLASGOW_HASKELL__ < 701
+$(deriveRepresentable0 ''Bush)
+#endif
+
 
 type Rep1Bush = U1 :+: Par1 :*: Bush :.: Rec1 Bush
-instance Representable1 Bush Rep1Bush where
+instance Generic1 Bush where
+  type Rep1 Bush = Rep1Bush
   from1 BushNil = L1 U1
   from1 (BushCons a b) = R1 (Par1 a :*: Comp1 (gmap Rec1 b))
   to1 (L1 U1) = BushNil
   to1 (R1 (Par1 a :*: Comp1 b)) = BushCons a (gmap unRec1 b)
 
+
+#if __GLASGOW_HASKELL__ < 701
+
 instance GFunctor Bush where
-  gmap = t undefined where
-    t :: Rep1Bush a -> (a -> b) -> Bush a -> Bush b
-    t = gmapdefault
+  gmap = gmapdefault
 
 instance (GShow a) => GShow (Bush a) where
-  gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0Bush_ a x -> Int -> Bush a -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
+
+#else
+
+instance GFunctor Bush
+instance (GShow a) => GShow (Bush a)
+
+#endif
 
 -- Example usage
 bush1 :: Bush Int
@@ -500,38 +455,44 @@ testsBush = [ gshow bush1
 -- Example: Two parameters, datatype constraint, nested on other parameter
 --------------------------------------------------------------------------------
 
--- Any constraints on |b| mean we cannot generate the Representable1 instance
--- Constraints on |a| are just propagated to Representable0 and generic
+-- Any constraints on |b| mean we cannot generate the Generic1 instance
+-- Constraints on |a| are just propagated to Generic and generic
 -- function instances
 data (Show a) => Either a b = Left (Either [a] b) | Right b
 
 
--- Representable1 instances
+-- Generic1 instances
 type Rep0Either a b = Rec0 (Either [a] b) :+: Rec0 b
-instance (Show a) => Representable0 (Either a b) (Rep0Either a b) where
-  from0 (Left a)  = L1 (K1 a)
-  from0 (Right a) = R1 (K1 a)
-  to0 (L1 (K1 a)) = Left a
-  to0 (R1 (K1 a)) = Right a
+instance (Show a) => Generic (Either a b) where
+  type Rep (Either a b) = Rep0Either a b
+  from (Left a)  = L1 (K1 a)
+  from (Right a) = R1 (K1 a)
+  to (L1 (K1 a)) = Left a
+  to (R1 (K1 a)) = Right a
 
 type RepEither a = Rec1 (Either [a]) :+: Par1
-instance (Show a) => Representable1 (Either a) (RepEither a) where
+instance (Show a) => Generic1 (Either a) where
+  type Rep1 (Either a) = RepEither a
   from1 (Left a)  = L1 (Rec1 a)
   from1 (Right a) = R1 (Par1 a)
   to1 (L1 (Rec1 a)) = Left a
   to1 (R1 (Par1 a)) = Right a
 
 
+#if __GLASGOW_HASKELL__ < 701
 -- Instance for gshow (should be automatically generated)
 instance (Show a, GShow a, GShow b) => GShow (Either a b) where
-  gshowsPrec = t undefined where
-    t :: (Show a, GShow a, GShow b) => Rep0Either a b x -> Int -> Either a b -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
 
 instance (Show a) => GFunctor (Either a) where
-  gmap = t undefined where
-    t :: (Show a) => RepEither a b -> (b -> c) -> Either a b -> Either a c
-    t = gmapdefault
+  gmap = gmapdefault
+
+#else
+
+instance (Show a, GShow a, GShow b) => GShow (Either a b)
+instance (Show a) => GFunctor (Either a)
+
+#endif
 
 either1 :: Either Int Char
 either1 = Left either2

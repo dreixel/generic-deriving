@@ -1,9 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE IncoherentInstances #-} -- :-/
 {-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE DefaultSignatures #-}
+#endif
 
 module Generics.Deriving.Show (
   -- * Generic show class
@@ -16,11 +20,14 @@ module Generics.Deriving.Show (
 
 
 import Generics.Deriving.Base
-import Generics.Deriving.Instances
+import Generics.Deriving.Instances ()
 
 --------------------------------------------------------------------------------
 -- Generic show
 --------------------------------------------------------------------------------
+
+appPrec :: Int
+appPrec = 2
 
 data Type = Rec | Tup | Pref | Inf String
 
@@ -42,28 +49,29 @@ instance (GShow c) => GShow' (K1 i c) where
 instance (GShow' a, Constructor c) => GShow' (M1 C c a) where
   gshowsPrec' _ n c@(M1 x) = 
     case fixity of
-      Prefix    -> showParen (n > 10 && not (isNullary x)) 
+      Prefix    -> showParen (n > appPrec && not (isNullary x)) 
                     ( showString (conName c) 
                     . if (isNullary x) then id else showChar ' '
-                    . showBraces t (gshowsPrec' t 10 x))
+                    . showBraces t (gshowsPrec' t appPrec x))
       Infix _ m -> showParen (n > m) (showBraces t (gshowsPrec' t m x))
       where fixity = conFixity c
             t = if (conIsRecord c) then Rec else
                   case (conIsTuple c) of
-                    Arity _ -> Tup
-                    NoArity -> case fixity of
-                                 Prefix    -> Pref
-                                 Infix _ _ -> Inf (show (conName c))
+                    True -> Tup
+                    False -> case fixity of
+                                Prefix    -> Pref
+                                Infix _ _ -> Inf (show (conName c))
             showBraces :: Type -> ShowS -> ShowS
             showBraces Rec     p = showChar '{' . p . showChar '}'
             showBraces Tup     p = showChar '(' . p . showChar ')'
             showBraces Pref    p = p
             showBraces (Inf _) p = p
-  
-  isNullary (M1 x) = isNullary x
+            conIsTuple y = tupleName (conName y) where
+              tupleName ('(':',':_) = True
+              tupleName _           = False
 
 instance (Selector s, GShow' a) => GShow' (M1 S s a) where
-  gshowsPrec' t n s@(M1 x) | selName s == "" = showParen (n > 10)
+  gshowsPrec' t n s@(M1 x) | selName s == "" = --showParen (n > appPrec)
                                                  (gshowsPrec' t n x)
                            | otherwise       =   showString (selName s)
                                                . showString " = "
@@ -97,25 +105,23 @@ class GShow a where
   gshows = gshowsPrec 0
   gshow :: a -> String
   gshow x = gshows x ""
-  
+#if __GLASGOW_HASKELL__ >= 701
+  default gshowsPrec :: (Generic a, GShow' (Rep a))
+                     => Int -> a -> ShowS
+  gshowsPrec = gshowsPrecdefault
 
-#ifdef __UHC__
-
-{-# DERIVABLE GShow gshowsPrec gshowsPrecdefault #-}
-deriving instance (GShow a) => GShow (Maybe a)
+instance (GShow a) => GShow (Maybe a)
 
 #else
 
 instance (GShow a) => GShow (Maybe a) where
-  gshowsPrec = t undefined where
-    t :: (GShow a) => Rep0Maybe a x -> Int -> Maybe a -> ShowS
-    t = gshowsPrecdefault
+  gshowsPrec = gshowsPrecdefault
 
 #endif
 
-gshowsPrecdefault :: (Representable0 a rep0, GShow' rep0)
-                  => rep0 x -> Int -> a -> ShowS
-gshowsPrecdefault rep n x = gshowsPrec' Pref n (from0 x `asTypeOf` rep)
+gshowsPrecdefault :: (Generic a, GShow' (Rep a))
+                  => Int -> a -> ShowS
+gshowsPrecdefault n = gshowsPrec' Pref n . from
 
 
 -- Base types instances

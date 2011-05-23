@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                0.4
+version:                0.5
 synopsis:               Generic programming library for generalized deriving.
 description:
 
@@ -19,7 +19,7 @@ maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Custom
 cabal-version:          >= 1.2.1
-tested-with:            GHC == 6.10.4, GHC == 6.12.1, GHC == 7.0.1
+tested-with:            GHC == 7.0.1
 extra-source-files:     examples/Examples.hs
 
 library
@@ -34,7 +34,6 @@ library
                         Generics.Deriving.Functor
                         -- Generics.Deriving.GMapQ
                         Generics.Deriving.Show
-                        Generics.Deriving.Typeable
                         Generics.Deriving.Uniplate
                         Generics.Deriving.TH
                         

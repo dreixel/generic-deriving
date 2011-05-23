@@ -1,6 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE DefaultSignatures #-}
+#endif
 
 module Generics.Deriving.Functor (
   -- * GFunctor class
@@ -12,7 +16,7 @@ module Generics.Deriving.Functor (
   ) where
 
 import Generics.Deriving.Base
-import Generics.Deriving.Instances
+import Generics.Deriving.Instances ()
 
 --------------------------------------------------------------------------------
 -- Generic fmap
@@ -49,29 +53,19 @@ instance (GFunctor f, GFunctor' g) => GFunctor' (f :.: g) where
 
 class GFunctor f where
   gmap :: (a -> b) -> f a -> f b
+#if __GLASGOW_HASKELL__ >= 701
+  default gmap :: (Generic1 f, GFunctor' (Rep1 f))
+               => (a -> b) -> f a -> f b
+  gmap = gmapdefault
+#endif
 
-gmapdefault :: (Representable1 f rep, GFunctor' rep)
-            => rep a -> (a -> b) -> f a -> f b
-gmapdefault ra f x = to1 (gmap' f (from1 x `asTypeOf` ra))
-
-#ifdef __UHC__
-
-{-# DERIVABLE GFunctor gmap gmapdefault #-}
-
-deriving instance GFunctor Maybe
-deriving instance GFunctor []
-
-#else
+gmapdefault :: (Generic1 f, GFunctor' (Rep1 f))
+            => (a -> b) -> f a -> f b
+gmapdefault f = to1 . gmap' f . from1
 
 -- Base types instances
 instance GFunctor Maybe where
-  gmap = t undefined where
-    t :: Rep1Maybe a -> (a -> b) -> Maybe a -> Maybe b
-    t = gmapdefault
+  gmap = gmapdefault
 
 instance GFunctor [] where
-  gmap = t undefined where
-    t :: Rep1List a -> (a -> b) -> [a] -> [b]
-    t = gmapdefault
-
-#endif
+  gmap = gmapdefault

@@ -6,7 +6,6 @@ module Generics.Deriving (
     module Generics.Deriving.Eq,
     module Generics.Deriving.Functor,
     module Generics.Deriving.Show,
-    module Generics.Deriving.Typeable,
     module Generics.Deriving.Uniplate
     
   ) where
@@ -16,5 +15,4 @@ import Generics.Deriving.Enum
 import Generics.Deriving.Eq
 import Generics.Deriving.Functor
 import Generics.Deriving.Show
-import Generics.Deriving.Typeable
 import Generics.Deriving.Uniplate
