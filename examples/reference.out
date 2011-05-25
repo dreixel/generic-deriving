@@ -1,0 +1,41 @@
+[] and Maybe tests:
+- "[1,2,3,4,5,6,7,8,9,10]"
+- "[]"
+- "True"
+- "False"
+- "[Nothing,Just 0,Just -1,Just 1,Just -2]"
+- "[[],[0],[0,0],[-1],[0,0,0],[-1,0],[1],[0,-1],[-1,0,0],[1,0],[-2],[0,0,0,0],[-1,-1],[1,0,0],[-2,0]]"
+- "[[0],[0,0],[-1],[0,0,0],[-1,0]]"
+- "False"
+Tests for Tree:
+- "Branch 2 Empty (Branch 1 Empty Empty)"
+- "[Empty,Branch 1 Empty Empty]"
+- "[Empty,Branch 0 Empty Empty,Branch 0 Empty (Branch 0 Empty Empty),Branch -1 Empty Empty,Branch 0 (Branch 0 Empty Empty) Empty,Branch -1 Empty (Branch 0 Empty Empty),Branch 1 Empty Empty,Branch 0 Empty (Branch 0 Empty (Branch 0 Empty Empty)),Branch -1 (Branch 0 Empty Empty) Empty,Branch 1 Empty (Branch 0 Empty Empty)]"
+
+Tests for List:
+- "Cons 112 (Cons 113 Nil)"
+- "Cons \"Cons 'p' (Cons 'q' Nil)\" (Cons \"Nil\" Nil)"
+- "Cons 'p' (Cons 'q' Nil)"
+- "Cons (Cons 'p' (Cons 'q' Nil)) (Cons Nil Nil)"
+- "[Cons 'q' Nil]"
+- "[Cons Nil Nil]"
+
+Tests for Rose:
+- "Rose [1,2] [Rose [3,4] [],Rose [5] []]"
+- "Rose [\"1\",\"2\"] [Rose [\"3\",\"4\"] [],Rose [\"5\"] []]"
+
+Tests for GRose:
+- "GRose [1,2] [GRose [3] [],GRose [] []]"
+- "GRose [\"1\",\"2\"] [GRose [\"3\"] [],GRose [] []]"
+
+Tests for Either:
+- "'p'"
+- "\"'p'\""
+
+Tests for Nested:
+- "Nested {value = 1, rec = Nested {value = [2], rec = Nested {value = [[3],[4,5],[]], rec = Leaf}}}"
+- "Nested {value = \"1\", rec = Nested {value = [\"2\"], rec = Nested {value = [[\"3\"],[\"4\",\"5\"],[]], rec = Leaf}}}"
+
+Tests for Bush:
+- "BushCons 0 (BushCons (BushCons 1 BushNil) BushNil)"
+- "BushCons \"0\" (BushCons (BushCons \"1\" BushNil) BushNil)"

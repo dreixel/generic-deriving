@@ -1,17 +1,21 @@
 name:                   generic-deriving
-version:                0.5
+version:                1.0.1
 synopsis:               Generic programming library for generalized deriving.
 description:
 
   This package provides functionality for generalizing the deriving mechanism
-  in Haskell to arbitrary classes. It is described in the paper:
+  in Haskell to arbitrary classes. It was first described in the paper:
   .
   *  /A generic deriving mechanism for Haskell/.
      Jose Pedro Magalhaes, Atze Dijkstra, Johan Jeuring, and Andres Loeh.
      Haskell'10.
+  .
+  The current implementation integrates with the new GHC Generics. See
+  <http://www.haskell.org/haskellwiki/Generics> for more information.
+  Template Haskell code is provided for supporting GHC before version 7.2.
 
 category:               Generics
-copyright:              (c) 2010 Universiteit Utrecht
+copyright:              (c) 2011 Universiteit Utrecht
 license:                BSD3
 license-file:           LICENSE
 author:                 José Pedro Magalhães
@@ -19,7 +23,7 @@ maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Custom
 cabal-version:          >= 1.2.1
-tested-with:            GHC == 7.0.1
+tested-with:            GHC == 7.0.3, GHC == 7.2.1
 extra-source-files:     examples/Examples.hs
 
 library
@@ -28,15 +32,16 @@ library
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
 
-                        -- Generics.Deriving.Data
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
                         Generics.Deriving.Functor
-                        -- Generics.Deriving.GMapQ
                         Generics.Deriving.Show
                         Generics.Deriving.Uniplate
                         Generics.Deriving.TH
                         
   build-depends:        base < 4.4, template-haskell >=2.4 && <2.6
-  extensions:           MultiParamTypeClasses, CPP
+  if impl(ghc > 7.0)
+    build-depends:      ghc-prim < 0.3
+
+  extensions:           CPP
   ghc-options:          -Wall
