@@ -37,6 +37,7 @@ library
                         Generics.Deriving.Functor
                         Generics.Deriving.Show
                         Generics.Deriving.Uniplate
+
                         Generics.Deriving.TH
                         
   build-depends:        base < 4.4, template-haskell >=2.4 && <2.6
