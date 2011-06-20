@@ -106,7 +106,7 @@ data List__
 data Nil__
 data Cons__
 
-instance Datatype [a] where
+instance Datatype List__ where
   datatypeName _ = "[]"
   moduleName   _ = "Data.List"
 
