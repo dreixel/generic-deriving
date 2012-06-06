@@ -1,9 +1,9 @@
 name:                   generic-deriving
-version:                1.0.3
-synopsis:               Generic programming library for generalized deriving.
+version:                1.2.1
+synopsis:               Generic programming library for generalised deriving.
 description:
 
-  This package provides functionality for generalizing the deriving mechanism
+  This package provides functionality for generalising the deriving mechanism
   in Haskell to arbitrary classes. It was first described in the paper:
   .
   *  /A generic deriving mechanism for Haskell/.
@@ -15,7 +15,7 @@ description:
   Template Haskell code is provided for supporting GHC before version 7.2.
 
 category:               Generics
-copyright:              (c) 2011 Universiteit Utrecht
+copyright:              2011 Universiteit Utrecht, 2012 University of Oxford
 license:                BSD3
 license-file:           LICENSE
 author:                 José Pedro Magalhães
@@ -23,12 +23,12 @@ maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Custom
 cabal-version:          >= 1.6
-tested-with:            GHC == 7.0.3, GHC == 7.2.1
+tested-with:            GHC == 7.0.3, GHC == 7.2.1, GHC == 7.4.1
 extra-source-files:     examples/Examples.hs
 
 source-repository head
-  type: svn
-  location: https://subversion.cs.uu.nl/repos/project.dgp-haskell.libraries/generic-deriving/trunk/
+  type: git
+  location: https://github.com/dreixel/generic-deriving
 
 library
   hs-source-dirs:       src
