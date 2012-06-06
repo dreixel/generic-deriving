@@ -36,6 +36,7 @@ library
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
 
+                        Generics.Deriving.ConNames
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
                         Generics.Deriving.Functor
