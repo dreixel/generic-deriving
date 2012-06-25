@@ -8,6 +8,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DatatypeContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DeriveGeneric #-}
 #endif
@@ -105,8 +107,7 @@ testsTree = [ gshow tree
 data List a = Nil | Cons a (List a) 
 
 #if __GLASGOW_HASKELL__ >= 701
-  deriving Generic
---deriving instance Generic (List a)
+deriving instance Generic (List a)
 #else
 
 type Rep0List_ a = D1 List_ ((:+:) (C1 Nil_ U1) (C1 Cons_ ((:*:) (Par0 a) (Rec0 (List a)))))
@@ -118,6 +119,10 @@ instance Generic (List a) where
   to (M1 (R1 (M1 (K1 h :*: K1 t)))) = Cons h t
 
 #endif
+
+#if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic1 List
+#else
 
 data List_
 data Nil_
@@ -137,6 +142,8 @@ instance Generic1 List where
   from1 (Cons h t) = M1 (R1 (M1 (Par1 h :*: Rec1 t)))
   to1 (M1 (L1 (M1 U1)))                         = Nil
   to1 (M1 (R1 (M1 (Par1 h :*: Rec1 t)))) = Cons h t
+
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 -- Instance for generic functions (should be automatically generated)
@@ -174,17 +181,23 @@ testsList = [ gshow (gmap fromEnum list)
 --------------------------------------------------------------------------------
 
 data Nested a = Leaf | Nested { value :: a, rec :: Nested [a] }
+  deriving Functor
 
 #if __GLASGOW_HASKELL__ >= 701
-  deriving Generic
--- deriving instance Generic (Nested a)
+deriving instance Generic (Nested a)
 #endif
 
+#if __GLASGOW_HASKELL__ < 705
 $(deriveMeta ''Nested)
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 $(deriveRepresentable0 ''Nested)
 #endif
+
+#if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic1 Nested
+#else
 
 type RepNested = D1 Nested_ (C1 Nested_Leaf_ U1 :+: C1 Nested_Nested_ (Par1 :*: Nested :.: Rec1 []))
 instance Generic1 Nested where
@@ -193,6 +206,7 @@ instance Generic1 Nested where
   from1 (Nested a l) = M1 (R1 (M1 (Par1 a :*: Comp1 (gmap Rec1 l))))
   to1 (M1 (L1 (M1 U1))) = Leaf
   to1 (M1 (R1 (M1 (Par1 a :*: Comp1 l)))) = Nested a (gmap unRec1 l)
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 -- Instance for gshow (should be automatically generated)
@@ -225,8 +239,7 @@ testsNested = [ gshow nested
 data Rose a = Rose [a] [Rose a]
 
 #if __GLASGOW_HASKELL__ >= 701
-  deriving Generic
--- deriving instance Generic (Rose a)
+deriving instance Generic (Rose a)
 #else
 
 type Rep0Rose a = D1 RoseD (C1 RoseC (Rec0 [a] :*: Rec0 [Rose a]))
@@ -236,6 +249,10 @@ instance Generic (Rose a) where
   to (M1 (M1 (K1 a :*: K1 x))) = Rose a x
 
 #endif
+
+#if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic1 Rose
+#else
 
 data RoseD
 data RoseC
@@ -252,6 +269,8 @@ instance Generic1 Rose where
   type Rep1 Rose = RepRose
   from1 (Rose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
   to1 (M1 (M1 (Rec1 a :*: Comp1 x))) = Rose a (gmap unRec1 x)
+
+#endif
 
 #if __GLASGOW_HASKELL_ >= 701
 
@@ -282,22 +301,30 @@ testsRose = [ gshow rose1
 
 data GRose f a = GRose (f a) (f (GRose f a))
 
+deriving instance (Functor f) => Functor (GRose f)
+
 #if __GLASGOW_HASKELL__ >= 701
-  deriving Generic
---deriving instance Generic (GRose f a)
+deriving instance Generic (GRose f a)
 #endif
 
+#if __GLASGOW_HASKELL__ < 705
 $(deriveMeta ''GRose)
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 $(deriveRepresentable0 ''GRose)
 #endif
+
+#if __GLASGOW_HASKELL__ >= 705
+deriving instance (Functor f) => Generic1 (GRose f)
+#else
 
 type Rep1GRose f = D1 GRose_ (C1 GRose_GRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
 instance (GFunctor f) => Generic1 (GRose f) where
   type Rep1 (GRose f) = Rep1GRose f
   from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
   to1 (M1 (M1 (Rec1 a :*: Comp1 x))) = GRose a (gmap unRec1 x)
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 -- Requires UndecidableInstances
@@ -310,7 +337,7 @@ instance (GFunctor f) => GFunctor (GRose f) where
 #else
 
 instance (GShow (f a), GShow (f (GRose f a))) => GShow (GRose f a)
-instance (GFunctor f) => GFunctor (GRose f)
+instance (Functor f, GFunctor f) => GFunctor (GRose f)
 
 #endif
 
@@ -405,19 +432,23 @@ instance GFunctor Weird where
 -- Example: Nested datatype Bush (minimal)
 --------------------------------------------------------------------------------
 
-data Bush a = BushNil | BushCons a (Bush (Bush a))
+data Bush a = BushNil | BushCons a (Bush (Bush a)) deriving Functor
 
 #if __GLASGOW_HASKELL__ >= 701
-  deriving Generic
---deriving instance Generic (Bush a)
+deriving instance Generic (Bush a)
 #endif
 
+#if __GLASGOW_HASKELL__ < 705
 $(deriveMeta ''Bush)
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 $(deriveRepresentable0 ''Bush)
 #endif
 
+#if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic1 Bush
+#else
 
 type Rep1Bush = U1 :+: Par1 :*: Bush :.: Rec1 Bush
 instance Generic1 Bush where
@@ -427,6 +458,7 @@ instance Generic1 Bush where
   to1 (L1 U1) = BushNil
   to1 (R1 (Par1 a :*: Comp1 b)) = BushCons a (gmap unRec1 b)
 
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 

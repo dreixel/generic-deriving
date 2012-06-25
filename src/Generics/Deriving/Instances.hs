@@ -8,7 +8,9 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
+#if __GLASGOW_HASKELL__ < 705
     Rep1Maybe, Rep1List
+#endif
 #if __GLASGOW_HASKELL__ < 701
   -- * Representations for base types
   , Rep0Char, Rep0Int, Rep0Float
@@ -16,7 +18,9 @@ module Generics.Deriving.Instances (
 #endif
   ) where
 
+#if __GLASGOW_HASKELL__ < 705
 import Generics.Deriving.Base
+#endif
 
 #if __GLASGOW_HASKELL__ < 701
 --------------------------------------------------------------------------------
@@ -76,7 +80,8 @@ instance Generic [a] where
   to (M1 (R1 (M1 (K1 h :*: K1 t)))) = h : t
 #endif
 
--- GHC 7.2 still needs these instances
+#if __GLASGOW_HASKELL__ < 705
+-- GHC 7.2 and 7.4 still need these instances; 7.6 doesn't
 
 data Maybe_
 data Nothing_
@@ -125,3 +130,5 @@ instance Generic1 [] where
   to1 (M1 (R1 (M1 (Par1 h :*: Rec1 t)))) = h : t
 
 -- etc...
+
+#endif
