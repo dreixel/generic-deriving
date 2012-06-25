@@ -11,7 +11,7 @@ description:
      Haskell'10.
   .
   The current implementation integrates with the new GHC Generics. See
-  <http://www.haskell.org/haskellwiki/Generics> for more information.
+  <http://www.haskell.org/haskellwiki/GHC.Generics> for more information.
   Template Haskell code is provided for supporting GHC before version 7.2.
 
 category:               Generics
