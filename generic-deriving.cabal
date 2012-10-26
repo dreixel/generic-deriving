@@ -39,8 +39,10 @@ library
                         Generics.Deriving.ConNames
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
+                        Generics.Deriving.Foldable
                         Generics.Deriving.Functor
                         Generics.Deriving.Show
+                        Generics.Deriving.Traversable
                         Generics.Deriving.Uniplate
 
                         Generics.Deriving.TH
