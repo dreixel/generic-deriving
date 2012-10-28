@@ -7,7 +7,7 @@
 {-# LANGUAGE CPP #-}
 
 module Generics.Deriving.Base (
-#if __GLASGOW_HASKELL__ < 710
+#if __GLASGOW_HASKELL__ < 701
   -- * Generic representation types
     V1, U1(..), Par1(..), Rec1(..), K1(..), M1(..)
   , (:+:)(..), (:*:)(..), (:.:)(..)
