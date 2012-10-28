@@ -73,7 +73,7 @@ class GFoldable t where
   gfoldMap :: Monoid m => (a -> m) -> t a -> m
 #if __GLASGOW_HASKELL__ >= 701
   default gfoldMap :: (Generic1 t, GFoldable' (Rep1 t), Monoid m)
-               => (a -> m) -> t a -> m
+                   => (a -> m) -> t a -> m
   gfoldMap = gfoldMapdefault
 #endif
 
@@ -109,7 +109,7 @@ class GFoldable t where
       mf (Just x) y = Just (f x y)
 
 gfoldMapdefault :: (Generic1 t, GFoldable' (Rep1 t), Monoid m)
-            => (a -> m) -> t a -> m
+                => (a -> m) -> t a -> m
 gfoldMapdefault f x = gfoldMap' f (from1 x)
 
 -- Base types instances

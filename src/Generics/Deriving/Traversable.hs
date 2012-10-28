@@ -57,7 +57,7 @@ class (GFunctor t, GFoldable t) => GTraversable t where
   gtraverse :: Applicative f => (a -> f b) -> t a -> f (t b)
 #if __GLASGOW_HASKELL__ >= 701
   default gtraverse :: (Generic1 t, GTraversable' (Rep1 t), Applicative f)
-               => (a -> f b) -> t a -> f (t b)
+                    => (a -> f b) -> t a -> f (t b)
   gtraverse = gtraversedefault
 #endif
 
@@ -71,7 +71,7 @@ class (GFunctor t, GFoldable t) => GTraversable t where
   gsequence = gmapM id
 
 gtraversedefault :: (Generic1 t, GTraversable' (Rep1 t), Applicative f)
-            => (a -> f b) -> t a -> f (t b)
+                 => (a -> f b) -> t a -> f (t b)
 gtraversedefault f x = to1 <$> gtraverse' f (from1 x)
 
 -- Base types instances
