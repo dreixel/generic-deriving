@@ -60,11 +60,24 @@ childrendefault = children' . from
 
 
 -- Base types instances
-instance Uniplate Char  where children _ = []
-instance Uniplate Int   where children _ = []
-instance Uniplate Float where children _ = []
+instance Uniplate Bool   where children _ = []
+instance Uniplate Char   where children _ = []
+instance Uniplate Double where children _ = []
+instance Uniplate Float  where children _ = []
+instance Uniplate Int    where children _ = []
+instance Uniplate ()     where children _ = []
 
+-- Tuple instances
+instance Uniplate (b,c)           where children _ = []
+instance Uniplate (b,c,d)         where children _ = []
+instance Uniplate (b,c,d,e)       where children _ = []
+instance Uniplate (b,c,d,e,f)     where children _ = []
+instance Uniplate (b,c,d,e,f,g)   where children _ = []
+instance Uniplate (b,c,d,e,f,g,h) where children _ = []
+
+-- Parameterized type instances
 instance Uniplate (Maybe a)    where children _ = []
+instance Uniplate (Either a b) where children _ = []
 
 instance Uniplate [a] where
   children []    = []
