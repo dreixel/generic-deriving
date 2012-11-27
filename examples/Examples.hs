@@ -89,7 +89,9 @@ instance GEnum Tree
 $(deriveAll ''Tree)
 
 instance GShow    Tree where gshowsPrec = gshowsPrecdefault
-instance Uniplate Tree where children   = childrendefault
+instance Uniplate Tree where
+  children = childrendefault
+  descend  = descenddefault
 instance GEnum    Tree where genum      = genumDefault
 
 #endif
@@ -98,6 +100,7 @@ instance GEnum    Tree where genum      = genumDefault
 tree = Branch 2 Empty (Branch 1 Empty Empty)
 testsTree = [ gshow tree 
             , gshow (children tree)
+            , gshow (descend (descend (\_ -> Branch 0 Empty Empty)) tree)
             , gshow (take 10 (genum :: [Tree])) ]
 
 --------------------------------------------------------------------------------
@@ -155,6 +158,7 @@ instance (GShow a) => GShow (List a) where
 
 instance (Uniplate a) => Uniplate (List a) where
   children = childrendefault
+  descend  = descenddefault
 
 #else
 
