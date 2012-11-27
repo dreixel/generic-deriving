@@ -64,13 +64,9 @@ instance Uniplate Char  where children _ = []
 instance Uniplate Int   where children _ = []
 instance Uniplate Float where children _ = []
 
+instance Uniplate (Maybe a)    where children _ = []
+
 instance Uniplate [a] where
   children []    = []
   children (_:t) = [t]
 
-#if __GLASGOW_HASKELL__ < 701
-instance (Uniplate a) => Uniplate (Maybe a) where
-  children = childrendefault
-#else
-instance (Uniplate a) => Uniplate (Maybe a)
-#endif
