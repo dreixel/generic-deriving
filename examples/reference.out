@@ -11,6 +11,7 @@ Tests for Tree:
 - "Branch 2 Empty (Branch 1 Empty Empty)"
 - "[Empty,Branch 1 Empty Empty]"
 - "Branch 2 Empty (Branch 1 (Branch 0 Empty Empty) (Branch 0 Empty Empty))"
+- "Branch 3 (Branch 0 Empty Empty) (Branch 2 (Branch 0 Empty Empty) (Branch 0 Empty Empty))"
 - "[Empty,Branch 0 Empty Empty,Branch 0 Empty (Branch 0 Empty Empty),Branch -1 Empty Empty,Branch 0 (Branch 0 Empty Empty) Empty,Branch -1 Empty (Branch 0 Empty Empty),Branch 1 Empty Empty,Branch 0 Empty (Branch 0 Empty (Branch 0 Empty Empty)),Branch -1 (Branch 0 Empty Empty) Empty,Branch 1 Empty (Branch 0 Empty Empty)]"
 
 Tests for List:
