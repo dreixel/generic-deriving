@@ -98,6 +98,7 @@ instance GShow    Tree where gshowsPrec = gshowsPrecdefault
 instance Uniplate Tree where
   children  = childrendefault
   descend   = descenddefault
+  descendM  = descendMdefault
   transform = transformdefault
 instance GEnum    Tree where genum      = genumDefault
 
@@ -171,6 +172,7 @@ instance (GShow a) => GShow (List a) where
 instance (Uniplate a) => Uniplate (List a) where
   children  = childrendefault
   descend   = descenddefault
+  descendM  = descendMdefault
   transform = transformdefault
 
 #else
