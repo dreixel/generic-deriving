@@ -15,6 +15,7 @@ module Generics.Deriving.Uniplate (
   -- * Default definitions
   , childrendefault
   , descenddefault
+  , transformdefault
 
   ) where
 
