@@ -12,6 +12,12 @@
 module Generics.Deriving.Uniplate (
     Uniplate(..)
 
+  -- * Derived functions
+  , universe
+  , rewrite
+  , rewriteM
+  , para
+
   -- * Default definitions
   , childrendefault
   , descenddefault
@@ -26,6 +32,7 @@ import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 
 import Control.Monad (liftM, liftM2)
+import GHC.Exts (build)
 
 --------------------------------------------------------------------------------
 -- Generic Uniplate
@@ -131,6 +138,27 @@ transformdefault f = f . to . transform' f . from
 
 transformMdefault :: (Generic a, Uniplate' (Rep a) a, Monad m) => (a -> m a) -> a -> m a
 transformMdefault f = liftM to . transformM' f . from
+
+
+-- Derived functions
+
+universe :: Uniplate a => a -> [a]
+universe a = build (go a)
+  where
+    go x cons nil = cons x $ foldr ($) nil $ map (\c -> go c cons) $ children x
+
+rewrite :: Uniplate a => (a -> Maybe a) -> a -> a
+rewrite f = transform g
+  where
+    g x = maybe x (rewrite f) (f x)
+
+rewriteM :: (Monad m, Uniplate a) => (a -> m (Maybe a)) -> a -> m a
+rewriteM f = transformM g
+  where
+    g x = f x >>= maybe (return x) (rewriteM f)
+
+para :: Uniplate a => (a -> [r] -> r) -> a -> r
+para f x = f x $ map (para f) $ children x
 
 
 -- Base types instances
