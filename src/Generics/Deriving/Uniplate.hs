@@ -13,9 +13,12 @@ module Generics.Deriving.Uniplate (
     Uniplate(..)
 
   -- * Derived functions
+  , uniplate
   , universe
   , rewrite
   , rewriteM
+  , contexts
+  , holes
   , para
 
   -- * Default definitions
@@ -182,6 +185,9 @@ transformMdefault f = liftM to . transformM' f . from
 
 -- Derived functions
 
+uniplate :: Uniplate a => a -> ([a], [a] -> a)
+uniplate a = (children a, context a)
+
 universe :: Uniplate a => a -> [a]
 universe a = build (go a)
   where
@@ -196,6 +202,19 @@ rewriteM :: (Monad m, Uniplate a) => (a -> m (Maybe a)) -> a -> m a
 rewriteM f = transformM g
   where
     g x = f x >>= maybe (return x) (rewriteM f)
+
+contexts :: Uniplate a => a -> [(a, a -> a)]
+contexts a = (a, id) : f (holes a)
+  where
+    f xs = [ (ch2, ctx1 . ctx2)
+           | (ch1, ctx1) <- xs
+           , (ch2, ctx2) <- contexts ch1]
+
+holes :: Uniplate a => a -> [(a, a -> a)]
+holes a = uncurry f (uniplate a)
+  where
+    f []     _   = []
+    f (x:xs) gen = (x, gen . (:xs)) : f xs (gen . (x:))
 
 para :: Uniplate a => (a -> [r] -> r) -> a -> r
 para f x = f x $ map (para f) $ children x
