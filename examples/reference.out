@@ -1,6 +1,8 @@
 [] and Maybe tests:
 - "[1,2,3,4,5,6,7,8,9,10]"
 - "[]"
+- "\"abc\""
+- "[1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10]"
 - "True"
 - "False"
 - "[Nothing,Just 0,Just -1,Just 1,Just -2]"
@@ -11,6 +13,8 @@ Tests for Tree:
 - "Branch 2 Empty (Branch 1 Empty Empty)"
 - "[Empty,Branch 1 Empty Empty]"
 - "Branch 2 Empty (Branch 1 (Branch 0 Empty Empty) (Branch 0 Empty Empty))"
+- "Branch 2 (Branch 1 Empty Empty) Empty"
+- "Branch 3 (Branch 0 Empty Empty) (Branch 2 (Branch 0 Empty Empty) (Branch 0 Empty Empty))"
 - "[Empty,Branch 0 Empty Empty,Branch 0 Empty (Branch 0 Empty Empty),Branch -1 Empty Empty,Branch 0 (Branch 0 Empty Empty) Empty,Branch -1 Empty (Branch 0 Empty Empty),Branch 1 Empty Empty,Branch 0 Empty (Branch 0 Empty (Branch 0 Empty Empty)),Branch -1 (Branch 0 Empty Empty) Empty,Branch 1 Empty (Branch 0 Empty Empty)]"
 
 Tests for List:

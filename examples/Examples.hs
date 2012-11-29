@@ -61,8 +61,14 @@ hList2 = [2,4..]
 maybe1 = Nothing
 maybe2 = Just (Just 'p')
 
+double :: [Int] -> [Int]
+double []     = []
+double (x:xs) = x:x:xs
+
 testsStandard = [ gshow hList1
                 , gshow (children maybe2)
+                , gshow (transform (const "abc") [])
+                , gshow (transform double hList1)
                 , gshow (geq hList1 hList1)
                 , gshow (geq maybe1 maybe2)
                 , gshow (take 5 (genum :: [Maybe Int]))
@@ -90,17 +96,27 @@ $(deriveAll ''Tree)
 
 instance GShow    Tree where gshowsPrec = gshowsPrecdefault
 instance Uniplate Tree where
-  children = childrendefault
-  descend  = descenddefault
+  children   = childrendefault
+  context    = contextdefault
+  descend    = descenddefault
+  descendM   = descendMdefault
+  transform  = transformdefault
+  transformM = transformdefault
 instance GEnum    Tree where genum      = genumDefault
 
 #endif
+
+upgradeTree :: Tree -> Tree
+upgradeTree Empty          = Branch 0 Empty Empty
+upgradeTree (Branch n l r) = Branch (succ n) l r
 
 -- Example usage
 tree = Branch 2 Empty (Branch 1 Empty Empty)
 testsTree = [ gshow tree 
             , gshow (children tree)
             , gshow (descend (descend (\_ -> Branch 0 Empty Empty)) tree)
+            , gshow (context tree [Branch 1 Empty Empty,Empty])
+            , gshow (transform upgradeTree tree)
             , gshow (take 10 (genum :: [Tree])) ]
 
 --------------------------------------------------------------------------------
@@ -157,8 +173,12 @@ instance (GShow a) => GShow (List a) where
   gshowsPrec = gshowsPrecdefault
 
 instance (Uniplate a) => Uniplate (List a) where
-  children = childrendefault
-  descend  = descenddefault
+  children   = childrendefault
+  context    = contextdefault
+  descend    = descenddefault
+  descendM   = descendMdefault
+  transform  = transformdefault
+  transformM = transformdefault
 
 #else
 
