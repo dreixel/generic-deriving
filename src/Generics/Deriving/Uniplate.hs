@@ -162,6 +162,6 @@ instance Uniplate [a] where
   children (_:t) = [t]
   descend _ []    = []
   descend f (h:t) = h:f t
-  transform _ []    = []
+  transform f []    = f []
   transform f (h:t) = f (h:transform f t)
 

@@ -61,8 +61,14 @@ hList2 = [2,4..]
 maybe1 = Nothing
 maybe2 = Just (Just 'p')
 
+double :: [Int] -> [Int]
+double []     = []
+double (x:xs) = x:x:xs
+
 testsStandard = [ gshow hList1
                 , gshow (children maybe2)
+                , gshow (transform (const "abc") [])
+                , gshow (transform double hList1)
                 , gshow (geq hList1 hList1)
                 , gshow (geq maybe1 maybe2)
                 , gshow (take 5 (genum :: [Maybe Int]))
