@@ -20,6 +20,7 @@ module Generics.Deriving.Uniplate (
 
   -- * Default definitions
   , childrendefault
+  , contextdefault
   , descenddefault
   , descendMdefault
   , transformdefault
@@ -93,11 +94,47 @@ instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :*: g) b where
   transformM' f (a :*: b) = liftM2 (:*:) (transformM' f a) (transformM' f b)
 
 
+-- Context' is a separate class from Uniplate' since it uses special product
+-- instances, but the context function still appears in Uniplate.
+class Context' f b where
+  context' :: f a -> [b] -> f a
+
+instance Context' U1 b where
+  context' U1 _ = U1
+
+instance Context' (K1 i a) a where
+  context' _      []    = error "Generics.Deriving.Uniplate.context: empty list"
+  context' (K1 _) (c:_) = K1 c
+
+instance Context' (K1 i a) b where
+  context' (K1 a) _ = K1 a
+
+instance (Context' f b) => Context' (M1 i c f) b where
+  context' (M1 a) cs = M1 (context' a cs)
+
+instance (Context' f b, Context' g b) => Context' (f :+: g) b where
+  context' (L1 a) cs = L1 (context' a cs)
+  context' (R1 a) cs = R1 (context' a cs)
+
+instance (Context' g a) => Context' (M1 i c (K1 j a) :*: g) a where
+  context' _                 []     = error "Generics.Deriving.Uniplate.context: empty list"
+  context' (M1 (K1 _) :*: b) (c:cs) = M1 (K1 c) :*: context' b cs
+
+instance (Context' g b) => Context' (f :*: g) b where
+  context' (a :*: b) cs = a :*: context' b cs
+
+
 class Uniplate a where 
   children :: a -> [a]
 #if __GLASGOW_HASKELL__ >= 701
   default children :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
   children = childrendefault
+#endif
+
+  context :: a -> [a] -> a
+#if __GLASGOW_HASKELL__ >= 701
+  default context :: (Generic a, Context' (Rep a) a) => a -> [a] -> a
+  context = contextdefault
 #endif
 
   descend :: (a -> a) -> a -> a
@@ -126,6 +163,9 @@ class Uniplate a where
 
 childrendefault :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
 childrendefault = children' . from
+
+contextdefault :: (Generic a, Context' (Rep a) a) => a -> [a] -> a
+contextdefault x cs = to (context' (from x) cs)
 
 descenddefault :: (Generic a, Uniplate' (Rep a) a) => (a -> a) -> a -> a
 descenddefault f = to . descend' f . from
@@ -164,36 +204,42 @@ para f x = f x $ map (para f) $ children x
 -- Base types instances
 instance Uniplate Bool where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate Char where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate Double where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate Float where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate Int where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate () where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
@@ -202,36 +248,42 @@ instance Uniplate () where
 -- Tuple instances
 instance Uniplate (b,c) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate (b,c,d) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate (b,c,d,e) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate (b,c,d,e,f) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate (b,c,d,e,f,g) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate (b,c,d,e,f,g,h) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
@@ -240,12 +292,14 @@ instance Uniplate (b,c,d,e,f,g,h) where
 -- Parameterized type instances
 instance Uniplate (Maybe a) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
   transformM _ = return
 instance Uniplate (Either a b) where
   children _ = []
+  context x _ = x
   descend _ = id
   descendM _ = return
   transform = id
@@ -254,6 +308,9 @@ instance Uniplate (Either a b) where
 instance Uniplate [a] where
   children []    = []
   children (_:t) = [t]
+  context _     []    = error "Generics.Deriving.Uniplate.context: empty list"
+  context []    _     = []
+  context (h:_) (t:_) = h:t
   descend _ []    = []
   descend f (h:t) = h:f t
   descendM _ []    = return []

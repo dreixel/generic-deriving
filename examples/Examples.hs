@@ -97,6 +97,7 @@ $(deriveAll ''Tree)
 instance GShow    Tree where gshowsPrec = gshowsPrecdefault
 instance Uniplate Tree where
   children   = childrendefault
+  context    = contextdefault
   descend    = descenddefault
   descendM   = descendMdefault
   transform  = transformdefault
@@ -114,6 +115,7 @@ tree = Branch 2 Empty (Branch 1 Empty Empty)
 testsTree = [ gshow tree 
             , gshow (children tree)
             , gshow (descend (descend (\_ -> Branch 0 Empty Empty)) tree)
+            , gshow (context tree [Branch 1 Empty Empty,Empty])
             , gshow (transform upgradeTree tree)
             , gshow (take 10 (genum :: [Tree])) ]
 
@@ -172,6 +174,7 @@ instance (GShow a) => GShow (List a) where
 
 instance (Uniplate a) => Uniplate (List a) where
   children   = childrendefault
+  context    = contextdefault
   descend    = descenddefault
   descendM   = descendMdefault
   transform  = transformdefault
