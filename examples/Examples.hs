@@ -96,10 +96,11 @@ $(deriveAll ''Tree)
 
 instance GShow    Tree where gshowsPrec = gshowsPrecdefault
 instance Uniplate Tree where
-  children  = childrendefault
-  descend   = descenddefault
-  descendM  = descendMdefault
-  transform = transformdefault
+  children   = childrendefault
+  descend    = descenddefault
+  descendM   = descendMdefault
+  transform  = transformdefault
+  transformM = transformdefault
 instance GEnum    Tree where genum      = genumDefault
 
 #endif
@@ -170,10 +171,11 @@ instance (GShow a) => GShow (List a) where
   gshowsPrec = gshowsPrecdefault
 
 instance (Uniplate a) => Uniplate (List a) where
-  children  = childrendefault
-  descend   = descenddefault
-  descendM  = descendMdefault
-  transform = transformdefault
+  children   = childrendefault
+  descend    = descenddefault
+  descendM   = descendMdefault
+  transform  = transformdefault
+  transformM = transformdefault
 
 #else
 

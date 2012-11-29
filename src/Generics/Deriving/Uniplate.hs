@@ -17,6 +17,7 @@ module Generics.Deriving.Uniplate (
   , descenddefault
   , descendMdefault
   , transformdefault
+  , transformMdefault
 
   ) where
 
@@ -35,30 +36,35 @@ class Uniplate' f b where
   descend'   :: (b -> b) -> f a -> f a
   descendM'  :: Monad m => (b -> m b) -> f a -> m (f a)
   transform' :: (b -> b) -> f a -> f a
+  transformM'  :: Monad m => (b -> m b) -> f a -> m (f a)
 
 instance Uniplate' U1 a where
   children' U1 = []
   descend' _ U1 = U1
   descendM' _ U1 = return U1
   transform' _ U1 = U1
+  transformM' _ U1 = return U1
 
 instance (Uniplate a) => Uniplate' (K1 i a) a where
   children' (K1 a) = [a]
   descend' f (K1 a) = K1 (f a)
   descendM' f (K1 a) = liftM K1 (f a)
   transform' f (K1 a) = K1 (transform f a)
+  transformM' f (K1 a) = liftM K1 (transformM f a)
 
 instance Uniplate' (K1 i a) b where
   children' (K1 _) = []
   descend' _ (K1 a) = K1 a
   descendM' _ (K1 a) = return (K1 a)
   transform' _ (K1 a) = K1 a
+  transformM' _ (K1 a) = return (K1 a)
 
 instance (Uniplate' f b) => Uniplate' (M1 i c f) b where
   children' (M1 a) = children' a
   descend' f (M1 a) = M1 (descend' f a)
   descendM' f (M1 a) = liftM M1 (descendM' f a)
   transform' f (M1 a) = M1 (transform' f a)
+  transformM' f (M1 a) = liftM M1 (transformM' f a)
 
 instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :+: g) b where
   children' (L1 a) = children' a
@@ -69,12 +75,15 @@ instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :+: g) b where
   descendM' f (R1 a) = liftM R1 (descendM' f a)
   transform' f (L1 a) = L1 (transform' f a)
   transform' f (R1 a) = R1 (transform' f a)
+  transformM' f (L1 a) = liftM L1 (transformM' f a)
+  transformM' f (R1 a) = liftM R1 (transformM' f a)
 
 instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :*: g) b where
   children' (a :*: b) = children' a ++ children' b 
   descend' f (a :*: b) = descend' f a :*: descend' f b 
   descendM' f (a :*: b) = liftM2 (:*:) (descendM' f a) (descendM' f b)
   transform' f (a :*: b) = transform' f a :*: transform' f b
+  transformM' f (a :*: b) = liftM2 (:*:) (transformM' f a) (transformM' f b)
 
 
 class Uniplate a where 
@@ -102,6 +111,12 @@ class Uniplate a where
   transform = transformdefault
 #endif
 
+  transformM :: Monad m => (a -> m a) -> a -> m a
+#if __GLASGOW_HASKELL__ >= 701
+  default transformM :: (Generic a, Uniplate' (Rep a) a, Monad m) => (a -> m a) -> a -> m a
+  transformM = transformMdefault
+#endif
+
 childrendefault :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
 childrendefault = children' . from
 
@@ -114,6 +129,9 @@ descendMdefault f = liftM to . descendM' f . from
 transformdefault :: (Generic a, Uniplate' (Rep a) a) => (a -> a) -> a -> a
 transformdefault f = f . to . transform' f . from
 
+transformMdefault :: (Generic a, Uniplate' (Rep a) a, Monad m) => (a -> m a) -> a -> m a
+transformMdefault f = liftM to . transformM' f . from
+
 
 -- Base types instances
 instance Uniplate Bool where
@@ -121,31 +139,37 @@ instance Uniplate Bool where
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate Char where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate Double where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate Float where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate Int where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate () where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 
 -- Tuple instances
 instance Uniplate (b,c) where
@@ -153,31 +177,37 @@ instance Uniplate (b,c) where
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate (b,c,d) where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate (b,c,d,e) where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate (b,c,d,e,f) where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate (b,c,d,e,f,g) where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate (b,c,d,e,f,g,h) where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 
 -- Parameterized type instances
 instance Uniplate (Maybe a) where
@@ -185,11 +215,13 @@ instance Uniplate (Maybe a) where
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 instance Uniplate (Either a b) where
   children _ = []
   descend _ = id
   descendM _ = return
   transform = id
+  transformM _ = return
 
 instance Uniplate [a] where
   children []    = []
@@ -200,4 +232,6 @@ instance Uniplate [a] where
   descendM f (h:t) = f t >>= \t' -> return (h:t')
   transform f []    = f []
   transform f (h:t) = f (h:transform f t)
+  transformM f []    = f []
+  transformM f (h:t) = transformM f t >>= \t' -> f (h:t')
 
