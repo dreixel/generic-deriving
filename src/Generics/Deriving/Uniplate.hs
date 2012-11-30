@@ -9,6 +9,20 @@
 {-# LANGUAGE DefaultSignatures #-}
 #endif
 
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  Generics.Deriving.Uniplate
+-- Copyright   :  2011-2012 Universiteit Utrecht, University of Oxford
+-- License     :  BSD3
+--
+-- Maintainer  :  generics@haskell.org
+-- Stability   :  experimental
+-- Portability :  non-portable
+--
+-- Summary: Functions inspired by the Uniplate generic programming library,
+-- mostly implemented by Sean Leather.
+--------------------------------------------------------------------------------
+
 module Generics.Deriving.Uniplate (
     Uniplate(..)
 
@@ -183,7 +197,7 @@ transformMdefault :: (Generic a, Uniplate' (Rep a) a, Monad m) => (a -> m a) -> 
 transformMdefault f = liftM to . transformM' f . from
 
 
--- Derived functions
+-- Derived functions (mostly copied from Neil Michell's code)
 
 uniplate :: Uniplate a => a -> ([a], [a] -> a)
 uniplate a = (children a, context a)

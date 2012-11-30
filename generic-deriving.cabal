@@ -15,7 +15,7 @@ description:
   Template Haskell code is provided for supporting GHC before version 7.2.
 
 category:               Generics
-copyright:              2011 Universiteit Utrecht, 2012 University of Oxford
+copyright:              2011-2012 Universiteit Utrecht, University of Oxford
 license:                BSD3
 license-file:           LICENSE
 author:                 José Pedro Magalhães
