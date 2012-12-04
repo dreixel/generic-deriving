@@ -162,4 +162,21 @@ class Generic1 f where
   -- | Convert from the representation to the datatype
   to1    :: Rep1 f a -> f a
 
+-- Instances for representation types
+instance Functor U1 where
+  fmap _ U1 = U1
+instance Functor (K1 i a) where
+  fmap _ (K1 x) = K1 x
+instance Functor f => Functor (M1 i c f) where
+  fmap f (M1 x) = M1 (fmap f x)
+instance Functor Par1 where
+  fmap f (Par1 p) = Par1 (f p)
+instance Functor f => Functor (Rec1 f) where
+  fmap f (Rec1 x) = Rec1 (fmap f x)
+instance (Functor f, Functor g) => Functor (f :+: g) where
+  fmap f (L1 x) = L1 (fmap f x)
+  fmap f (R1 x) = R1 (fmap f x)
+instance (Functor f, Functor g) => Functor (f :*: g) where
+  fmap f (x :*: y) = fmap f x :*: fmap f y
+
 #endif
