@@ -178,5 +178,7 @@ instance (Functor f, Functor g) => Functor (f :+: g) where
   fmap f (R1 x) = R1 (fmap f x)
 instance (Functor f, Functor g) => Functor (f :*: g) where
   fmap f (x :*: y) = fmap f x :*: fmap f y
+instance (Functor f, Functor g) => Functor (f :.: g) where
+  fmap f (Comp1 x) = Comp1 (fmap (fmap f) x)
 
 #endif
