@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 -----------------------------------------------------------------------------
 -- |
