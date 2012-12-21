@@ -41,6 +41,7 @@ library
                         Generics.Deriving.Eq
                         Generics.Deriving.Foldable
                         Generics.Deriving.Functor
+                        Generics.Deriving.Monoid
                         Generics.Deriving.Show
                         Generics.Deriving.Traversable
                         Generics.Deriving.Uniplate
