@@ -23,7 +23,7 @@ maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Simple
 cabal-version:          >= 1.6
-tested-with:            GHC == 7.0.3, GHC == 7.2.1, GHC == 7.4.1, GHC == 7.6.1
+tested-with:            GHC == 7.0.3, GHC == 7.2.1, GHC == 7.4.1, GHC == 7.6.1, GHC == 7.7.20130117
 extra-source-files:     examples/Examples.hs
 
 source-repository head
@@ -48,7 +48,7 @@ library
 
                         Generics.Deriving.TH
                         
-  build-depends:        base < 5, template-haskell >=2.4 && <2.9
+  build-depends:        base < 5, template-haskell >=2.4 && <2.10
   if impl(ghc > 7.0)
     build-depends:      ghc-prim < 1
 

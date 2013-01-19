@@ -108,7 +108,11 @@ deriveInst t = do
   i <- reify t
   let typ q = foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT q) 
                 (typeVariables i)
+#if __GLASGOW_HASKELL__ >= 707
+  let tyIns = TySynInstD ''Rep (fmap (TySynEqn [typ (genRepName 0 t)]) [typ t])
+#else
   let tyIns = TySynInstD ''Rep [typ t] (typ (genRepName 0 t))
+#endif
   fcs <- mkFrom t 1 0 t
   tcs <- mkTo   t 1 0 t
   liftM (:[]) $
