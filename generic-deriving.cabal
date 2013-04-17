@@ -35,7 +35,7 @@ library
   exposed-modules:      Generics.Deriving
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
-
+                        Generics.Deriving.Comonad
                         Generics.Deriving.ConNames
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
