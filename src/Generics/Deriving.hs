@@ -1,6 +1,7 @@
 
 module Generics.Deriving (
 
+    module Generics.Deriving.Annotated,
     module Generics.Deriving.Base,
     module Generics.Deriving.Comonad, 
     module Generics.Deriving.ConNames,
@@ -12,6 +13,7 @@ module Generics.Deriving (
     
   ) where
 
+import Generics.Deriving.Annotated
 import Generics.Deriving.Base
 import Generics.Deriving.Comonad
 import Generics.Deriving.ConNames

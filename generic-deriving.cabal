@@ -33,6 +33,7 @@ source-repository head
 library
   hs-source-dirs:       src
   exposed-modules:      Generics.Deriving
+                        Generics.Deriving.Annotated
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
                         Generics.Deriving.Comonad
