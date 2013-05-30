@@ -3,7 +3,7 @@ module Generics.Deriving (
 
     module Generics.Deriving.Annotated,
     module Generics.Deriving.Base,
-    module Generics.Deriving.Comonad, 
+    module Generics.Deriving.Copoint, 
     module Generics.Deriving.ConNames,
     module Generics.Deriving.Enum,
     module Generics.Deriving.Eq,
@@ -15,7 +15,7 @@ module Generics.Deriving (
 
 import Generics.Deriving.Annotated
 import Generics.Deriving.Base
-import Generics.Deriving.Comonad
+import Generics.Deriving.Copoint
 import Generics.Deriving.ConNames
 import Generics.Deriving.Enum
 import Generics.Deriving.Eq

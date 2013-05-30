@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.5.0
+version:                1.5.1
 synopsis:               Generic programming library for generalised deriving.
 description:
 
@@ -36,7 +36,7 @@ library
                         Generics.Deriving.Annotated
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
-                        Generics.Deriving.Comonad
+                        Generics.Deriving.Copoint
                         Generics.Deriving.ConNames
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq

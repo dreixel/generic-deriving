@@ -78,7 +78,49 @@ instance (Generic1 d, GComo' (Rep1 d) d) => GComo' d (Rec1 d) where
 --instance GCojoin (K1 P c) where
 --    gcojoin (K1 a) = K1 (K1 a)
 
+class GCA t where
+    gext :: t a -> a
+    gexa ::  (Generic1 d) => t a -> (d a -> b) -> d a -> t b
 
+instance GCA U1 where
+    gext U1 = undefined
+    gexa U1 f x = U1
+
+instance GCA Par1 where
+    gext (Par1 a) = a
+    gexa (Par1 a) f x = Par1 (f x)
+
+instance GCA (K1 i c) where
+    gext _ = undefined
+    gexa (K1 a) f x = K1 a
+
+--instance GCA c => GCA (K1 R c) where
+--     gext _ = undefined
+--     gexa (K1 a) f x = K1 (
+
+instance GCA f => GCA (M1 i c f) where
+    gext (M1 a) = gext a
+
+    gexa (M1 a) f x = M1 (gexa a f x)
+
+instance (GCA f, GCA g) => GCA (f :+: g) where
+    gext (L1 a) = gext a
+    gext (R1 a) = gext a
+    gexa (L1 a) f x = L1 (gexa a f x)
+    gexa (R1 a) f x = R1 (gexa a f x)
+
+instance (GCA f, GCA g) => GCA (f :*: g) where
+    gext (a :*: _) = gext a -- favour left
+    gexa (a :*: b) f x = (gexa a f x) :*: (gexa b f x)
+
+instance (GCA f) => GCA (Rec1 f) where
+    gext (Rec1 a) = gext a 
+    gexa (Rec1 a) f x = Rec1 (gexa a f (to1 a))
+
+gextend :: (Generic1 d, GCA (Rep d)) => (d a -> b) -> d a -> d b
+gextend f x = gexa f (from1 x) x
+
+-----------
 
 
 class GComonad' d where

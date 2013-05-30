@@ -16,6 +16,8 @@
 
 > data FTree = F1 Int | F2 Int deriving Generic
 
+> data FA a = F3 a | F4 FTree | F5 (UserTree a) deriving Generic1
+
  instance GMonoid FTree
 
 
