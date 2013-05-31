@@ -22,25 +22,22 @@ module Generics.Deriving.Copoint (
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 
+
 --------------------------------------------------------------------------------
 -- Generic copoint
 --------------------------------------------------------------------------------
 
 class GCopoint' t where
-    gcopoint' :: t a -> a
+    gcopoint' :: t a -> Maybe a
 
 instance GCopoint' U1 where
-    gcopoint' U1 = undefined
+    gcopoint' U1 = Nothing
 
 instance GCopoint' Par1 where
-    gcopoint' (Par1 a) = a
+    gcopoint' (Par1 a) = Just a
 
 instance GCopoint' (K1 i c) where
-    gcopoint' _ = undefined
-
---instance GCopoint'' c => GCopoint'' (K1 R c) where
---     gcopoint' _ = undefined
---     gexa (K1 a) f x = K1 (
+    gcopoint' _ = Nothing
 
 instance GCopoint' f => GCopoint' (M1 i c f) where
     gcopoint' (M1 a) = gcopoint' a
@@ -50,10 +47,12 @@ instance (GCopoint' f, GCopoint' g) => GCopoint' (f :+: g) where
     gcopoint' (R1 a) = gcopoint' a
 
 instance (GCopoint' f, GCopoint' g) => GCopoint' (f :*: g) where
-    gcopoint' (a :*: _) = gcopoint' a -- favour left
+    gcopoint' (a :*: b) = case (gcopoint' a) of 
+                            Just x -> Just x
+                            Nothing -> gcopoint' b
 
 instance (GCopoint f) => GCopoint' (Rec1 f) where
-    gcopoint' (Rec1 a) = gcopoint a 
+    gcopoint' (Rec1 a) = Just $ gcopoint a 
 
 instance (GCopoint f, GCopoint' g) => GCopoint' (f :.: g) where
     gcopoint' (Comp1 x) = gcopoint' . gcopoint $ x
@@ -68,7 +67,9 @@ class GCopoint d where
 
 gcopointdefault :: (Generic1 d, GCopoint' (Rep1 d))
             => d a -> a
-gcopointdefault = gcopoint' . from1
+gcopointdefault x = case (gcopoint' . from1 $ x) of
+                      Just x' -> x'
+                      Nothing -> error "Data type not copointed"
 
 instance (Generic1 d, GCopoint' (Rep1 d)) => GCopoint d where
     
