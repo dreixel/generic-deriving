@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.5.1
+version:                1.5.5
 synopsis:               Generic programming library for generalised deriving.
 description:
 
@@ -33,7 +33,6 @@ source-repository head
 library
   hs-source-dirs:       src
   exposed-modules:      Generics.Deriving
-                        Generics.Deriving.Annotated
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
                         Generics.Deriving.Copoint

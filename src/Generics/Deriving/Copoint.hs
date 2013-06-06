@@ -1,11 +1,8 @@
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
@@ -27,6 +24,8 @@ import Generics.Deriving.Instances ()
 -- Generic copoint
 --------------------------------------------------------------------------------
 
+-- General copoint may return 'Nothing'
+
 class GCopoint' t where
     gcopoint' :: t a -> Maybe a
 
@@ -46,8 +45,9 @@ instance (GCopoint' f, GCopoint' g) => GCopoint' (f :+: g) where
     gcopoint' (L1 a) = gcopoint' a
     gcopoint' (R1 a) = gcopoint' a
 
+-- Favours left "hole" for copoint
 instance (GCopoint' f, GCopoint' g) => GCopoint' (f :*: g) where
-    gcopoint' (a :*: b) = case (gcopoint' a) of 
+    gcopoint' (a :*: b) = case (gcopoint' a) of  
                             Just x -> Just x
                             Nothing -> gcopoint' b
 
@@ -69,7 +69,7 @@ gcopointdefault :: (Generic1 d, GCopoint' (Rep1 d))
             => d a -> a
 gcopointdefault x = case (gcopoint' . from1 $ x) of
                       Just x' -> x'
-                      Nothing -> error "Data type not copointed"
+                      Nothing -> error "Data type is not copointed"
 
 instance (Generic1 d, GCopoint' (Rep1 d)) => GCopoint d where
     
