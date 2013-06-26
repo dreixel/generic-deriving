@@ -109,7 +109,7 @@ deriveInst t = do
   let typ q = foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT q) 
                 (typeVariables i)
 #if __GLASGOW_HASKELL__ >= 707
-  let tyIns = TySynInstD ''Rep (fmap (TySynEqn [typ (genRepName 0 t)]) [typ t])
+  let tyIns = TySynInstD ''Rep (TySynEqn [typ t] (typ (genRepName 0 t)))
 #else
   let tyIns = TySynInstD ''Rep [typ t] (typ (genRepName 0 t))
 #endif
