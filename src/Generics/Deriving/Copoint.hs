@@ -1,6 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 #if __GLASGOW_HASKELL__ >= 701
@@ -71,4 +70,4 @@ gcopointdefault x = case (gcopoint' . from1 $ x) of
                       Just x' -> x'
                       Nothing -> error "Data type is not copointed"
 
-instance (Generic1 d, GCopoint' (Rep1 d)) => GCopoint d where
+-- instance (Generic1 d, GCopoint' (Rep1 d)) => GCopoint d
