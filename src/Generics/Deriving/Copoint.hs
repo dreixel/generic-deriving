@@ -61,17 +61,14 @@ class GCopoint d where
   gcopoint :: d a -> a
 #if __GLASGOW_HASKELL__ >= 701
   default gcopoint :: (Generic1 d, GCopoint' (Rep1 d))
-               => (d a -> a)
+                   => (d a -> a)
   gcopoint = gcopointdefault
 #endif
 
 gcopointdefault :: (Generic1 d, GCopoint' (Rep1 d))
-            => d a -> a
+                => d a -> a
 gcopointdefault x = case (gcopoint' . from1 $ x) of
                       Just x' -> x'
                       Nothing -> error "Data type is not copointed"
 
 instance (Generic1 d, GCopoint' (Rep1 d)) => GCopoint d where
-    
-
-
