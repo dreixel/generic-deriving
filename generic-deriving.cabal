@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.6.2
+version:                1.6.3
 synopsis:               Generic programming library for generalised deriving.
 description:
 
@@ -48,7 +48,7 @@ library
 
                         Generics.Deriving.TH
                         
-  build-depends:        base < 5, template-haskell >=2.4 && <2.10
+  build-depends:        base < 5, template-haskell >=2.4 && <2.11
   if impl(ghc > 7.0)
     build-depends:      ghc-prim < 1
 
