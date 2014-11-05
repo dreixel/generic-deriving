@@ -21,7 +21,7 @@
 module Generics.Deriving.ConNames (
 
     -- * Functionality for retrieving the names of the possible contructors
-    --   of a type or the constructor of a given value
+    --   of a type or the constructor name of a given value
     ConNames(..), conNames, conNameOf
 
   ) where
