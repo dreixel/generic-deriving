@@ -20,9 +20,9 @@
 
 module Generics.Deriving.ConNames (
 
-    -- * Functionality for retrieving the names of all the possible contructors
-    --   of a type
-    ConNames(..), conNames
+    -- * Functionality for retrieving the names of the possible contructors
+    --   of a type or the constructor of a given value
+    ConNames(..), conNames, conNameOf
 
   ) where
 
@@ -30,17 +30,26 @@ import Generics.Deriving.Base
 
 
 class ConNames f where 
-    gconNames :: f a -> [String]
+    gconNames  :: f a -> [String]
+    gconNameOf :: f a -> String
 
 instance (ConNames f, ConNames g) => ConNames (f :+: g) where
     gconNames (_ :: (f :+: g) a) = gconNames (undefined :: f a) ++
                                    gconNames (undefined :: g a)
 
+    gconNameOf (L1 x) = gconNameOf x
+    gconNameOf (R1 x) = gconNameOf x
+
 instance (ConNames f) => ConNames (D1 c f) where
     gconNames (_ :: (D1 c f) a) = gconNames (undefined :: f a)
+
+    gconNameOf (M1 x) = gconNameOf x
     
 instance (Constructor c) => ConNames (C1 c f) where
     gconNames x = [conName x]
+
+    gconNameOf x = conName x
+
 
 -- We should never need any other instances.
 
@@ -48,3 +57,7 @@ instance (Constructor c) => ConNames (C1 c f) where
 -- | Return the name of all the constructors of the type of the given term.
 conNames :: (Generic a, ConNames (Rep a)) => a -> [String]
 conNames x = gconNames (undefined `asTypeOf` (from x))
+
+-- | Return the name of the constructor of the given term
+conNameOf :: (ConNames (Rep a), Generic a) => a -> String
+conNameOf x = gconNameOf (from x)
