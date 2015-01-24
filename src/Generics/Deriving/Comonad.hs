@@ -60,6 +60,7 @@ instance 'GFunctor' W
 In other words, each constructor must include @a@ in the rightmost position.
 
 If @a@ appears in other positions, it will be ignored by 'gextract'.
+The resulting `GComonad` instance will therefore violate the comonad laws.
 
 -}
 class GComonad w where
