@@ -22,12 +22,16 @@ import Generics.Deriving.Internal.Functor
 class GComonad' w where
   gduplicate' :: w a -> w (w a)
   gextract' :: w a -> a
-  
+
 instance GComonad' Par1 where
   gduplicate' = Par1
   {-# INLINE gduplicate' #-}
   gextract'   = unPar1
   {-# INLINE gextract' #-}
+
+instance (GComonad f, GFunctor f) => GComonad' (Rec1 f) where
+  gduplicate' w@(Rec1 a) = Rec1 $ gmap (const w) a
+  gextract' (Rec1 a) = gextract a
 
 instance (GFunctor' a, GFunctor' w, GComonad' w) => GComonad' (a :*: w) where
   gduplicate' w@(a :*: b) = gmap' (const w) a :*: gmap' (const w) b
@@ -42,6 +46,12 @@ instance (GFunctor' f, GFunctor' g, GComonad' f, GComonad' g) => GComonad' (f :+
 instance (GComonad' f, GFunctor' f) => GComonad' (M1 i c f) where
   gduplicate' w@(M1 a) = M1 (gmap' (const w) a)
   gextract' (M1 a) = gextract' a
+
+instance (GFunctor f, GFunctor' g, GComonad f, GComonad' g) => GComonad' (f :.: g) where
+  gduplicate' w@(Comp1 x) = gmap' (const $ Comp1 x) w
+  gextract' (Comp1 x) = gextract' $ gextract x
+  {-# INLINE gextract' #-}
+
 {- |
 
 Generically derived comonads.
