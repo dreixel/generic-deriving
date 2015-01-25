@@ -65,3 +65,7 @@ instance GFunctor Maybe where
 
 instance GFunctor [] where
   gmap = gmapdefault
+  
+-- Necessary for GComonad
+instance GFunctor ((->) e) where
+  gmap = fmap

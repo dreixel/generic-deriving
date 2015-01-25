@@ -19,6 +19,8 @@ import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 import Generics.Deriving.Internal.Functor
 
+import Data.Monoid (Monoid, mappend, mempty )
+
 class GComonad' w where
   gduplicate' :: w a -> w (w a)
   gextract' :: w a -> a
@@ -85,6 +87,13 @@ instance 'GFunctor' W'
 instance 'GComonad' W'
 @
 
+And you can use @'Monoid' m => 'GComonad' ((->) m)@:
+
+@
+data W'' a = C'' ((Product Int) -> a) deriving ('Generic1')
+instance 'GFunctor' W''
+instance 'GComonad' W''
+@
 -}
 class GComonad w where
   gduplicate :: w a -> w (w a)
@@ -105,3 +114,10 @@ gextractdefault :: (Generic1 w, GComonad' (Rep1 w))
                 => w a -> a
 gextractdefault = gextract' . from1
 
+-- Instances for Prelude types, to enable use in derived types
+
+instance Monoid m => GComonad ((->) m) where
+  gduplicate f m = f . mappend m
+  {-# INLINE gduplicate #-}
+  gextract f = f mempty
+  {-# INLINE gextract #-}
