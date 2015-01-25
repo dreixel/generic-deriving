@@ -93,7 +93,18 @@ And you can use @'Monoid' m => 'GComonad' ((->) m)@:
 data W'' a = C'' ((Product Int) -> a) deriving ('Generic1')
 instance 'GComonad' W''
 @
+
+To make your type an instance of @Control.Comonad.Comonad@ from the @comonad@ package,
+simply use 'gduplicate' and 'gextract':
+
+@
+instance Comonad W where
+  duplicate = gduplicate
+  extract = gextract
+@
+
 -}
+
 class GComonad w where
   gduplicate :: w a -> w (w a)
 #if __GLASGOW_HASKELL__ >= 701
