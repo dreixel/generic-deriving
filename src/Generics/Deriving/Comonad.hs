@@ -4,6 +4,13 @@
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
+#if __GLASGOW_HASKELL__ >= 708
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+#endif
 
 module Generics.Deriving.Comonad (
   -- * GComonad class
@@ -20,7 +27,9 @@ import Generics.Deriving.Instances ()
 import Generics.Deriving.Internal.Functor
 
 import Data.Monoid (Monoid, mappend, mempty )
-
+#if __GLASGOW_HASKELL__ >= 708
+import Data.Proxy
+#endif
 
 class GComonad' w where
   gduplicate' :: w a -> w (w a)
@@ -37,10 +46,16 @@ instance (GComonad f, GFunctor f) => GComonad' (Rec1 f) where
   gextract' (Rec1 a) = gextract a
   {-# INLINE gextract' #-}
 
+#if __GLASGOW_HASKELL__ >= 708
+instance (HasA a ~ flag, GComonad'' flag (a :*: w)) => GComonad' (a :*: w) where
+  gduplicate' = gduplicate'' (Proxy :: Proxy flag)
+  gextract' = gextract'' (Proxy :: Proxy flag)
+#else
 instance (GConstant' a, GFunctor' w, GComonad' w) => GComonad' (a :*: w) where
   gduplicate' w@(a :*: b) = gcast' a :*: gmap' (const w) b
   gextract' (_ :*: b) = gextract' b
   {-# INLINE gextract' #-}
+#endif
 
 instance (GFunctor' f, GFunctor' g, GComonad' f, GComonad' g) => GComonad' (f :+: g) where
   gduplicate' w@(L1 a) = L1 . gmap' (const w) $ a
@@ -63,22 +78,12 @@ instance (GFunctor f, GFunctor' g, GComonad f, GComonad' g) => GComonad' (f :.: 
 
 Generically derived comonads.
 
-Instances are available for any type of the form 
-
-@
-data W a =
-    C1 [t11 t12 .. t1N] a
- [| C2 [t21 t22 .. t2N] a
-  | .. ]
-  deriving ('Generic1')
-instance 'GFunctor' W 
-instance 'GComonad' W
-@
-
-In other words, each constructor must include @a@ in the rightmost position.
-It may appear in no other position. Attempting to derive 'GComonad' for a datatype
-like @data Pair a = Pair a a deriving Generic1@ will result in an error
-involving the unexported class @GConstant'@.
+With GHC 7.8 and above, instances are available for types like 
+@data W a = W [t0 t1..tn] a [u0 u1..un]@
+so long as the type derives 'Generic1'. (See below regarding GHC < 7.8.) Sum 
+types where each constructor satisfies that condition are also accepted. Using
+the type @a@ more than once is prohibited and will produce an error involving
+the non-exported class @GConstant'@.
 
 You may also wrap a type that is itself an instance of 'GComonad':
 
@@ -101,6 +106,15 @@ simply use 'gduplicate' and 'gextract':
 instance Comonad W where
   duplicate = gduplicate
   extract = gextract
+@
+
+On versions of GHC before 7.8, one additional limitation is imposed: @a@ must
+be the final field of each constructor.
+
+@
+-- GHC < 7.8:
+data W a = W a Int -- Rejected
+data W a = W Int a -- Accepted
 @
 
 -}
@@ -152,3 +166,27 @@ instance (GConstant' f) => GConstant' (M1 i c f) where
 
 instance (GConstant' f, GConstant' g) => GConstant' (f :*: g) where
   gcast' (a :*: b) = gcast' a :*: gcast' b
+
+#if __GLASGOW_HASKELL__ >= 708
+-- AdvancedOverlap apparatus to allow the :*: instance to choose which side to go down.
+-- This could be backported to earlier versions of GHC.
+type family HasA a :: Bool where
+  HasA Par1       = True
+  HasA (Rec1 a)   = True
+  HasA (M1 x y z) = HasA z
+  HasA a          = False
+
+class GComonad'' (flag :: Bool) w where
+  gduplicate'' :: proxy flag -> w a -> w (w a)
+  gextract'' :: proxy flag -> w a -> a
+  
+instance (GConstant' a, GFunctor' w, GComonad' w) => GComonad'' False (a :*: w) where
+  gduplicate'' _ w@(a :*: b) = gcast' a :*: gmap' (const w) b
+  gextract'' _ (_ :*: b) = gextract' b
+  {-# INLINE gextract'' #-}
+  
+instance (GConstant' w, GFunctor' a, GComonad' a) => GComonad'' True (a :*: w) where
+  gduplicate'' _ w@(a :*: b) = gmap' (const w) a :*: gcast' b
+  gextract'' _ (a :*: _) = gextract' a
+  {-# INLINE gextract'' #-}
+#endif
