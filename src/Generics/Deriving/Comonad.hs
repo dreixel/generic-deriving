@@ -32,20 +32,24 @@ instance GComonad' Par1 where
 instance (GComonad f, GFunctor f) => GComonad' (Rec1 f) where
   gduplicate' w@(Rec1 a) = Rec1 $ gmap (const w) a
   gextract' (Rec1 a) = gextract a
+  {-# INLINE gextract' #-}
 
 instance (GFunctor' a, GFunctor' w, GComonad' w) => GComonad' (a :*: w) where
   gduplicate' w@(a :*: b) = gmap' (const w) a :*: gmap' (const w) b
   gextract' (_ :*: b) = gextract' b
+  {-# INLINE gextract' #-}
 
 instance (GFunctor' f, GFunctor' g, GComonad' f, GComonad' g) => GComonad' (f :+: g) where
   gduplicate' w@(L1 a) = L1 . gmap' (const w) $ a
   gduplicate' w@(R1 a) = R1 . gmap' (const w) $ a
   gextract' (L1 a) = gextract' a
   gextract' (R1 a) = gextract' a
+  {-# INLINE gextract' #-}
   
 instance (GComonad' f, GFunctor' f) => GComonad' (M1 i c f) where
   gduplicate' w@(M1 a) = M1 (gmap' (const w) a)
   gextract' (M1 a) = gextract' a
+  {-# INLINE gextract' #-}
 
 instance (GFunctor f, GFunctor' g, GComonad f, GComonad' g) => GComonad' (f :.: g) where
   gduplicate' w@(Comp1 x) = gmap' (const $ Comp1 x) w
