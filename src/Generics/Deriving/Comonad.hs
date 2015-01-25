@@ -21,6 +21,7 @@ import Generics.Deriving.Internal.Functor
 
 import Data.Monoid (Monoid, mappend, mempty )
 
+
 class GComonad' w where
   gduplicate' :: w a -> w (w a)
   gextract' :: w a -> a
@@ -36,8 +37,8 @@ instance (GComonad f, GFunctor f) => GComonad' (Rec1 f) where
   gextract' (Rec1 a) = gextract a
   {-# INLINE gextract' #-}
 
-instance (GFunctor' a, GFunctor' w, GComonad' w) => GComonad' (a :*: w) where
-  gduplicate' w@(a :*: b) = gmap' (const w) a :*: gmap' (const w) b
+instance (GConstant' a, GFunctor' w, GComonad' w) => GComonad' (a :*: w) where
+  gduplicate' w@(a :*: b) = gcast' a :*: gmap' (const w) b
   gextract' (_ :*: b) = gextract' b
   {-# INLINE gextract' #-}
 
@@ -75,15 +76,14 @@ instance 'GComonad' W
 @
 
 In other words, each constructor must include @a@ in the rightmost position.
-
-If @a@ appears in other positions, it will be ignored by 'gextract'.
-The resulting `GComonad` instance will therefore violate the comonad laws.
+It may appear in no other position. Attempting to derive 'GComonad' for a datatype
+like @data Pair a = Pair a a deriving Generic1@ will result in an error
+involving the unexported class @GConstant'@.
 
 You may also wrap a type that is itself an instance of 'GComonad':
 
 @
 data W' a = C'1 a | C'2 (W a) deriving ('Generic1')
-instance 'GFunctor' W'
 instance 'GComonad' W'
 @
 
@@ -91,7 +91,6 @@ And you can use @'Monoid' m => 'GComonad' ((->) m)@:
 
 @
 data W'' a = C'' ((Product Int) -> a) deriving ('Generic1')
-instance 'GFunctor' W''
 instance 'GComonad' W''
 @
 -}
@@ -121,3 +120,17 @@ instance Monoid m => GComonad ((->) m) where
   {-# INLINE gduplicate #-}
   gextract f = f mempty
   {-# INLINE gextract #-}
+
+-- used in (:*:) instances to describe the "side" which does not use a
+-- Expresses the constraint that (w a) does not involve a.
+class GConstant' w where
+  gcast' :: w a -> w b
+
+instance GConstant' (K1 i c) where
+  gcast' (K1 a) = K1 a
+
+instance GConstant' U1 where
+  gcast' U1 = U1
+  
+instance (GConstant' f) => GConstant' (M1 i c f) where
+  gcast' (M1 a) = M1 (gcast' a)
