@@ -96,14 +96,18 @@ instance 'GComonad' W''
 -}
 class GComonad w where
   gduplicate :: w a -> w (w a)
+#if __GLASGOW_HASKELL__ >= 701
   default gduplicate :: (Generic1 w, GFunctor' (Rep1 w), GComonad' (Rep1 w))
                      => w a -> w (w a)
   gduplicate = to1 . gmap' to1 . gduplicate' . from1
+#endif
   
   gextract :: w a -> a
+#if __GLASGOW_HASKELL__ >= 701
   default gextract :: (Generic1 w, GComonad' (Rep1 w))
                    => w a -> a
   gextract = gextract' . from1
+#endif
 
 gduplicatedefault :: (Generic1 w, GFunctor' (Rep1 w), GComonad' (Rep1 w))
                   => w a -> w (w a)
