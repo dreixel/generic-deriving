@@ -149,3 +149,6 @@ instance GConstant' U1 where
   
 instance (GConstant' f) => GConstant' (M1 i c f) where
   gcast' (M1 a) = M1 (gcast' a)
+
+instance (GConstant' f, GConstant' g) => GConstant' (f :*: g) where
+  gcast' (a :*: b) = gcast' a :*: gcast' b
