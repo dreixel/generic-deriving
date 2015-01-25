@@ -69,12 +69,21 @@ data W a =
   | .. ]
   deriving ('Generic1')
 instance 'GFunctor' W 
+instance 'GComonad' W
 @
 
 In other words, each constructor must include @a@ in the rightmost position.
 
 If @a@ appears in other positions, it will be ignored by 'gextract'.
 The resulting `GComonad` instance will therefore violate the comonad laws.
+
+You may also wrap a type that is itself an instance of 'GComonad':
+
+@
+data W' a = C'1 a | C'2 (W a) deriving ('Generic1')
+instance 'GFunctor' W'
+instance 'GComonad' W'
+@
 
 -}
 class GComonad w where
