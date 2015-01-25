@@ -35,12 +35,14 @@ library
   exposed-modules:      Generics.Deriving
                         Generics.Deriving.Base
                         Generics.Deriving.Instances
+                        Generics.Deriving.Comonad
                         Generics.Deriving.Copoint
                         Generics.Deriving.ConNames
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
                         Generics.Deriving.Foldable
                         Generics.Deriving.Functor
+                        Generics.Deriving.Internal.Functor
                         Generics.Deriving.Monoid
                         Generics.Deriving.Show
                         Generics.Deriving.Traversable
