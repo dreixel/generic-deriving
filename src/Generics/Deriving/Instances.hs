@@ -19,7 +19,6 @@ module Generics.Deriving.Instances (
   ) where
 
 #if __GLASGOW_HASKELL__ < 705
-import Data.Orphans ()
 import Generics.Deriving.Base
 #endif
 
