@@ -546,7 +546,6 @@ module Generics.Deriving.Base (
 
 
 #if __GLASGOW_HASKELL__ >= 701
-import Data.Orphans ()
 import GHC.Generics
 #else
 --------------------------------------------------------------------------------
