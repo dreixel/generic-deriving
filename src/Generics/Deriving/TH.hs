@@ -25,12 +25,10 @@ module Generics.Deriving.TH (
     , deriveConstructors
     , deriveSelectors
 
-#if __GLASGOW_HASKELL__ < 701
     , deriveAll
     , deriveRepresentable0
     , deriveRep0
     , simplInstance
-#endif
   ) where
 
 import Generics.Deriving.Base
