@@ -19,7 +19,7 @@
 
 -- Adapted from Generics.Regular.TH
 module Generics.Deriving.TH (
-      
+
       deriveMeta
     , deriveData
     , deriveConstructors
@@ -36,6 +36,7 @@ import Generics.Deriving.Base
 import Language.Haskell.TH hiding (Fixity())
 import Language.Haskell.TH.Syntax (Lift(..))
 
+import Data.Char (isAlphaNum, ord)
 import Data.List (intercalate)
 import Control.Monad
 
@@ -46,11 +47,11 @@ simplInstance :: Name -> Name -> Name -> Name -> Q [Dec]
 simplInstance cl ty fn df = do
   i <- reify (genRepName 0 ty)
   x <- newName "x"
-  let typ = ForallT [PlainTV x] [] 
-        ((foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT (genRepName 0 ty)) 
+  let typ = ForallT [PlainTV x] []
+        ((foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT (genRepName 0 ty))
           (typeVariables i)) `AppT` (VarT x))
   fmap (: []) $ instanceD (cxt []) (conT cl `appT` conT ty)
-    [funD fn [clause [] (normalB (varE df `appE` 
+    [funD fn [clause [] (normalB (varE df `appE`
       (sigE (global 'undefined) (return typ)))) []]]
 
 
@@ -77,7 +78,7 @@ deriveMeta n =
 deriveData :: Name -> Q [Dec]
 deriveData = dataInstance
 
--- | Given a datatype name, derive datatypes and 
+-- | Given a datatype name, derive datatypes and
 -- instances of class 'Constructor'.
 deriveConstructors :: Name -> Q [Dec]
 deriveConstructors = constrInstance
@@ -104,7 +105,7 @@ deriveRep0 n = do
 deriveInst :: Name -> Q [Dec]
 deriveInst t = do
   i <- reify t
-  let typ q = foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT q) 
+  let typ q = foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT q)
                 (typeVariables i)
 #if __GLASGOW_HASKELL__ >= 707
   let tyIns = TySynInstD ''Rep (TySynEqn [typ t] (typ (genRepName 0 t)))
@@ -172,17 +173,17 @@ stripRecordNames (RecC n f) =
 stripRecordNames c = c
 
 genName :: [Name] -> Name
-genName = mkName . (++"_") . intercalate "_" . map nameBase
+genName = mkName . (++"_") . intercalate "_" . map (sanitizeName . nameBase)
 
 genRepName :: Int -> Name -> Name
-genRepName n = mkName . (++"_") . (("Rep" ++ show n) ++) . nameBase
+genRepName n = mkName . (++"_") . (("Rep" ++ show n) ++) . sanitizeName. nameBase
 
 mkDataData :: Name -> Q Dec
 mkDataData n = dataD (cxt []) (genName [n]) [] [] []
 
 mkConstrData :: Name -> Con -> Q Dec
 mkConstrData dt (NormalC n _) =
-  dataD (cxt []) (genName [dt, n]) [] [] [] 
+  dataD (cxt []) (genName [dt, n]) [] [] []
 mkConstrData dt r@(RecC _ _) =
   mkConstrData dt (stripRecordNames r)
 mkConstrData dt (InfixC t1 n t2) =
@@ -231,15 +232,15 @@ mkConstrInstance dt (InfixC t1 n t2) =
     convertDirection InfixN = NotAssociative
 
 mkConstrInstanceWith :: Name -> Name -> [Q Dec] -> Q Dec
-mkConstrInstanceWith dt n extra = 
+mkConstrInstanceWith dt n extra =
   instanceD (cxt []) (appT (conT ''Constructor) (conT $ genName [dt, n]))
     (funD 'conName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
 
 mkSelectInstance :: Name -> Con -> Q [Dec]
 mkSelectInstance dt r@(RecC n fs) = return (map one fs) where
-  one (f, _, _) = 
+  one (f, _, _) =
     InstanceD ([]) (AppT (ConT ''Selector) (ConT $ genName [dt, n, f]))
-      [FunD 'selName [Clause [WildP] 
+      [FunD 'selName [Clause [WildP]
         (NormalB (LitE (StringL (nameBase f)))) []]]
 mkSelectInstance _ _ = return []
 
@@ -250,14 +251,14 @@ rep0Type n =
       i <- reify n
       let b = case i of
                 TyConI (DataD _ dt vs cs _) ->
-                  (conT ''D1) `appT` (conT $ genName [dt]) `appT` 
-                    (foldr1' sum (conT ''V1) 
+                  (conT ''D1) `appT` (conT $ genName [dt]) `appT`
+                    (foldr1' sum (conT ''V1)
                       (map (rep0Con (dt, map tyVarBndrToName vs)) cs))
                 TyConI (NewtypeD _ dt vs c _) ->
                   (conT ''D1) `appT` (conT $ genName [dt]) `appT`
                     (rep0Con (dt, map tyVarBndrToName vs) c)
-                TyConI (TySynD t _ _) -> error "type synonym?" 
-                _ -> error "unknown construct" 
+                TyConI (TySynD t _ _) -> error "type synonym?"
+                _ -> error "unknown construct"
       --appT b (conT $ mkName (nameBase n))
       b where
     sum :: Q Type -> Q Type -> Q Type
@@ -266,17 +267,17 @@ rep0Type n =
 
 rep0Con :: (Name, [Name]) -> Con -> Q Type
 rep0Con (dt, vs) (NormalC n []) =
-    conT ''C1 `appT` (conT $ genName [dt, n]) `appT` 
+    conT ''C1 `appT` (conT $ genName [dt, n]) `appT`
      (conT ''S1 `appT` conT ''NoSelector `appT` conT ''U1)
 rep0Con (dt, vs) (NormalC n fs) =
-    conT ''C1 `appT` (conT $ genName [dt, n]) `appT` 
+    conT ''C1 `appT` (conT $ genName [dt, n]) `appT`
      (foldr1 prod (map (repField (dt, vs) . snd) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT ''(:*:) `appT` a `appT` b
 rep0Con (dt, vs) r@(RecC n []) =
     conT ''C1 `appT` (conT $ genName [dt, n]) `appT` conT ''U1
 rep0Con (dt, vs) r@(RecC n fs) =
-    conT ''C1 `appT` (conT $ genName [dt, n]) `appT` 
+    conT ''C1 `appT` (conT $ genName [dt, n]) `appT`
       (foldr1 prod (map (repField' (dt, vs) n) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT ''(:*:) `appT` a `appT` b
@@ -293,7 +294,7 @@ repField d t = conT ''S1 `appT` conT ''NoSelector `appT`
 
 repField' :: (Name, [Name]) -> Name -> (Name, Strict, Type) -> Q Type
 --repField' d ns (_, _, t) | t == dataDeclToType d = conT ''I
-repField' (dt, vs) ns (f, _, t) = conT ''S1 `appT` conT (genName [dt, ns, f]) 
+repField' (dt, vs) ns (f, _, t) = conT ''S1 `appT` conT (genName [dt, ns, f])
                                     `appT` (conT ''Rec0 `appT` return t)
 -- Note: we should generate Par0 too, at some point
 
@@ -310,7 +311,7 @@ mkFrom ns m i n =
                     (length cs)) [0..] cs
                 TyConI (NewtypeD _ dt vs c _) ->
                   [fromCon wrapE ns (dt, map tyVarBndrToName vs) 1 0 c]
-                TyConI (TySynD t _ _) -> error "type synonym?" 
+                TyConI (TySynD t _ _) -> error "type synonym?"
                   -- [clause [varP (field 0)] (normalB (wrapE $ conE 'K1 `appE` varE (field 0))) []]
                 _ -> error "unknown construct"
       return b
@@ -327,22 +328,22 @@ mkTo ns m i n =
                     (length cs)) [0..] cs
                 TyConI (NewtypeD _ dt vs c _) ->
                   [toCon wrapP ns (dt, map tyVarBndrToName vs) 1 0 c]
-                TyConI (TySynD t _ _) -> error "type synonym?" 
+                TyConI (TySynD t _ _) -> error "type synonym?"
                   -- [clause [wrapP $ conP 'K1 [varP (field 0)]] (normalB $ varE (field 0)) []]
-                _ -> error "unknown construct" 
+                _ -> error "unknown construct"
       return b
 
 fromCon :: (Q Exp -> Q Exp) -> Name -> (Name, [Name]) -> Int -> Int -> Con -> Q Clause
 fromCon wrap ns (dt, vs) m i (NormalC cn []) =
   clause
     [conP cn []]
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ appE (conE 'M1) $ 
+    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ appE (conE 'M1) $
       conE 'M1 `appE` (conE 'U1)) []
 fromCon wrap ns (dt, vs) m i (NormalC cn fs) =
   -- runIO (putStrLn ("constructor " ++ show ix)) >>
   clause
     [conP cn (map (varP . field) [0..length fs - 1])]
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE` 
+    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE`
       foldr1 prod (zipWith (fromField (dt, vs)) [0..] (map snd fs))) []
   where prod x y = conE '(:*:) `appE` x `appE` y
 fromCon wrap ns (dt, vs) m i r@(RecC cn []) =
@@ -352,7 +353,7 @@ fromCon wrap ns (dt, vs) m i r@(RecC cn []) =
 fromCon wrap ns (dt, vs) m i r@(RecC cn fs) =
   clause
     [conP cn (map (varP . field) [0..length fs - 1])]
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE` 
+    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE`
       foldr1 prod (zipWith (fromField (dt, vs)) [0..] (map trd fs))) []
   where prod x y = conE '(:*:) `appE` x `appE` y
 fromCon wrap ns (dt, vs) m i (InfixC t1 cn t2) =
@@ -411,3 +412,11 @@ trd (_,_,c) = c
 foldr1' f x [] = x
 foldr1' _ _ [x] = x
 foldr1' f x (h:t) = f h (foldr1' f x t)
+
+-- | Credit to Víctor López Juan for this trick
+sanitizeName :: String -> String
+sanitizeName nb = 'N':(
+    nb >>= \x -> case x of
+      c | isAlphaNum c || c == '\''-> [c]
+      '_' -> "__"
+      c   -> "_" ++ show (ord c))

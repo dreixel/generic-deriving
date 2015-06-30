@@ -30,7 +30,8 @@ import Generics.Deriving.TH
 
 data (:/:) f a = MyType1Nil
                | MyType1Cons { myType1Rec :: (f :/: a), myType2Rec :: MyType2 }
-               | MyType1Cons2 (f :/: a) Int a (f a) 
+               | MyType1Cons2 (f :/: a) Int a (f a)
+               | (f :/: a) :/: MyType2
 
 #if __GLASGOW_HASKELL__ >= 701
   deriving Generic
