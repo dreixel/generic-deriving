@@ -30,7 +30,8 @@ import Generics.Deriving.TH
 
 data (:/:) f a = MyType1Nil
                | MyType1Cons { myType1Rec :: (f :/: a), myType2Rec :: MyType2 }
-               | MyType1Cons2 (f :/: a) Int a (f a) 
+               | MyType1Cons2 (f :/: a) Int a (f a)
+               | (f :/: a) :/: MyType2
 
 #if __GLASGOW_HASKELL__ >= 701
   deriving Generic
@@ -101,7 +102,7 @@ instance Uniplate Tree where
   descend    = descenddefault
   descendM   = descendMdefault
   transform  = transformdefault
-  transformM = transformdefault
+  transformM = transformMdefault
 instance GEnum    Tree where genum      = genumDefault
 
 #endif
@@ -178,7 +179,7 @@ instance (Uniplate a) => Uniplate (List a) where
   descend    = descenddefault
   descendM   = descendMdefault
   transform  = transformdefault
-  transformM = transformdefault
+  transformM = transformMdefault
 
 #else
 
@@ -223,7 +224,7 @@ $(deriveRepresentable0 ''Nested)
 deriving instance Generic1 Nested
 #else
 
-type RepNested = D1 Nested_ (C1 Nested_Leaf_ U1 :+: C1 Nested_Nested_ (Par1 :*: Nested :.: Rec1 []))
+type RepNested = D1 NNested_ (C1 NNested_NLeaf_ U1 :+: C1 NNested_NNested_ (Par1 :*: Nested :.: Rec1 []))
 instance Generic1 Nested where
   type Rep1 Nested = RepNested
   from1 Leaf = M1 (L1 (M1 U1))
@@ -343,7 +344,7 @@ $(deriveRepresentable0 ''GRose)
 deriving instance (Functor f) => Generic1 (GRose f)
 #else
 
-type Rep1GRose f = D1 GRose_ (C1 GRose_GRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
+type Rep1GRose f = D1 NGRose_ (C1 NGRose_NGRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
 instance (GFunctor f) => Generic1 (GRose f) where
   type Rep1 (GRose f) = Rep1GRose f
   from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
