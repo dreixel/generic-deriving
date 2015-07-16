@@ -28,6 +28,8 @@ import Generics.Deriving.TH
 -- Temporary tests for TH generation
 --------------------------------------------------------------------------------
 
+data Empty a
+
 data (:/:) f a = MyType1Nil
                | MyType1Cons { myType1Rec :: (f :/: a), myType2Rec :: MyType2 }
                | MyType1Cons2 (f :/: a) Int a (f a)
@@ -41,11 +43,13 @@ data MyType2 = MyType2 Float ([] :/: Int)
 
 #if __GLASGOW_HASKELL__ < 701
 
+$(deriveAll ''Empty)
 $(deriveAll ''(:/:))
 $(deriveAll ''MyType2)
 
 #else
 
+deriving instance Generic (Empty a)
 -- deriving instance Generic (f :/: a)
 deriving instance Generic MyType2
 

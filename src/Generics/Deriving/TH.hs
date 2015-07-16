@@ -14,7 +14,6 @@
 -- This module contains Template Haskell code that can be used to
 -- automatically generate the boilerplate code for the generic deriving
 -- library. For now, it generates only the 'Generic' instance.
--- Empty datatypes are not yet supported.
 -----------------------------------------------------------------------------
 
 -- Adapted from Generics.Regular.TH
@@ -307,8 +306,10 @@ mkFrom ns m i n =
       i <- reify n
       let b = case i of
                 TyConI (DataD _ dt vs cs _) ->
-                  zipWith (fromCon wrapE ns (dt, map tyVarBndrToName vs)
-                    (length cs)) [0..] cs
+                  if null cs
+                     then [errorClauseFrom dt]
+                     else zipWith (fromCon wrapE ns (dt, map tyVarBndrToName vs)
+                            (length cs)) [0..] cs
                 TyConI (NewtypeD _ dt vs c _) ->
                   [fromCon wrapE ns (dt, map tyVarBndrToName vs) 1 0 c]
                 TyConI (TySynD t _ _) -> error "type synonym?"
@@ -324,8 +325,10 @@ mkTo ns m i n =
       i <- reify n
       let b = case i of
                 TyConI (DataD _ dt vs cs _) ->
-                  zipWith (toCon wrapP ns (dt, map tyVarBndrToName vs)
-                    (length cs)) [0..] cs
+                  if null cs
+                     then [errorClauseTo dt]
+                     else zipWith (toCon wrapP ns (dt, map tyVarBndrToName vs)
+                            (length cs)) [0..] cs
                 TyConI (NewtypeD _ dt vs c _) ->
                   [toCon wrapP ns (dt, map tyVarBndrToName vs) 1 0 c]
                 TyConI (TySynD t _ _) -> error "type synonym?"
@@ -359,6 +362,14 @@ fromCon wrap ns (dt, vs) m i r@(RecC cn fs) =
 fromCon wrap ns (dt, vs) m i (InfixC t1 cn t2) =
   fromCon wrap ns (dt, vs) m i (NormalC cn [t1,t2])
 
+errorClauseFrom :: Name -> Q Clause
+errorClauseFrom dt =
+  clause
+    [wildP]
+    (normalB $ appE (conE 'M1) $ varE 'error `appE` stringE
+      ("No generic representation for empty datatype " ++ nameBase dt))
+    []
+
 fromField :: (Name, [Name]) -> Int -> Type -> Q Exp
 --fromField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conE 'I `appE` varE (field nr)
 fromField (dt, vs) nr t = conE 'M1 `appE` (conE 'K1 `appE` varE (field nr))
@@ -387,6 +398,14 @@ toCon wrap ns (dt, vs) m i r@(RecC cn fs) =
   where prod x y = conP '(:*:) [x,y]
 toCon wrap ns (dt, vs) m i (InfixC t1 cn t2) =
   toCon wrap ns (dt, vs) m i (NormalC cn [t1,t2])
+
+errorClauseTo :: Name -> Q Clause
+errorClauseTo dt =
+  clause
+    [conP 'M1 [wildP]]
+    (normalB $ varE 'error `appE` stringE
+      ("No values for empty datatype " ++ nameBase dt))
+    []
 
 toField :: (Name, [Name]) -> Int -> Type -> Q Pat
 --toField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conP 'I [varP (field nr)]
