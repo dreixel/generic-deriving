@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, CPP #-}
-{-# OPTIONS_GHC -w           #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -51,7 +51,7 @@ simplInstance cl ty fn df = do
           (typeVariables i)) `AppT` (VarT x))
   fmap (: []) $ instanceD (cxt []) (conT cl `appT` conT ty)
     [funD fn [clause [] (normalB (varE df `appE`
-      (sigE (global 'undefined) (return typ)))) []]]
+      (sigE (varE 'undefined) (return typ)))) []]]
 
 
 -- | Given the type and the name (as string) for the type to derive,
@@ -122,39 +122,39 @@ dataInstance :: Name -> Q [Dec]
 dataInstance n = do
   i <- reify n
   case i of
-    TyConI (DataD    _ n _ _ _) -> mkInstance n
-    TyConI (NewtypeD _ n _ _ _) -> mkInstance n
+    TyConI (DataD    _ n' _ _ _) -> mkInstance n'
+    TyConI (NewtypeD _ n' _ _ _) -> mkInstance n'
     _ -> return []
   where
-    mkInstance n = do
-      ds <- mkDataData n
-      is <- mkDataInstance n
+    mkInstance n' = do
+      ds <- mkDataData n'
+      is <- mkDataInstance n'
       return $ [ds,is]
 
 constrInstance :: Name -> Q [Dec]
 constrInstance n = do
   i <- reify n
   case i of
-    TyConI (DataD    _ n _ cs _) -> mkInstance n cs
-    TyConI (NewtypeD _ n _ c  _) -> mkInstance n [c]
+    TyConI (DataD    _ n' _ cs _) -> mkInstance n' cs
+    TyConI (NewtypeD _ n' _ c  _) -> mkInstance n' [c]
     _ -> return []
   where
-    mkInstance n cs = do
-      ds <- mapM (mkConstrData n) cs
-      is <- mapM (mkConstrInstance n) cs
+    mkInstance n' cs = do
+      ds <- mapM (mkConstrData n') cs
+      is <- mapM (mkConstrInstance n') cs
       return $ ds ++ is
 
 selectInstance :: Name -> Q [Dec]
 selectInstance n = do
   i <- reify n
   case i of
-    TyConI (DataD    _ n _ cs _) -> mkInstance n cs
-    TyConI (NewtypeD _ n _ c  _) -> mkInstance n [c]
+    TyConI (DataD    _ n' _ cs _) -> mkInstance n' cs
+    TyConI (NewtypeD _ n' _ c  _) -> mkInstance n' [c]
     _ -> return []
   where
-    mkInstance n cs = do
-      ds <- mapM (mkSelectData n) cs
-      is <- mapM (mkSelectInstance n) cs
+    mkInstance n' cs = do
+      ds <- mapM (mkSelectData n') cs
+      is <- mapM (mkSelectInstance n') cs
       return $ concat (ds ++ is)
 
 typeVariables :: Info -> [TyVarBndr]
@@ -187,11 +187,12 @@ mkConstrData dt r@(RecC _ _) =
   mkConstrData dt (stripRecordNames r)
 mkConstrData dt (InfixC t1 n t2) =
   mkConstrData dt (NormalC n [t1,t2])
+mkConstrData _ (ForallC _ _ con) = forallCError con
 
 mkSelectData :: Name -> Con -> Q [Dec]
-mkSelectData dt r@(RecC n fs) = return (map one fs)
+mkSelectData dt (RecC n fs) = return (map one fs)
   where one (f, _, _) = DataD [] (genName [dt, n, f]) [] [] []
-mkSelectData dt _ = return []
+mkSelectData _ _ = return []
 
 
 mkDataInstance :: Name -> Q Dec
@@ -215,7 +216,7 @@ mkConstrInstance :: Name -> Con -> Q Dec
 mkConstrInstance dt (NormalC n _) = mkConstrInstanceWith dt n []
 mkConstrInstance dt (RecC    n _) = mkConstrInstanceWith dt n
       [ funD 'conIsRecord [clause [wildP] (normalB (conE 'True)) []]]
-mkConstrInstance dt (InfixC t1 n t2) =
+mkConstrInstance dt (InfixC _ n _) =
     do
       i <- reify n
       let fi = case i of
@@ -225,10 +226,11 @@ mkConstrInstance dt (InfixC t1 n t2) =
         [funD 'conName   [clause [wildP] (normalB (stringE (nameBase n))) []],
          funD 'conFixity [clause [wildP] (normalB [| fi |]) []]]
   where
-    convertFixity (Fixity n d) = Infix (convertDirection d) n
+    convertFixity (Fixity n' d) = Infix (convertDirection d) n'
     convertDirection InfixL = LeftAssociative
     convertDirection InfixR = RightAssociative
     convertDirection InfixN = NotAssociative
+mkConstrInstance _ (ForallC _ _ con) = forallCError con
 
 mkConstrInstanceWith :: Name -> Name -> [Q Dec] -> Q Dec
 mkConstrInstanceWith dt n extra =
@@ -236,7 +238,7 @@ mkConstrInstanceWith dt n extra =
     (funD 'conName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
 
 mkSelectInstance :: Name -> Con -> Q [Dec]
-mkSelectInstance dt r@(RecC n fs) = return (map one fs) where
+mkSelectInstance dt (RecC n fs) = return (map one fs) where
   one (f, _, _) =
     InstanceD ([]) (AppT (ConT ''Selector) (ConT $ genName [dt, n, f]))
       [FunD 'selName [Clause [WildP]
@@ -251,21 +253,21 @@ rep0Type n =
       let b = case i of
                 TyConI (DataD _ dt vs cs _) ->
                   (conT ''D1) `appT` (conT $ genName [dt]) `appT`
-                    (foldr1' sum (conT ''V1)
+                    (foldr1' sum' (conT ''V1)
                       (map (rep0Con (dt, map tyVarBndrToName vs)) cs))
                 TyConI (NewtypeD _ dt vs c _) ->
                   (conT ''D1) `appT` (conT $ genName [dt]) `appT`
                     (rep0Con (dt, map tyVarBndrToName vs) c)
-                TyConI (TySynD t _ _) -> error "type synonym?"
+                TyConI (TySynD _ _ _) -> error "type synonym?"
                 _ -> error "unknown construct"
       --appT b (conT $ mkName (nameBase n))
       b where
-    sum :: Q Type -> Q Type -> Q Type
-    sum a b = conT ''(:+:) `appT` a `appT` b
+    sum' :: Q Type -> Q Type -> Q Type
+    sum' a b = conT ''(:+:) `appT` a `appT` b
 
 
 rep0Con :: (Name, [Name]) -> Con -> Q Type
-rep0Con (dt, vs) (NormalC n []) =
+rep0Con (dt, _) (NormalC n []) =
     conT ''C1 `appT` (conT $ genName [dt, n]) `appT`
      (conT ''S1 `appT` conT ''NoSelector `appT` conT ''U1)
 rep0Con (dt, vs) (NormalC n fs) =
@@ -273,27 +275,28 @@ rep0Con (dt, vs) (NormalC n fs) =
      (foldr1 prod (map (repField (dt, vs) . snd) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT ''(:*:) `appT` a `appT` b
-rep0Con (dt, vs) r@(RecC n []) =
+rep0Con (dt, _) (RecC n []) =
     conT ''C1 `appT` (conT $ genName [dt, n]) `appT` conT ''U1
-rep0Con (dt, vs) r@(RecC n fs) =
+rep0Con (dt, vs) (RecC n fs) =
     conT ''C1 `appT` (conT $ genName [dt, n]) `appT`
       (foldr1 prod (map (repField' (dt, vs) n) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT ''(:*:) `appT` a `appT` b
 
 rep0Con d (InfixC t1 n t2) = rep0Con d (NormalC n [t1,t2])
+rep0Con _ (ForallC _ _ con) = forallCError con
 
 --dataDeclToType :: (Name, [Name]) -> Type
 --dataDeclToType (dt, vs) = foldl (\a b -> AppT a (VarT b)) (ConT dt) vs
 
 repField :: (Name, [Name]) -> Type -> Q Type
 --repField d t | t == dataDeclToType d = conT ''I
-repField d t = conT ''S1 `appT` conT ''NoSelector `appT`
+repField _ t = conT ''S1 `appT` conT ''NoSelector `appT`
                  (conT ''Rec0 `appT` return t)
 
 repField' :: (Name, [Name]) -> Name -> (Name, Strict, Type) -> Q Type
 --repField' d ns (_, _, t) | t == dataDeclToType d = conT ''I
-repField' (dt, vs) ns (f, _, t) = conT ''S1 `appT` conT (genName [dt, ns, f])
+repField' (dt, _) ns (f, _, t) = conT ''S1 `appT` conT (genName [dt, ns, f])
                                     `appT` (conT ''Rec0 `appT` return t)
 -- Note: we should generate Par0 too, at some point
 
@@ -303,8 +306,8 @@ mkFrom ns m i n =
     do
       -- runIO $ putStrLn $ "processing " ++ show n
       let wrapE e = lrE m i e
-      i <- reify n
-      let b = case i of
+      i' <- reify n
+      let b = case i' of
                 TyConI (DataD _ dt vs cs _) ->
                   if null cs
                      then [errorClauseFrom dt]
@@ -312,7 +315,7 @@ mkFrom ns m i n =
                             (length cs)) [0..] cs
                 TyConI (NewtypeD _ dt vs c _) ->
                   [fromCon wrapE ns (dt, map tyVarBndrToName vs) 1 0 c]
-                TyConI (TySynD t _ _) -> error "type synonym?"
+                TyConI (TySynD _ _ _) -> error "type synonym?"
                   -- [clause [varP (field 0)] (normalB (wrapE $ conE 'K1 `appE` varE (field 0))) []]
                 _ -> error "unknown construct"
       return b
@@ -322,8 +325,8 @@ mkTo ns m i n =
     do
       -- runIO $ putStrLn $ "processing " ++ show n
       let wrapP p = lrP m i p
-      i <- reify n
-      let b = case i of
+      i' <- reify n
+      let b = case i' of
                 TyConI (DataD _ dt vs cs _) ->
                   if null cs
                      then [errorClauseTo dt]
@@ -331,29 +334,29 @@ mkTo ns m i n =
                             (length cs)) [0..] cs
                 TyConI (NewtypeD _ dt vs c _) ->
                   [toCon wrapP ns (dt, map tyVarBndrToName vs) 1 0 c]
-                TyConI (TySynD t _ _) -> error "type synonym?"
+                TyConI (TySynD _ _ _) -> error "type synonym?"
                   -- [clause [wrapP $ conP 'K1 [varP (field 0)]] (normalB $ varE (field 0)) []]
                 _ -> error "unknown construct"
       return b
 
 fromCon :: (Q Exp -> Q Exp) -> Name -> (Name, [Name]) -> Int -> Int -> Con -> Q Clause
-fromCon wrap ns (dt, vs) m i (NormalC cn []) =
+fromCon wrap _ _ m i (NormalC cn []) =
   clause
     [conP cn []]
     (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ appE (conE 'M1) $
       conE 'M1 `appE` (conE 'U1)) []
-fromCon wrap ns (dt, vs) m i (NormalC cn fs) =
+fromCon wrap _ (dt, vs) m i (NormalC cn fs) =
   -- runIO (putStrLn ("constructor " ++ show ix)) >>
   clause
     [conP cn (map (varP . field) [0..length fs - 1])]
     (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE`
       foldr1 prod (zipWith (fromField (dt, vs)) [0..] (map snd fs))) []
   where prod x y = conE '(:*:) `appE` x `appE` y
-fromCon wrap ns (dt, vs) m i r@(RecC cn []) =
+fromCon wrap _ _ m i (RecC cn []) =
   clause
     [conP cn []]
     (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE` (conE 'U1)) []
-fromCon wrap ns (dt, vs) m i r@(RecC cn fs) =
+fromCon wrap _ (dt, vs) m i (RecC cn fs) =
   clause
     [conP cn (map (varP . field) [0..length fs - 1])]
     (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE`
@@ -361,6 +364,7 @@ fromCon wrap ns (dt, vs) m i r@(RecC cn fs) =
   where prod x y = conE '(:*:) `appE` x `appE` y
 fromCon wrap ns (dt, vs) m i (InfixC t1 cn t2) =
   fromCon wrap ns (dt, vs) m i (NormalC cn [t1,t2])
+fromCon _ _ _ _ _  (ForallC _ _ con) = forallCError con
 
 errorClauseFrom :: Name -> Q Clause
 errorClauseFrom dt =
@@ -372,25 +376,25 @@ errorClauseFrom dt =
 
 fromField :: (Name, [Name]) -> Int -> Type -> Q Exp
 --fromField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conE 'I `appE` varE (field nr)
-fromField (dt, vs) nr t = conE 'M1 `appE` (conE 'K1 `appE` varE (field nr))
+fromField _ nr _ = conE 'M1 `appE` (conE 'K1 `appE` varE (field nr))
 
 toCon :: (Q Pat -> Q Pat) -> Name -> (Name, [Name]) -> Int -> Int -> Con -> Q Clause
-toCon wrap ns (dt, vs) m i (NormalC cn []) =
+toCon wrap _ _ m i (NormalC cn []) =
     clause
       [wrap $ conP 'M1 [lrP m i $ conP 'M1 [conP 'M1 [conP 'U1 []]]]]
       (normalB $ conE cn) []
-toCon wrap ns (dt, vs) m i (NormalC cn fs) =
+toCon wrap _ (dt, vs) m i (NormalC cn fs) =
     -- runIO (putStrLn ("constructor " ++ show ix)) >>
     clause
       [wrap $ conP 'M1 [lrP m i $ conP 'M1
         [foldr1 prod (zipWith (toField (dt, vs)) [0..] (map snd fs))]]]
       (normalB $ foldl appE (conE cn) (map (varE . field) [0..length fs - 1])) []
   where prod x y = conP '(:*:) [x,y]
-toCon wrap ns (dt, vs) m i r@(RecC cn []) =
+toCon wrap _ _ m i (RecC cn []) =
     clause
       [wrap $ conP 'M1 [lrP m i $ conP 'M1 [conP 'U1 []]]]
       (normalB $ conE cn) []
-toCon wrap ns (dt, vs) m i r@(RecC cn fs) =
+toCon wrap _ (dt, vs) m i (RecC cn fs) =
     clause
       [wrap $ conP 'M1 [lrP m i $ conP 'M1
         [foldr1 prod (zipWith (toField (dt, vs)) [0..] (map trd fs))]]]
@@ -398,6 +402,7 @@ toCon wrap ns (dt, vs) m i r@(RecC cn fs) =
   where prod x y = conP '(:*:) [x,y]
 toCon wrap ns (dt, vs) m i (InfixC t1 cn t2) =
   toCon wrap ns (dt, vs) m i (NormalC cn [t1,t2])
+toCon _ _ _ _ _ (ForallC _ _ con) = forallCError con
 
 errorClauseTo :: Name -> Q Clause
 errorClauseTo dt =
@@ -409,7 +414,7 @@ errorClauseTo dt =
 
 toField :: (Name, [Name]) -> Int -> Type -> Q Pat
 --toField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conP 'I [varP (field nr)]
-toField (dt, vs) nr t = conP 'M1 [conP 'K1 [varP (field nr)]]
+toField _ nr _ = conP 'M1 [conP 'K1 [varP (field nr)]]
 
 
 field :: Int -> Name
@@ -417,18 +422,20 @@ field n = mkName $ "f" ++ show n
 
 lrP :: Int -> Int -> (Q Pat -> Q Pat)
 lrP 1 0 p = p
-lrP m 0 p = conP 'L1 [p]
+lrP _ 0 p = conP 'L1 [p]
 lrP m i p = conP 'R1 [lrP (m-1) (i-1) p]
 
 lrE :: Int -> Int -> (Q Exp -> Q Exp)
 lrE 1 0 e = e
-lrE m 0 e = conE 'L1 `appE` e
+lrE _ 0 e = conE 'L1 `appE` e
 lrE m i e = conE 'R1 `appE` lrE (m-1) (i-1) e
 
+trd :: (a, b, c) -> c
 trd (_,_,c) = c
 
 -- | Variant of foldr1 which returns a special element for empty lists
-foldr1' f x [] = x
+foldr1' :: (a -> a -> a) -> a -> [a] -> a
+foldr1' _ x [] = x
 foldr1' _ _ [x] = x
 foldr1' f x (h:t) = f h (foldr1' f x t)
 
@@ -439,3 +446,15 @@ sanitizeName nb = 'N':(
       c | isAlphaNum c || c == '\''-> [c]
       '_' -> "__"
       c   -> "_" ++ show (ord c))
+
+-- | Extracts the name of a constructor.
+constructorName :: Con -> Name
+constructorName (NormalC name      _  ) = name
+constructorName (RecC    name      _  ) = name
+constructorName (InfixC  _    name _  ) = name
+constructorName (ForallC _    _    con) = constructorName con
+
+-- | Deriving Generic(1) doesn't work with ExistentialQuantification
+forallCError :: Con -> a
+forallCError con = error $
+  nameBase (constructorName con) ++ " must be a vanilla data constructor"
