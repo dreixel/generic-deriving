@@ -36,23 +36,37 @@ data (:/:) f a = MyType1Nil
                | (f :/: a) :/: MyType2
 
 #if __GLASGOW_HASKELL__ >= 701
-  deriving Generic
+  deriving ( Generic
+# if __GLASGOW_HASKELL__ >= 705
+           , Generic1
+# endif
+           )
 #endif
 
 data MyType2 = MyType2 Float ([] :/: Int)
 
-#if __GLASGOW_HASKELL__ < 701
-
-$(deriveAll ''Empty)
-$(deriveAll ''(:/:))
-$(deriveAll ''MyType2)
-
-#else
-
+#if __GLASGOW_HASKELL__ >= 701
 deriving instance Generic (Empty a)
--- deriving instance Generic (f :/: a)
 deriving instance Generic MyType2
+#endif
 
+#if __GLASGOW_HASKELL__ < 705
+$(deriveMeta ''Empty)
+$(deriveMeta ''(:/:))
+$(deriveMeta ''MyType2)
+#endif
+
+#if __GLASGOW_HASKELL__ < 701
+$(deriveRepresentable0 ''Empty)
+$(deriveRepresentable0 ''(:/:))
+$(deriveRepresentable0 ''MyType2)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic1 Empty
+#else
+$(deriveRepresentable1 ''Empty)
+$(deriveRepresentable1 ''(:/:))
 #endif
 
 --------------------------------------------------------------------------------
@@ -117,7 +131,7 @@ upgradeTree (Branch n l r) = Branch (succ n) l r
 
 -- Example usage
 tree = Branch 2 Empty (Branch 1 Empty Empty)
-testsTree = [ gshow tree 
+testsTree = [ gshow tree
             , gshow (children tree)
             , gshow (descend (descend (\_ -> Branch 0 Empty Empty)) tree)
             , gshow (context tree [Branch 1 Empty Empty,Empty])
@@ -128,7 +142,7 @@ testsTree = [ gshow tree
 -- Example: lists (kind * -> *)
 --------------------------------------------------------------------------------
 
-data List a = Nil | Cons a (List a) 
+data List a = Nil | Cons a (List a)
 
 #if __GLASGOW_HASKELL__ >= 701
 deriving instance Generic (List a)
@@ -227,14 +241,7 @@ $(deriveRepresentable0 ''Nested)
 #if __GLASGOW_HASKELL__ >= 705
 deriving instance Generic1 Nested
 #else
-
-type RepNested = D1 NNested_ (C1 NNested_NLeaf_ U1 :+: C1 NNested_NNested_ (Par1 :*: Nested :.: Rec1 []))
-instance Generic1 Nested where
-  type Rep1 Nested = RepNested
-  from1 Leaf = M1 (L1 (M1 U1))
-  from1 (Nested a l) = M1 (R1 (M1 (Par1 a :*: Comp1 (gmap Rec1 l))))
-  to1 (M1 (L1 (M1 U1))) = Leaf
-  to1 (M1 (R1 (M1 (Par1 a :*: Comp1 l)))) = Nested a (gmap unRec1 l)
+$(deriveRepresentable1 ''Nested)
 #endif
 
 #if __GLASGOW_HASKELL__ < 701
@@ -245,7 +252,7 @@ instance (GShow a) => GShow (Nested a) where
 instance GFunctor Nested where
   gmap = gmapdefault
 
-#else 
+#else
 
 instance (GShow a) => GShow (Nested a)
 instance GFunctor Nested
@@ -450,7 +457,7 @@ instance Generic1 Weird where
 
 instance GFunctor Weird
 
-#else 
+#else
 
 instance GFunctor Weird where
   gmap = gmapdefault
@@ -478,15 +485,7 @@ $(deriveRepresentable0 ''Bush)
 #if __GLASGOW_HASKELL__ >= 705
 deriving instance Generic1 Bush
 #else
-
-type Rep1Bush = U1 :+: Par1 :*: Bush :.: Rec1 Bush
-instance Generic1 Bush where
-  type Rep1 Bush = Rep1Bush
-  from1 BushNil = L1 U1
-  from1 (BushCons a b) = R1 (Par1 a :*: Comp1 (gmap Rec1 b))
-  to1 (L1 U1) = BushNil
-  to1 (R1 (Par1 a :*: Comp1 b)) = BushCons a (gmap unRec1 b)
-
+$(deriveRepresentable1 ''Bush)
 #endif
 
 #if __GLASGOW_HASKELL__ < 701
