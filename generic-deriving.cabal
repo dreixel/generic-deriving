@@ -47,8 +47,8 @@ library
                         Generics.Deriving.Uniplate
 
                         Generics.Deriving.TH
-                        
-  build-depends:        base < 5, template-haskell >=2.4 && <2.11
+
+  build-depends:        base < 5, containers >= 0.1 && < 0.6, template-haskell >=2.4 && <2.11
   if impl(ghc > 7.0)
     build-depends:      ghc-prim < 1
 
