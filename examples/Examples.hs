@@ -13,6 +13,7 @@
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DeriveGeneric #-}
 #endif
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main (
   -- * Run all tests
@@ -22,7 +23,7 @@ module Main (
 import Prelude hiding (Either(..))
 import Generics.Deriving
 import Generics.Deriving.TH
-
+import qualified Text.Read.Lex (Lexeme)
 
 --------------------------------------------------------------------------------
 -- Temporary tests for TH generation
@@ -68,6 +69,12 @@ deriving instance Generic1 Empty
 $(deriveRepresentable1 ''Empty)
 $(deriveRepresentable1 ''(:/:))
 #endif
+
+-- Test to see if generated names are unique
+data Lexeme = Lexeme
+
+$(deriveAll ''Main.Lexeme)
+$(deriveAll ''Text.Read.Lex.Lexeme)
 
 --------------------------------------------------------------------------------
 -- Example: Haskell's lists and Maybe
@@ -355,7 +362,8 @@ $(deriveRepresentable0 ''GRose)
 deriving instance (Functor f) => Generic1 (GRose f)
 #else
 
-type Rep1GRose f = D1 NGRose_ (C1 NGRose_NGRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
+type Rep1GRose f =
+    D1 NMain_46GRose_ (C1 NMain_46GRose_NMain_46GRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
 instance (GFunctor f) => Generic1 (GRose f) where
   type Rep1 (GRose f) = Rep1GRose f
   from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
