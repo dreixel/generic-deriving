@@ -244,10 +244,10 @@ stripRecordNames (RecC n f) =
 stripRecordNames c = c
 
 genName :: [Name] -> Name
-genName = mkName . (++"_") . intercalate "_" . map (sanitizeName . nameBase)
+genName = mkName . (++"_") . intercalate "_" . map (sanitizeName . show)
 
 genRepName :: Int -> Name -> Name
-genRepName n = mkName . (++"_") . (("Rep" ++ show n) ++) . sanitizeName. nameBase
+genRepName n = mkName . (++"_") . (("Rep" ++ show n) ++) . sanitizeName . show
 
 mkDataData :: Name -> Q Dec
 mkDataData n = dataD (cxt []) (genName [n]) [] [] []
@@ -291,9 +291,15 @@ mkConstrInstance dt (RecC    n _) = mkConstrInstanceWith dt n
 mkConstrInstance dt (InfixC _ n _) =
     do
       i <- reify n
+#if __GLASGOW_HASKELL__ >= 711
+      fi <- case i of
+                 DataConI{} -> fmap convertFixity $ reifyFixity n
+                 _ -> return Prefix
+#else
       let fi = case i of
                  DataConI _ _ _ f -> convertFixity f
                  _ -> Prefix
+#endif
       instanceD (cxt []) (appT (conT ''Constructor) (conT $ genName [dt, n]))
         [funD 'conName   [clause [wildP] (normalB (stringE (nameBase n))) []],
          funD 'conFixity [clause [wildP] (normalB [| fi |]) []]]
