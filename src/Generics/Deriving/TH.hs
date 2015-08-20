@@ -191,7 +191,7 @@ deriveRepCommon arity n = do
   let (name, allTvbs, cons, dv) = case i of
           Left msg -> error msg
           Right (name', allTvbs', cons', dv') -> (name', allTvbs', cons', dv')
-      (tvbs, _, gk) = buildTypeInstance arity name allTvbs dv
+      (tvbs, _, gk) = buildTypeInstance arity name allTvbs cons dv
 
   fmap (:[]) $ tySynD (genRepName arity dv name)
                       tvbs
@@ -210,7 +210,7 @@ deriveInstCommon genericName repName arity fromName toName n = do
           Left msg -> error msg
           Right (name', allTvbs', cons', dv') -> (name', allTvbs', cons', dv')
 
-      (tvbs, origTy, gk) = buildTypeInstance arity name allTvbs dv
+      (tvbs, origTy, gk) = buildTypeInstance arity name allTvbs cons dv
       repTy  = applyTyToTvbs (genRepName arity dv name) tvbs
 #if __GLASGOW_HASKELL__ >= 707
       tyIns = TySynInstD repName (TySynEqn [origTy] repTy)
@@ -260,14 +260,12 @@ selectInstance n = do
       is <- mapM (mkSelectInstance dv n') cs
       return $ concat (ds ++ is)
 
--- typeVariables :: Info -> [TyVarBndr]
--- typeVariables (TyConI (DataD    _ _ tv _ _)) = tv
--- typeVariables (TyConI (NewtypeD _ _ tv _ _)) = tv
--- typeVariables _                           = []
-
 tyVarBndrToName :: TyVarBndr -> Name
 tyVarBndrToName (PlainTV  name)   = name
 tyVarBndrToName (KindedTV name _) = name
+
+tyVarBndrToNameBase :: TyVarBndr -> NameBase
+tyVarBndrToNameBase = NameBase . tyVarBndrToName
 
 tyVarBndrToKind :: TyVarBndr -> Kind
 tyVarBndrToKind (PlainTV  _)   = starK
@@ -702,11 +700,13 @@ buildTypeInstance :: Int
                   -- ^ The type constructor or data family name
                   -> [TyVarBndr]
                   -- ^ The type variables from the data type/data family declaration
+                  -> [Con]
+                  -- ^ The constructors of the data type/data family declaration
                   -> DataVariety
                   -- ^ If using a data family instance, provides the types used
                   -- to instantiate the instance
                   -> ([TyVarBndr], Type, GenericKind)
-buildTypeInstance arity tyConName tvbs DataPlain
+buildTypeInstance arity tyConName tvbs _ DataPlain
   | remainingLength < 0 || not (wellKinded droppedKinds) -- If we have enough well-kinded type variables
   = derivingKindError tyConName
   | otherwise = (lhsTvbs, instanceType, genericKindFromArity arity droppedNbs)
@@ -724,13 +724,13 @@ buildTypeInstance arity tyConName tvbs DataPlain
     droppedKinds = map tyVarBndrToKind dropped
 
     droppedNbs :: [NameBase]
-    droppedNbs = map (NameBase . tyVarBndrToName) dropped
+    droppedNbs = map tyVarBndrToNameBase dropped
 
     lhsTvbs :: [TyVarBndr]
     lhsTvbs = foldl' (\tvbs' k -> map (starifyTyVarBndr k) tvbs')
                      remaining
                      droppedKinds
-buildTypeInstance arity parentName tvbs (DataFamily _ instTysAndKinds)
+buildTypeInstance arity parentName tvbs _cons (DataFamily _ instTysAndKinds)
   | remainingLength < 0 || not (wellKinded droppedKinds) -- If we have enough well-kinded type variables
   = derivingKindError parentName
   | canEtaReduce remaining dropped -- If it is safe to drop the type variables
@@ -825,10 +825,64 @@ buildTypeInstance arity parentName tvbs (DataFamily _ instTysAndKinds)
     rhsTypes :: [Type]
     rhsTypes =
 #if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
-        instTypes ++ map tyVarBndrToType (drop (length instTypes) tvbs)
+        instTypes ++ map tyVarBndrToType
+                         (alignTyVarBndrs _cons $ drop (length instTypes) tvbs)
       where
+        tyVarBndrToType :: TyVarBndr -> Type
         tyVarBndrToType (PlainTV n)    = VarT n
         tyVarBndrToType (KindedTV n k) = SigT (VarT n) k
+
+        mapTyVarBndrName :: Name -> TyVarBndr -> TyVarBndr
+        mapTyVarBndrName n (PlainTV _)    = PlainTV n
+        mapTyVarBndrName n (KindedTV _ k) = KindedTV n k
+
+        -- To compensate for Trac #9692, we borrow some type variables from the data
+        -- family declaration. However, the type variables used in a data family
+        -- declaration are completely different from those used in a data family
+        -- instance, even if their names appear to be the same. In particular,
+        -- Template Haskell gives them different Name values.
+        --
+        -- We can account for this by walking through the constructors' type signatures
+        -- to figure out what the correct Names should be, then replace the type
+        -- variables from the data family declaration (which we borrow) with those
+        -- from the constructors' type signatures.
+        alignTyVarBndrs :: [Con] -> [TyVarBndr] -> [TyVarBndr]
+        alignTyVarBndrs cons' tvbs' =
+            let nbSet = Set.fromList $ map tyVarBndrToNameBase tvbs'
+                nbMap = snd $ foldr alignCon (nbSet, Map.empty) cons'
+            in map (\tvb -> mapTyVarBndrName (Map.findWithDefault
+                                                (tyVarBndrToName     tvb)
+                                                (tyVarBndrToNameBase tvb)
+                                                nbMap
+                                             ) tvb
+                   ) tvbs'
+
+        alignCon :: Con
+                 -> (Set NameBase, Map NameBase Name)
+                 -> (Set NameBase, Map NameBase Name)
+        alignCon _ (nbs, m) | Set.null nbs = (nbs, m)
+        alignCon (NormalC _ tys)    state = foldr alignTy state $ map snd tys
+        alignCon (RecC    n tys)    state = alignCon (NormalC n $ map shrink tys) state
+          where
+            shrink (_, b, c) = (b, c)
+        alignCon (InfixC ty1 n ty2) state = alignCon (NormalC n [ty1, ty2]) state
+        alignCon (ForallC _ _ con)   _    = forallCError con
+
+        alignTy :: Type
+                -> (Set NameBase, Map NameBase Name)
+                -> (Set NameBase, Map NameBase Name)
+        alignTy _ (nbs, m) | Set.null nbs = (nbs, m)
+        alignTy ForallT{}    _        = rankNError
+        alignTy (AppT t1 t2) state    = alignTy t2 $ alignTy t1 state
+        alignTy (SigT t _)   state    = alignTy t state
+        alignTy (VarT n)     (nbs, m) =
+            let nb = NameBase n
+             in if nb `Set.member` nbs
+                then let nbs' = nb `Set.delete` nbs
+                         m'   = Map.insert nb n m
+                      in (nbs', m')
+                else (nbs, m)
+        alignTy _            state    = state
 #else
         instTypes
 #endif
@@ -1046,7 +1100,7 @@ mentionsNameBase = go Set.empty
   where
     go :: Set NameBase -> Type -> [NameBase] -> Bool
     go foralls (ForallT tvbs _ t) nbs =
-        go (foralls `Set.union` Set.fromList (map (NameBase . tyVarBndrToName) tvbs)) t nbs
+        go (foralls `Set.union` Set.fromList (map tyVarBndrToNameBase tvbs)) t nbs
     go foralls (AppT t1 t2) nbs = go foralls t1 nbs || go foralls t2 nbs
     go foralls (SigT t _)   nbs = go foralls t nbs
     go foralls (VarT n)     nbs = varNb `elem` nbs && not (varNb `Set.member` foralls)
@@ -1149,9 +1203,7 @@ type Subst = Map Name Type
 
 mkSubst :: [TyVarBndr] -> [Type] -> Subst
 mkSubst vs ts =
-   let vs' = map un vs
-       un (PlainTV v)    = v
-       un (KindedTV v _) = v
+   let vs' = map tyVarBndrToName vs
    in Map.fromList $ zip vs' ts
 
 subst :: Subst -> Type -> Type
