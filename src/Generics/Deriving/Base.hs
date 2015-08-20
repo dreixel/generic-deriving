@@ -245,7 +245,7 @@ module Generics.Deriving.Base (
 -- data    'V1'        p                       -- lifted version of Empty
 -- data    'U1'        p = 'U1'                  -- lifted version of ()
 -- data    (':+:') f g p = 'L1' (f p) | 'R1' (g p) -- lifted version of 'Either'
--- data    (':*:') f g p = (f p) ':*:' (g p)     -- lifted version of (,) 
+-- data    (':*:') f g p = (f p) ':*:' (g p)     -- lifted version of (,)
 -- newtype 'K1'    i c p = 'K1' { 'unK1' :: c }    -- a container for a c
 -- newtype 'M1'  i t f p = 'M1' { 'unM1' :: f p }  -- a wrapper
 -- @
@@ -577,7 +577,7 @@ newtype M1 i c f p = M1 { unM1 :: f p }
 
 -- | Sums: encode choice between constructors
 infixr 5 :+:
-data (:+:) f g p = L1 { unL1 :: f p } | R1 { unR1 :: g p }
+data (:+:) f g p = L1 (f p) | R1 (g p)
   deriving (Eq, Ord, Read, Show)
 
 -- | Products: encode multiple arguments to constructors
@@ -660,7 +660,7 @@ prec Prefix      = 10
 prec (Infix _ n) = n
 
 -- | Datatype to represent the associativy of a constructor
-data Associativity =  LeftAssociative 
+data Associativity =  LeftAssociative
                    |  RightAssociative
                    |  NotAssociative
   deriving (Eq, Show, Ord, Read)
