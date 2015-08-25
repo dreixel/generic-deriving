@@ -1,5 +1,6 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -75,6 +76,33 @@ data Lexeme = Lexeme
 
 $(deriveAll ''Main.Lexeme)
 $(deriveAll ''Text.Read.Lex.Lexeme)
+
+#if __GLASGOW_HASKELL__ >= 703
+data family MyType3 a b
+newtype instance MyType3 ()   b = MyType3Newtype b
+data    instance MyType3 Bool b = MyType3True | MyType3False
+
+#if __GLASGOW_HASKELL__ < 707
+$(deriveMeta 'MyType3Newtype)
+$(deriveMeta 'MyType3True)
+#endif
+
+# if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic (MyType3 ()   b)
+deriving instance Generic (MyType3 Bool b)
+# else
+$(deriveRepresentable0 'MyType3Newtype)
+$(deriveRepresentable0 'MyType3True)
+# endif
+
+# if __GLASGOW_HASKELL__ >= 707
+deriving instance Generic1 (MyType3 ())
+deriving instance Generic1 (MyType3 Bool)
+# else
+$(deriveRepresentable1 'MyType3Newtype)
+$(deriveRepresentable1 'MyType3False)
+# endif
+#endif
 
 --------------------------------------------------------------------------------
 -- Example: Haskell's lists and Maybe
@@ -315,7 +343,7 @@ instance Generic1 Rose where
 
 #endif
 
-#if __GLASGOW_HASKELL_ >= 701
+#if __GLASGOW_HASKELL__ >= 701
 
 instance (GShow a) => GShow (Rose a)
 instance GFunctor Rose
@@ -363,7 +391,7 @@ deriving instance (Functor f) => Generic1 (GRose f)
 #else
 
 type Rep1GRose f =
-    D1 NMain_46GRose_ (C1 NMain_46GRose_NMain_46GRose_ (Rec1 f :*: f :.: (Rec1 (GRose f))))
+    D1 NMain_46GRose_Plain (C1 NMain_46GRose_NMain_46GRose_Plain (Rec1 f :*: f :.: (Rec1 (GRose f))))
 instance (GFunctor f) => Generic1 (GRose f) where
   type Rep1 (GRose f) = Rep1GRose f
   from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
