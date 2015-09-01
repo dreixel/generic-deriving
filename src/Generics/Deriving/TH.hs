@@ -197,7 +197,7 @@ deriveRep1 = deriveRepCommon 1
 deriveRepCommon :: Int -> Name -> Q [Dec]
 deriveRepCommon arity n = do
   i <- reifyDataInfo n
-  let (name, allTvbs, cons, dv) = either error id i
+  let (name, _, allTvbs, cons, dv) = either error id i
       (tvbs, _, gk) = buildTypeInstance arity name allTvbs cons dv
 
   fmap (:[]) $ tySynD (genRepName arity dv name)
@@ -216,7 +216,7 @@ deriveInst1 = deriveInstCommon ''Generic1 ''Rep1 1 'from1 'to1
 deriveInstCommon :: Name -> Name -> Int -> Name -> Name -> Name -> Q [Dec]
 deriveInstCommon genericName repName arity fromName toName n = do
   i <- reifyDataInfo n
-  let (name, allTvbs, cons, dv) = either error id i
+  let (name, _, allTvbs, cons, dv) = either error id i
       (tvbs, origTy, gk) = buildTypeInstance arity name allTvbs cons dv
       repTy = applyTyToTvbs (genRepName arity dv name) tvbs
 #if __GLASGOW_HASKELL__ >= 707
@@ -282,7 +282,7 @@ makeRepCommon arity n = do
   i <- reifyDataInfo n
   case i of
     Left msg               -> error msg
-    Right (name, _, _, dv) -> conT $ genRepName arity dv name
+    Right (name, _, _, _, dv) -> conT $ genRepName arity dv name
 
 -- | Generates a lambda expression which behaves like 'from'.
 makeFrom :: Name -> Q Exp
@@ -304,7 +304,7 @@ makeFunCommon :: (GenericKind -> Int -> Int -> Name -> [Con] -> [Q Match])
               -> Int -> Name -> Q Exp
 makeFunCommon maker arity n = do
   i <- reifyDataInfo n
-  let (name, allTvbs, cons, dv) = either error id i
+  let (name, _, allTvbs, cons, dv) = either error id i
       (_, _, gk) = buildTypeInstance arity name allTvbs cons dv
   mkCaseExp gk name cons maker
 
@@ -312,12 +312,12 @@ dataInstance :: Name -> Q [Dec]
 dataInstance n = do
   i <- reifyDataInfo n
   case i of
-    Left  _              -> return []
-    Right (n', _, _, dv) -> mkInstance n' dv
+    Left  _                    -> return []
+    Right (n', isNT, _, _, dv) -> mkInstance n' dv isNT
   where
-    mkInstance n' dv = do
+    mkInstance n' dv isNT = do
       ds <- mkDataData dv n'
-      is <- mkDataInstance dv n'
+      is <- mkDataInstance dv n' isNT
       return $ [ds,is]
 
 constrInstance :: Name -> Q [Dec]
@@ -325,7 +325,7 @@ constrInstance n = do
   i <- reifyDataInfo n
   case i of
     Left  _               -> return []
-    Right (n', _, cs, dv) -> mkInstance n' cs dv
+    Right (n', _, _, cs, dv) -> mkInstance n' cs dv
   where
     mkInstance n' cs dv = do
       ds <- mapM (mkConstrData dv n') cs
@@ -337,7 +337,7 @@ selectInstance n = do
   i <- reifyDataInfo n
   case i of
     Left  _               -> return []
-    Right (n', _, cs, dv) -> mkInstance n' cs dv
+    Right (n', _, _, cs, dv) -> mkInstance n' cs dv
   where
     mkInstance n' cs dv = do
       ds <- mapM (mkSelectData dv n') cs
@@ -419,13 +419,27 @@ mkSelectData dv dt (RecC n fs) = return (map one fs)
 mkSelectData _ _ _ = return []
 
 
-mkDataInstance :: DataVariety -> Name -> Q Dec
-mkDataInstance dv n =
-  instanceD (cxt []) (appT (conT ''Datatype) (conT $ genName dv [n]))
-    [funD 'datatypeName [clause [wildP] (normalB (stringE (nameBase n))) []]
-    ,funD 'moduleName   [clause [wildP] (normalB (stringE name)) []]]
+mkDataInstance :: DataVariety -> Name -> Bool -> Q Dec
+mkDataInstance dv n _isNewtype =
+  instanceD (cxt []) (appT (conT ''Datatype) (conT $ genName dv [n])) $
+    [ funD 'datatypeName [clause [wildP] (normalB (stringE (nameBase n))) []]
+    , funD 'moduleName   [clause [wildP] (normalB (stringE name)) []]
+#if __GLASGOW_HASKELL__ >= 711
+    , funD 'packageName  [clause [wildP] (normalB (stringE pkgName)) []]
+#endif
+    ]
+#if __GLASGOW_HASKELL__ >= 708
+ ++ if _isNewtype
+       then [funD 'isNewtype [clause [wildP] (normalB (conE 'True)) []]]
+       else []
+#endif
   where
-    name = maybe (error "Cannot fetch module name!") id (nameModule n)
+    name    = maybe (error "Cannot fetch module name!")  id (nameModule n)
+#if __GLASGOW_HASKELL__ >= 711
+    pkgName = maybe (error "Cannot fetch package name!") id (namePackage n)
+    namePackage (Name _ (NameG _ pkg _)) = Just $ pkgString pkg
+    namePackage _                        = Nothing
+#endif
 
 instance Lift Fixity where
   lift Prefix      = conE 'Prefix
@@ -756,16 +770,16 @@ dataDecCons _ = error "Must be a data or newtype declaration."
 --
 -- Any other value will result in an exception.
 reifyDataInfo :: Name
-              -> Q (Either String (Name, [TyVarBndr], [Con], DataVariety))
+              -> Q (Either String (Name, Bool, [TyVarBndr], [Con], DataVariety))
 reifyDataInfo name = do
   info <- reify name
   case info of
     TyConI dec ->
       return $ case dec of
         DataD    ctxt _ tvbs cons _ -> Right $
-          checkDataContext name ctxt (name, tvbs, cons, DataPlain)
+          checkDataContext name ctxt (name, False, tvbs, cons, DataPlain)
         NewtypeD ctxt _ tvbs con  _ -> Right $
-          checkDataContext name ctxt (name, tvbs, [con], DataPlain)
+          checkDataContext name ctxt (name, True, tvbs, [con], DataPlain)
         TySynD{} -> Left $ ns ++ "Type synonyms are not supported."
         _        -> Left $ ns ++ "Unsupported type: " ++ show dec
 #if MIN_VERSION_template_haskell(2,7,0)
@@ -783,10 +797,10 @@ reifyDataInfo name = do
            in case instDec of
                 Just (DataInstD    ctxt _ instTys cons _) -> Right $
                   checkDataContext parentName ctxt
-                    (parentName, tvbs, cons, DataFamily (constructorName $ head cons) instTys)
+                    (parentName, False, tvbs, cons, DataFamily (constructorName $ head cons) instTys)
                 Just (NewtypeInstD ctxt _ instTys con  _) -> Right $
                   checkDataContext parentName ctxt
-                    (parentName, tvbs, [con], DataFamily (constructorName con) instTys)
+                    (parentName, True, tvbs, [con], DataFamily (constructorName con) instTys)
                 _ -> Left $ ns ++
                   "Could not find data or newtype instance constructor."
         _ -> Left $ ns ++ "Data constructor " ++ show name ++
