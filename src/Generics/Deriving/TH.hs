@@ -352,7 +352,7 @@ tyVarBndrToNameBase :: TyVarBndr -> NameBase
 tyVarBndrToNameBase = NameBase . tyVarBndrToName
 
 tyVarBndrToKind :: TyVarBndr -> Kind
-tyVarBndrToKind (PlainTV  _)   = starK
+tyVarBndrToKind PlainTV{}      = starK
 tyVarBndrToKind (KindedTV _ k) = k
 
 stripRecordNames :: Con -> Con
@@ -537,7 +537,7 @@ repFieldArg _ ForallT{} = rankNError
 repFieldArg gk (SigT t _) = repFieldArg gk t
 repFieldArg Gen0 t = conT ''Rec0 `appT` return t
 repFieldArg (Gen1 nb) (VarT t) | NameBase t == nb = conT ''Par1
-repFieldArg gk@(Gen1 nb) t =
+repFieldArg gk@(Gen1 nb) t = do
   let tyHead:tyArgs      = unapplyTy t
       numLastArgs        = min 1 $ length tyArgs
       (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
@@ -555,11 +555,13 @@ repFieldArg gk@(Gen1 nb) t =
                        `appT` repFieldArg gk beta
       inspectTy _ = rec0Type
 
-   in if any (not . (`ground` nb)) lhsArgs
-         then outOfPlaceTyVarError
-         else case rhsArgs of
-              []   -> rec0Type
-              ty:_ -> inspectTy ty
+  itf <- isTyFamily tyHead
+  if any (not . (`ground` nb)) lhsArgs
+       || any (not . (`ground` nb)) tyArgs && itf
+     then outOfPlaceTyVarError
+     else case rhsArgs of
+          []   -> rec0Type
+          ty:_ -> inspectTy ty
 
 mkCaseExp :: GenericKind -> Name -> [Con]
           -> (GenericKind -> Int -> Int -> Name -> [Con] -> [Q Match])
@@ -637,8 +639,8 @@ wC :: Type -> NameBase -> Q Exp
 wC (VarT n) nb | NameBase n == nb = conE 'Par1
 wC t nb
   | ground t nb = conE 'K1
-  | otherwise =
-      let _:tyArgs           = unapplyTy t
+  | otherwise = do
+      let tyHead:tyArgs       = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
           (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
 
@@ -652,11 +654,13 @@ wC t nb
                                     (varE '(.))
                                     (varE 'fmap `appE` wC beta nb)
 
-       in if any (not . (`ground` nb)) lhsArgs
-             then outOfPlaceTyVarError
-             else case rhsArgs of
-                  []   -> conE 'K1
-                  ty:_ -> inspectTy ty
+      itf <- isTyFamily tyHead
+      if any (not . (`ground` nb)) lhsArgs
+           || any (not . (`ground` nb)) tyArgs && itf
+         then outOfPlaceTyVarError
+         else case rhsArgs of
+              []   -> conE 'K1
+              ty:_ -> inspectTy ty
 
 toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int -> Con -> Q Match
 toCon _ wrap m i (NormalC cn []) =
@@ -706,8 +710,8 @@ unwC (SigT t _) nb = unwC t nb
 unwC (VarT n) nb | NameBase n == nb = varE 'unPar1
 unwC t nb
   | ground t nb = varE 'unK1
-  | otherwise =
-      let _:tyArgs           = unapplyTy t
+  | otherwise = do
+      let tyHead:tyArgs      = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
           (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
 
@@ -721,11 +725,13 @@ unwC t nb
                                     (varE '(.))
                                     (varE 'unComp1)
 
-       in if any (not . (`ground` nb)) lhsArgs
-             then outOfPlaceTyVarError
-             else case rhsArgs of
-                  []   -> varE 'unK1
-                  ty:_ -> inspectTy ty
+      itf <- isTyFamily tyHead
+      if any (not . (`ground` nb)) lhsArgs
+           || any (not . (`ground` nb)) tyArgs && itf
+         then outOfPlaceTyVarError
+         else case rhsArgs of
+              []   -> varE 'unK1
+              ty:_ -> inspectTy ty
 
 lrP :: Int -> Int -> (Q Pat -> Q Pat)
 lrP 1 0 p = p
@@ -783,14 +789,18 @@ reifyDataInfo name = do
         TySynD{} -> Left $ ns ++ "Type synonyms are not supported."
         _        -> Left $ ns ++ "Unsupported type: " ++ show dec
 #if MIN_VERSION_template_haskell(2,7,0)
-# if __GLASGOW_HASKELL__ >= 711
+# if MIN_VERSION_template_haskell(2,11,0)
     DataConI _ _ parentName   -> do
 # else
     DataConI _ _ parentName _ -> do
 # endif
       parentInfo <- reify parentName
       return $ case parentInfo of
+# if MIN_VERSION_template_haskell(2,11,0)
+        FamilyI (DataFamilyD _ tvbs _) decs ->
+# else
         FamilyI (FamilyD DataFam _ tvbs _) decs ->
+# endif
           -- This isn't total, but the API requires that the data family instance have
           -- at least one constructor anyways, so this will always succeed.
           let instDec = flip find decs $ any ((name ==) . constructorName) . dataDecCons
@@ -805,8 +815,13 @@ reifyDataInfo name = do
                   "Could not find data or newtype instance constructor."
         _ -> Left $ ns ++ "Data constructor " ++ show name ++
           " is not from a data family instance constructor."
-    FamilyI (FamilyD DataFam _ _ _) _ -> return . Left $ ns ++
-      "Cannot use a data family name. Use a data family instance constructor instead."
+# if MIN_VERSION_template_haskell(2,11,0)
+    FamilyI DataFamilyD{} _ ->
+# else
+    FamilyI (FamilyD DataFam _ _ _) _ ->
+# endif
+      return . Left $
+        ns ++ "Cannot use a data family name. Use a data family instance constructor instead."
     _ -> return . Left $ ns ++ "The name must be of a plain data type constructor, "
                             ++ "or a data family instance constructor."
 #else
@@ -952,7 +967,7 @@ buildTypeInstance arity parentName tvbs _cons (DataFamily _ instTysAndKinds)
         tyVarBndrToType (KindedTV n k) = SigT (VarT n) k
 
         mapTyVarBndrName :: Name -> TyVarBndr -> TyVarBndr
-        mapTyVarBndrName n (PlainTV _)    = PlainTV n
+        mapTyVarBndrName n PlainTV{}      = PlainTV n
         mapTyVarBndrName n (KindedTV _ k) = KindedTV n k
 
         -- To compensate for Trac #9692, we borrow some type variables from the data
@@ -1046,6 +1061,24 @@ checkDataContext _        [] x = x
 checkDataContext dataName _  _ = error $
   nameBase dataName ++ " must not have a datatype context"
 
+-- | Is the given type a type family constructor (and not a data family constructor)?
+isTyFamily :: Type -> Q Bool
+isTyFamily (ConT n) = do
+    info <- reify n
+    return $ case info of
+#if MIN_VERSION_template_haskell(2,11,0)
+         FamilyI OpenTypeFamilyD{} _       -> True
+#elif MIN_VERSION_template_haskell(2,7,0)
+         FamilyI (FamilyD TypeFam _ _ _) _ -> True
+#else
+         TyConI  (FamilyD TypeFam _ _ _)   -> True
+#endif
+#if MIN_VERSION_template_haskell(2,9,0)
+         FamilyI ClosedTypeFamilyD{} _     -> True
+#endif
+         _ -> False
+isTyFamily _ = return False
+
 -- | Construct a type via curried application.
 applyTyToTys :: Type -> [Type] -> Type
 applyTyToTys = foldl' AppT
@@ -1105,7 +1138,7 @@ canRealizeKindStar k = case uncurryKind k of
     [k'] -> case k' of
 #if MIN_VERSION_template_haskell(2,8,0)
                  StarT    -> True
-                 (VarT _) -> True -- Kind k can be instantiated with *
+                 VarT{}   -> True -- Kind k can be instantiated with *
 #else
                  StarK    -> True
 #endif
@@ -1118,7 +1151,7 @@ wellKinded = all canRealizeKindStar
 -- | Replace the Name of a TyVarBndr with one from a Type (if the Type has a Name).
 replaceTyVarName :: TyVarBndr -> Type -> TyVarBndr
 replaceTyVarName tvb            (SigT t _) = replaceTyVarName tvb t
-replaceTyVarName (PlainTV  _)   (VarT n)   = PlainTV  n
+replaceTyVarName PlainTV{}      (VarT n)   = PlainTV  n
 replaceTyVarName (KindedTV _ k) (VarT n)   = KindedTV n k
 replaceTyVarName tvb            _          = tvb
 
@@ -1150,7 +1183,7 @@ varTToNameBase = NameBase . varTToName
 
 -- | Is the given type a variable?
 isTyVar :: Type -> Bool
-isTyVar (VarT _)   = True
+isTyVar VarT{}     = True
 isTyVar (SigT t _) = isTyVar t
 isTyVar _          = False
 
