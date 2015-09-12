@@ -389,13 +389,11 @@ $(deriveRepresentable0 ''GRose)
 #if __GLASGOW_HASKELL__ >= 705
 deriving instance (Functor f) => Generic1 (GRose f)
 #else
-
-type Rep1GRose f =
-    D1 NMain_46GRose_Plain (C1 NMain_46GRose_NMain_46GRose_Plain (Rec1 f :*: f :.: (Rec1 (GRose f))))
-instance (GFunctor f) => Generic1 (GRose f) where
-  type Rep1 (GRose f) = Rep1GRose f
-  from1 (GRose a x) = M1 (M1 (Rec1 a :*: Comp1 (gmap Rec1 x)))
-  to1 (M1 (M1 (Rec1 a :*: Comp1 x))) = GRose a (gmap unRec1 x)
+$(deriveRep1 ''GRose)
+instance (Functor f) => Generic1 (GRose f) where
+  type Rep1 (GRose f) = $(makeRep1 ''GRose) f
+  from1 = $(makeFrom1 ''GRose)
+  to1 = $(makeTo1 ''GRose)
 #endif
 
 #if __GLASGOW_HASKELL__ < 701
@@ -403,7 +401,7 @@ instance (GFunctor f) => Generic1 (GRose f) where
 instance (GShow (f a), GShow (f (GRose f a))) => GShow (GRose f a) where
   gshowsPrec = gshowsPrecdefault
 
-instance (GFunctor f) => GFunctor (GRose f) where
+instance (Functor f, GFunctor f) => GFunctor (GRose f) where
   gmap = gmapdefault
 
 #else

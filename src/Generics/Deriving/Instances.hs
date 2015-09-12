@@ -149,7 +149,11 @@ data C1_1Arity
 
 instance Datatype D1Arity where
     datatypeName _ = "Arity"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0Arity where
     conName _ = "NoArity"
@@ -181,7 +185,11 @@ data C1_2Associativity
 
 instance Datatype D1Associativity where
     datatypeName _ = "Associativity"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0Associativity where
     conName _ = "LeftAssociative"
@@ -327,7 +335,11 @@ data C1_1Fixity
 
 instance Datatype D1Fixity where
     datatypeName _ = "Fixity"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0Fixity where
     conName _ = "Prefix"
@@ -533,7 +545,11 @@ data C1_0U1
 
 instance Datatype D1U1 where
     datatypeName _ = "U1"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0U1 where
     conName _ = "U1"
@@ -553,7 +569,11 @@ data S1_0_0Par1
 
 instance Datatype D1Par1 where
     datatypeName _ = "Par1"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0Par1 where
     conName     _ = "Par1"
@@ -577,7 +597,11 @@ data S1_0_0Rec1
 
 instance Datatype D1Rec1 where
     datatypeName _ = "Rec1"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0Rec1 where
     conName     _ = "Rec1"
@@ -601,7 +625,11 @@ data S1_0_0K1
 
 instance Datatype D1K1 where
     datatypeName _ = "K1"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0K1 where
     conName     _ = "K1"
@@ -625,7 +653,11 @@ data S1_0_0M1
 
 instance Datatype D1M1 where
     datatypeName _ = "M1"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0M1 where
     conName     _ = "M1"
@@ -654,7 +686,11 @@ data C1_1ConSum
 
 instance Datatype D1ConSum where
     datatypeName _ = ":+:"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0ConSum where
     conName _ = "L1"
@@ -678,7 +714,11 @@ data C1_ConProduct
 
 instance Datatype D1ConProduct where
     datatypeName _ = ":*:"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_ConProduct where
     conName   _ = ":*:"
@@ -700,7 +740,11 @@ data S1_0_0ConCompose
 
 instance Datatype D1ConCompose where
     datatypeName _ = ":.:"
+# if __GLASGOW_HASKELL < 701
+    moduleName   _ = "Generics.Deriving.Base"
+# else
     moduleName   _ = "GHC.Generics"
+# endif
 
 instance Constructor C1_0ConCompose where
   conName     _ = "Comp1"
