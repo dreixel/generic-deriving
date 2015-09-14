@@ -5,6 +5,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE MagicHash #-}
 
 module Generics.Deriving.Base (
 -- * Introduction
@@ -513,6 +514,53 @@ module Generics.Deriving.Base (
 -- @
 -- newtype (':.:') f g p = 'Comp1' { 'unComp1' :: f (g p) }
 -- @
+
+-- *** Representation of unboxed types
+--
+-- |
+--
+-- If one were to attempt to derive a Generic instance for a datatype with an
+-- unboxed argument (for example, 'Int#'), one might expect the occurrence of
+-- the 'Int#' argument to be marked with @'Rec0' 'Int#'@. This won't work,
+-- though, since 'Int#' is of kind @#@ and 'Rec0' expects a type of kind @*@.
+-- We also cannot provide a 'Generic Int#' instance directly, since instances
+-- cannot be given for unlifted types.
+--
+-- One solution would be to represent an occurrence of 'Int#' with 'Rec0 Int'
+-- instead. With this approach, however, the programmer has no way of knowing
+-- whether the 'Int' is actually an 'Int#' in disguise.
+--
+-- To work around this, six data types are provided for generic representation
+-- of common unboxed types:
+--
+-- @
+-- data 'UAddr'   = 'UAddr'   { 'uAddr#'   :: 'Addr#'   }
+-- data 'UChar'   = 'UChar'   { 'uChar#'   :: 'Char#'   }
+-- data 'UDouble' = 'UDouble' { 'uDouble#' :: 'Double#' }
+-- data 'UFloat'  = 'UFloat'  { 'uFloat#'  :: 'Float#'  }
+-- data 'UInt'    = 'UInt'    { 'uInt#'    :: 'Int#'    }
+-- data 'UWord'   = 'UWord'   { 'uWord#'   :: 'Word#'   }
+-- @
+--
+-- The declaration
+--
+-- @
+-- data IntHash = IntHash Int#
+--   deriving 'Generic'
+-- @
+--
+-- yields
+--
+-- @
+-- instance 'Generic' IntHash where
+--   type 'Rep' IntHash =
+--     'D1' D1IntHash
+--       ('C1' C1_0IntHash
+--         ('S1' 'NoSelector' ('Rec0' 'UInt')))
+-- @
+--
+-- These data types allow users to give specific implementations of a generic
+-- function for unboxed types.
 #if 0
 -- *** Limitations
 --
@@ -537,17 +585,28 @@ module Generics.Deriving.Base (
   , Fixity(..), Associativity(..), Arity(..), prec
 
   -- * Generic type classes
-  , Generic(..), Generic1(..)
+  , Generic(..), Generic1(..),
 
 #else
   module GHC.Generics,
+#endif
+#if __GLASGOW_HASKELL__ < 711
+  -- ** Unboxed representation types
+  UAddr(..), UChar(..), UDouble(..),
+  UFloat(..), UInt(..), UWord(..),
 #endif
   ) where
 
 
 #if __GLASGOW_HASKELL__ >= 701
 import GHC.Generics
-#else
+#endif
+
+#if __GLASGOW_HASKELL__ < 711
+import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
+#endif
+
+#if __GLASGOW_HASKELL__ < 701
 --------------------------------------------------------------------------------
 -- Representation types
 --------------------------------------------------------------------------------
@@ -681,4 +740,30 @@ class Generic1 f where
   -- | Convert from the representation to the datatype
   to1    :: Rep1 f a -> f a
 
+#endif
+
+#if __GLASGOW_HASKELL__ < 711
+-- | Used for marking occurrences of Addr#
+data UAddr = UAddr { uAddr# :: Addr# }
+  deriving (Eq, Ord)
+
+-- | Used for marking occurrences of Char#
+data UChar = UChar { uChar# :: Char# }
+  deriving (Eq, Ord, Show)
+
+-- | Used for marking occurrences of Double#
+data UDouble = UDouble { uDouble# :: Double# }
+  deriving (Eq, Ord, Show)
+
+-- | Used for marking occurrences of Float#
+data UFloat = UFloat { uFloat# :: Float# }
+  deriving (Eq, Ord, Show)
+
+-- | Used for marking occurrences of Int#
+data UInt = UInt { uInt# :: Int# }
+  deriving (Eq, Ord, Show)
+
+-- | Used for marking occurrences of Word#
+data UWord = UWord { uWord# :: Word# }
+  deriving (Eq, Ord, Show)
 #endif

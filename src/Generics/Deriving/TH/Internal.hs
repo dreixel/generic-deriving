@@ -328,6 +328,13 @@ mkGD7'1_d = mkNameG_d "ghc-prim" "GHC.Generics"
 mkGD7'1_d = mkNameG_d gdPackageKey "Generics.Deriving.Base"
 #endif
 
+mkGD7'11_d :: String -> Name
+#if __GLASGOW_HASKELL__ >= 711
+mkGD7'11_d = mkNameG_d "base" "GHC.Generics"
+#else
+mkGD7'11_d = mkNameG_d gdPackageKey "Generics.Deriving.Base"
+#endif
+
 mkGD7'1_tc :: String -> Name
 #if __GLASGOW_HASKELL__ >= 705
 mkGD7'1_tc = mkNameG_tc "base" "GHC.Generics"
@@ -335,6 +342,13 @@ mkGD7'1_tc = mkNameG_tc "base" "GHC.Generics"
 mkGD7'1_tc = mkNameG_tc "ghc-prim" "GHC.Generics"
 #else
 mkGD7'1_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base"
+#endif
+
+mkGD7'11_tc :: String -> Name
+#if __GLASGOW_HASKELL__ >= 711
+mkGD7'11_tc = mkNameG_tc "base" "GHC.Generics"
+#else
+mkGD7'11_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base"
 #endif
 
 mkGD7'1_v :: String -> Name
@@ -345,6 +359,73 @@ mkGD7'1_v = mkNameG_v "ghc-prim" "GHC.Generics"
 #else
 mkGD7'1_v = mkNameG_v gdPackageKey "Generics.Deriving.Base"
 #endif
+
+mkGD7'11_v :: String -> Name
+#if __GLASGOW_HASKELL__ >= 711
+mkGD7'11_v = mkNameG_v "base" "GHC.Generics"
+#else
+mkGD7'11_v = mkNameG_v gdPackageKey "Generics.Deriving.Base"
+#endif
+
+comp1DataName :: Name
+comp1DataName = mkGD7'1_d "Comp1"
+
+infixDataName :: Name
+infixDataName = mkGD7'1_d "Infix"
+
+k1DataName :: Name
+k1DataName = mkGD7'1_d "K1"
+
+l1DataName :: Name
+l1DataName = mkGD7'1_d "L1"
+
+leftAssociativeDataName :: Name
+leftAssociativeDataName = mkGD7'1_d "LeftAssociative"
+
+m1DataName :: Name
+m1DataName = mkGD7'1_d "M1"
+
+notAssociativeDataName :: Name
+notAssociativeDataName = mkGD7'1_d "NotAssociative"
+
+par1DataName :: Name
+par1DataName = mkGD7'1_d "Par1"
+
+prefixDataName :: Name
+prefixDataName = mkGD7'1_d "Prefix"
+
+productDataName :: Name
+productDataName = mkGD7'1_d ":*:"
+
+r1DataName :: Name
+r1DataName = mkGD7'1_d "R1"
+
+rec1DataName :: Name
+rec1DataName = mkGD7'1_d "Rec1"
+
+rightAssociativeDataName :: Name
+rightAssociativeDataName = mkGD7'1_d "RightAssociative"
+
+u1DataName :: Name
+u1DataName = mkGD7'1_d "U1"
+
+uAddrDataName :: Name
+uAddrDataName = mkGD7'11_d "UAddr"
+
+uCharDataName :: Name
+uCharDataName = mkGD7'11_d "UChar"
+
+uDoubleDataName :: Name
+uDoubleDataName = mkGD7'11_d "UDouble"
+
+uFloatDataName :: Name
+uFloatDataName = mkGD7'11_d "UFloat"
+
+uIntDataName :: Name
+uIntDataName = mkGD7'11_d "UInt"
+
+uWordDataName :: Name
+uWordDataName = mkGD7'11_d "UWord"
 
 c1TypeName :: Name
 c1TypeName = mkGD7'1_tc "C1"
@@ -400,50 +481,26 @@ sumTypeName = mkGD7'1_tc ":+:"
 u1TypeName :: Name
 u1TypeName = mkGD7'1_tc "U1"
 
+uAddrTypeName :: Name
+uAddrTypeName = mkGD7'11_tc "UAddr"
+
+uCharTypeName :: Name
+uCharTypeName = mkGD7'11_tc "UChar"
+
+uDoubleTypeName :: Name
+uDoubleTypeName = mkGD7'11_tc "UDouble"
+
+uFloatTypeName :: Name
+uFloatTypeName = mkGD7'11_tc "UFloat"
+
+uIntTypeName :: Name
+uIntTypeName = mkGD7'11_tc "UInt"
+
+uWordTypeName :: Name
+uWordTypeName = mkGD7'11_tc "UWord"
+
 v1TypeName :: Name
 v1TypeName = mkGD7'1_tc "V1"
-
-comp1DataName :: Name
-comp1DataName = mkGD7'1_d "Comp1"
-
-infixDataName :: Name
-infixDataName = mkGD7'1_d "Infix"
-
-k1DataName :: Name
-k1DataName = mkGD7'1_d "K1"
-
-l1DataName :: Name
-l1DataName = mkGD7'1_d "L1"
-
-leftAssociativeDataName :: Name
-leftAssociativeDataName = mkGD7'1_d "LeftAssociative"
-
-m1DataName :: Name
-m1DataName = mkGD7'1_d "M1"
-
-notAssociativeDataName :: Name
-notAssociativeDataName = mkGD7'1_d "NotAssociative"
-
-par1DataName :: Name
-par1DataName = mkGD7'1_d "Par1"
-
-prefixDataName :: Name
-prefixDataName = mkGD7'1_d "Prefix"
-
-productDataName :: Name
-productDataName = mkGD7'1_d ":*:"
-
-r1DataName :: Name
-r1DataName = mkGD7'1_d "R1"
-
-rec1DataName :: Name
-rec1DataName = mkGD7'1_d "Rec1"
-
-rightAssociativeDataName :: Name
-rightAssociativeDataName = mkGD7'1_d "RightAssociative"
-
-u1DataName :: Name
-u1DataName = mkGD7'1_d "U1"
 
 conFixityValName :: Name
 conFixityValName = mkGD7'1_v "conFixity"
@@ -485,6 +542,24 @@ toValName = mkGD7'1_v "to"
 to1ValName :: Name
 to1ValName = mkGD7'1_v "to1"
 
+uAddrHashValName :: Name
+uAddrHashValName = mkGD7'11_v "uAddr#"
+
+uCharHashValName :: Name
+uCharHashValName = mkGD7'11_v "uChar#"
+
+uDoubleHashValName :: Name
+uDoubleHashValName = mkGD7'11_v "uDouble#"
+
+uFloatHashValName :: Name
+uFloatHashValName = mkGD7'11_v "uFloat#"
+
+uIntHashValName :: Name
+uIntHashValName = mkGD7'11_v "uInt#"
+
+uWordHashValName :: Name
+uWordHashValName = mkGD7'11_v "uWord#"
+
 unComp1ValName :: Name
 unComp1ValName = mkGD7'1_v "unComp1"
 
@@ -503,6 +578,27 @@ trueDataName = mkNameG_d "ghc-prim" "GHC.Types" "True"
 #else
 trueDataName = mkNameG_d "ghc-prim" "GHC.Bool" "True"
 #endif
+
+mkGHCPrim_tc :: String -> Name
+mkGHCPrim_tc = mkNameG_tc "ghc-prim" "GHC.Prim"
+
+addrHashTypeName :: Name
+addrHashTypeName = mkGHCPrim_tc "Addr#"
+
+charHashTypeName :: Name
+charHashTypeName = mkGHCPrim_tc "Char#"
+
+doubleHashTypeName :: Name
+doubleHashTypeName = mkGHCPrim_tc "Double#"
+
+floatHashTypeName :: Name
+floatHashTypeName = mkGHCPrim_tc "Float#"
+
+intHashTypeName :: Name
+intHashTypeName = mkGHCPrim_tc "Int#"
+
+wordHashTypeName :: Name
+wordHashTypeName = mkGHCPrim_tc "Word#"
 
 composeValName :: Name
 composeValName = mkNameG_v "base" "GHC.Base" "."
