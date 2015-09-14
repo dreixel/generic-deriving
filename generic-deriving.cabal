@@ -48,6 +48,9 @@ library
 
                         Generics.Deriving.TH
 
+  other-modules:        Generics.Deriving.TH.Internal
+                        Paths_generic_deriving
+
   build-depends:        base < 5, containers >= 0.1 && < 0.6, template-haskell >=2.4 && <2.12
   if impl(ghc > 7.0)
     build-depends:      ghc-prim < 1

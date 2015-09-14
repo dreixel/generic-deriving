@@ -1,5 +1,4 @@
-{-# LANGUAGE TemplateHaskell, CPP #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -89,15 +88,18 @@ module Generics.Deriving.TH (
   ) where
 
 import           Data.Char (isAlphaNum, ord)
-import           Data.Function (on)
 import           Data.List
+#if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
 import qualified Data.Map as Map
 import           Data.Map as Map (Map)
-import           Data.Maybe (fromMaybe)
+#endif
+#if __GLASGOW_HASKELL__ >= 706 && __GLASGOW_HASKELL__ < 710
 import qualified Data.Set as Set
 import           Data.Set (Set)
+#endif
 
 import           Generics.Deriving.Base
+import           Generics.Deriving.TH.Internal
 
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH.Syntax (Name(..), NameFlavour(..), Lift(..),
@@ -114,7 +116,7 @@ simplInstance cl ty fn df = do
         ((foldl (\a -> AppT a . VarT . tyVarBndrToName) (ConT (genRepName 0 DataPlain ty)) []) `AppT` (VarT x))
   fmap (: []) $ instanceD (cxt []) (conT cl `appT` conT ty)
     [funD fn [clause [] (normalB (varE df `appE`
-      (sigE (varE 'undefined) (return typ)))) []]]
+      (sigE (varE undefinedValName) (return typ)))) []]]
 
 
 -- | Given the type and the name (as string) for the type to derive,
@@ -208,10 +210,10 @@ deriveRepCommon arity n = do
                       (repType gk dv name cons)
 
 deriveInst :: Name -> Q [Dec]
-deriveInst = deriveInstCommon ''Generic ''Rep 0 'from 'to
+deriveInst = deriveInstCommon genericTypeName repTypeName 0 fromValName toValName
 
 deriveInst1 :: Name -> Q [Dec]
-deriveInst1 = deriveInstCommon ''Generic1 ''Rep1 1 'from1 'to1
+deriveInst1 = deriveInstCommon generic1TypeName rep1TypeName 1 from1ValName to1ValName
 
 deriveInstCommon :: Name -> Name -> Int -> Name -> Name -> Name -> Q [Dec]
 deriveInstCommon genericName repName arity fromName toName n = do
@@ -344,22 +346,6 @@ selectInstance n = do
       is <- mapM (mkSelectInstance dv n') cs
       return $ concat (ds ++ is)
 
-tyVarBndrToName :: TyVarBndr -> Name
-tyVarBndrToName (PlainTV  name)   = name
-tyVarBndrToName (KindedTV name _) = name
-
-tyVarBndrToNameBase :: TyVarBndr -> NameBase
-tyVarBndrToNameBase = NameBase . tyVarBndrToName
-
-tyVarBndrToKind :: TyVarBndr -> Kind
-tyVarBndrToKind PlainTV{}      = starK
-tyVarBndrToKind (KindedTV _ k) = k
-
-stripRecordNames :: Con -> Con
-stripRecordNames (RecC n f) =
-  NormalC n (map (\(_, s, t) -> (s, t)) f)
-stripRecordNames c = c
-
 genName :: DataVariety -> [Name] -> Name
 genName dv ns = mkName
               . showsDataVariety dv
@@ -421,16 +407,16 @@ mkSelectData _ _ _ = return []
 
 mkDataInstance :: DataVariety -> Name -> Bool -> Q Dec
 mkDataInstance dv n _isNewtype =
-  instanceD (cxt []) (appT (conT ''Datatype) (conT $ genName dv [n])) $
-    [ funD 'datatypeName [clause [wildP] (normalB (stringE (nameBase n))) []]
-    , funD 'moduleName   [clause [wildP] (normalB (stringE name)) []]
+  instanceD (cxt []) (appT (conT datatypeTypeName) (conT $ genName dv [n])) $
+    [ funD datatypeNameValName [clause [wildP] (normalB (stringE (nameBase n))) []]
+    , funD moduleNameValName   [clause [wildP] (normalB (stringE name)) []]
 #if __GLASGOW_HASKELL__ >= 711
-    , funD 'packageName  [clause [wildP] (normalB (stringE pkgName)) []]
+    , funD packageNameValName  [clause [wildP] (normalB (stringE pkgName)) []]
 #endif
     ]
 #if __GLASGOW_HASKELL__ >= 708
  ++ if _isNewtype
-       then [funD 'isNewtype [clause [wildP] (normalB (conE 'True)) []]]
+       then [funD isNewtypeValName [clause [wildP] (normalB (conE trueDataName)) []]]
        else []
 #endif
   where
@@ -441,19 +427,21 @@ mkDataInstance dv n _isNewtype =
     namePackage _                        = Nothing
 #endif
 
-instance Lift Fixity where
-  lift Prefix      = conE 'Prefix
-  lift (Infix a n) = conE 'Infix `appE` [| a |] `appE` [| n |]
+liftFixity :: Fixity -> Q Exp
+liftFixity Prefix      = conE prefixDataName
+liftFixity (Infix a n) = conE infixDataName
+    `appE` liftAssociativity a
+    `appE` lift n
 
-instance Lift Associativity where
-  lift LeftAssociative  = conE 'LeftAssociative
-  lift RightAssociative = conE 'RightAssociative
-  lift NotAssociative   = conE 'NotAssociative
+liftAssociativity :: Associativity -> Q Exp
+liftAssociativity LeftAssociative  = conE leftAssociativeDataName
+liftAssociativity RightAssociative = conE rightAssociativeDataName
+liftAssociativity NotAssociative   = conE notAssociativeDataName
 
 mkConstrInstance :: DataVariety -> Name -> Con -> Q Dec
 mkConstrInstance dv dt (NormalC n _) = mkConstrInstanceWith dv dt n []
 mkConstrInstance dv dt (RecC    n _) = mkConstrInstanceWith dv dt n
-      [ funD 'conIsRecord [clause [wildP] (normalB (conE 'True)) []]]
+      [ funD conIsRecordValName [clause [wildP] (normalB (conE trueDataName)) []]]
 mkConstrInstance dv dt (InfixC _ n _) =
     do
       i <- reify n
@@ -466,9 +454,9 @@ mkConstrInstance dv dt (InfixC _ n _) =
                  DataConI _ _ _ f -> convertFixity f
                  _ -> Prefix
 #endif
-      instanceD (cxt []) (appT (conT ''Constructor) (conT $ genName dv [dt, n]))
-        [funD 'conName   [clause [wildP] (normalB (stringE (nameBase n))) []],
-         funD 'conFixity [clause [wildP] (normalB [| fi |]) []]]
+      instanceD (cxt []) (appT (conT constructorTypeName) (conT $ genName dv [dt, n]))
+        [funD conNameValName   [clause [wildP] (normalB (stringE (nameBase n))) []],
+         funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
   where
     convertFixity (Fixity n' d) = Infix (convertDirection d) n'
     convertDirection InfixL = LeftAssociative
@@ -478,42 +466,42 @@ mkConstrInstance _ _ (ForallC _ _ con) = forallCError con
 
 mkConstrInstanceWith :: DataVariety -> Name -> Name -> [Q Dec] -> Q Dec
 mkConstrInstanceWith dv dt n extra =
-  instanceD (cxt []) (appT (conT ''Constructor) (conT $ genName dv [dt, n]))
-    (funD 'conName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
+  instanceD (cxt []) (appT (conT constructorTypeName) (conT $ genName dv [dt, n]))
+    (funD conNameValName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
 
 mkSelectInstance :: DataVariety -> Name -> Con -> Q [Dec]
 mkSelectInstance dv dt (RecC n fs) = return (map one fs) where
   one (f, _, _) =
-    InstanceD ([]) (AppT (ConT ''Selector) (ConT $ genName dv [dt, n, f]))
-      [FunD 'selName [Clause [WildP]
+    InstanceD ([]) (AppT (ConT selectorTypeName) (ConT $ genName dv [dt, n, f]))
+      [FunD selNameValName [Clause [WildP]
         (NormalB (LitE (StringL (nameBase f)))) []]]
 mkSelectInstance _ _ _ = return []
 
 repType :: GenericKind -> DataVariety -> Name -> [Con] -> Q Type
 repType gk dv dt cs =
-    conT ''D1 `appT` (conT $ genName dv [dt]) `appT`
-      foldr1' sum' (conT ''V1)
+    conT d1TypeName `appT` (conT $ genName dv [dt]) `appT`
+      foldr1' sum' (conT v1TypeName)
         (map (repCon gk dv dt) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
-    sum' a b = conT ''(:+:) `appT` a `appT` b
+    sum' a b = conT sumTypeName `appT` a `appT` b
 
 repCon :: GenericKind -> DataVariety -> Name -> Con -> Q Type
 repCon _ dv dt (NormalC n []) =
-    conT ''C1 `appT` (conT $ genName dv [dt, n]) `appT`
-     (conT ''S1 `appT` conT ''NoSelector `appT` conT ''U1)
+    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT`
+     (conT s1TypeName `appT` conT noSelectorTypeName `appT` conT u1TypeName)
 repCon gk dv dt (NormalC n fs) =
-    conT ''C1 `appT` (conT $ genName dv [dt, n]) `appT`
+    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT`
      (foldr1 prod (map (repField gk . snd) fs)) where
     prod :: Q Type -> Q Type -> Q Type
-    prod a b = conT ''(:*:) `appT` a `appT` b
+    prod a b = conT productTypeName `appT` a `appT` b
 repCon _ dv dt (RecC n []) =
-    conT ''C1 `appT` (conT $ genName dv [dt, n]) `appT` conT ''U1
+    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT` conT u1TypeName
 repCon gk dv dt (RecC n fs) =
-    conT ''C1 `appT` (conT $ genName dv [dt, n]) `appT`
+    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT`
       (foldr1 prod (map (repField' gk dv dt n) fs)) where
     prod :: Q Type -> Q Type -> Q Type
-    prod a b = conT ''(:*:) `appT` a `appT` b
+    prod a b = conT productTypeName `appT` a `appT` b
 
 repCon gk dv dt (InfixC t1 n t2) = repCon gk dv dt (NormalC n [t1,t2])
 repCon _ _ _ (ForallC _ _ con) = forallCError con
@@ -523,36 +511,37 @@ repCon _ _ _ (ForallC _ _ con) = forallCError con
 
 repField :: GenericKind -> Type -> Q Type
 --repField d t | t == dataDeclToType d = conT ''I
-repField gk t = conT ''S1 `appT` conT ''NoSelector `appT`
+repField gk t = conT s1TypeName `appT` conT noSelectorTypeName `appT`
                    (repFieldArg gk =<< expandSyn t)
 
 repField' :: GenericKind -> DataVariety -> Name -> Name -> (Name, Strict, Type) -> Q Type
 --repField' d ns (_, _, t) | t == dataDeclToType d = conT ''I
-repField' gk dv dt ns (f, _, t) = conT ''S1 `appT` conT (genName dv [dt, ns, f]) `appT`
-                                     (repFieldArg gk =<< expandSyn t)
+repField' gk dv dt ns (f, _, t) = conT s1TypeName
+    `appT` conT (genName dv [dt, ns, f])
+    `appT` (repFieldArg gk =<< expandSyn t)
 -- Note: we should generate Par0 too, at some point
 
 repFieldArg :: GenericKind -> Type -> Q Type
 repFieldArg _ ForallT{} = rankNError
 repFieldArg gk (SigT t _) = repFieldArg gk t
-repFieldArg Gen0 t = conT ''Rec0 `appT` return t
-repFieldArg (Gen1 nb) (VarT t) | NameBase t == nb = conT ''Par1
+repFieldArg Gen0 t = conT rec0TypeName `appT` return t
+repFieldArg (Gen1 nb) (VarT t) | NameBase t == nb = conT par1TypeName
 repFieldArg gk@(Gen1 nb) t = do
   let tyHead:tyArgs      = unapplyTy t
       numLastArgs        = min 1 $ length tyArgs
       (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
-      rec0Type           = conT ''Rec0  `appT` return t
+      rec0Type           = conT rec0TypeName `appT` return t
       phiType            = return $ applyTyToTys tyHead lhsArgs
 
       inspectTy :: Type -> Q Type
       inspectTy (VarT a)
         | NameBase a == nb
-        = conT ''Rec1 `appT` phiType
+        = conT rec1TypeName `appT` phiType
       inspectTy (SigT ty _) = inspectTy ty
       inspectTy beta
         | not (ground beta nb)
-        = conT ''(:.:) `appT` phiType
-                       `appT` repFieldArg gk beta
+        = conT composeTypeName `appT` phiType
+                               `appT` repFieldArg gk beta
       inspectTy _ = rec0Type
 
   itf <- isTyFamily tyHead
@@ -580,15 +569,15 @@ errorFrom :: Name -> Q Match
 errorFrom dt =
   match
     wildP
-    (normalB $ appE (conE 'M1) $ varE 'error `appE` stringE
+    (normalB $ appE (conE m1DataName) $ varE errorValName `appE` stringE
       ("No generic representation for empty datatype " ++ nameBase dt))
     []
 
 errorTo :: Name -> Q Match
 errorTo dt =
   match
-    (conP 'M1 [wildP])
-    (normalB $ varE 'error `appE` stringE
+    (conP m1DataName [wildP])
+    (normalB $ varE errorValName `appE` stringE
       ("No values for empty datatype " ++ nameBase dt))
     []
 
@@ -602,43 +591,44 @@ fromCon :: GenericKind -> (Q Exp -> Q Exp) -> Int -> Int -> Con -> Q Match
 fromCon _ wrap m i (NormalC cn []) =
   match
     (conP cn [])
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ appE (conE 'M1) $
-      conE 'M1 `appE` (conE 'U1)) []
+    (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ appE (conE m1DataName) $
+      conE m1DataName `appE` (conE u1DataName)) []
 fromCon gk wrap m i (NormalC cn fs) =
   -- runIO (putStrLn ("constructor " ++ show ix)) >>
   match
     (conP cn (map (varP . field) [0..length fs - 1]))
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE`
+    (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
       foldr1 prod (zipWith (fromField gk) [0..] (map snd fs))) []
-  where prod x y = conE '(:*:) `appE` x `appE` y
+  where prod x y = conE productDataName `appE` x `appE` y
 fromCon _ wrap m i (RecC cn []) =
   match
     (conP cn [])
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE` (conE 'U1)) []
+    (normalB $ appE (conE m1DataName)
+             $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
 fromCon gk wrap m i (RecC cn fs) =
   match
     (conP cn (map (varP . field) [0..length fs - 1]))
-    (normalB $ appE (conE 'M1) $ wrap $ lrE m i $ conE 'M1 `appE`
+    (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
       foldr1 prod (zipWith (fromField gk) [0..] (map trd fs))) []
-  where prod x y = conE '(:*:) `appE` x `appE` y
+  where prod x y = conE productDataName `appE` x `appE` y
 fromCon gk wrap m i (InfixC t1 cn t2) =
   fromCon gk wrap m i (NormalC cn [t1,t2])
 fromCon _ _ _ _ (ForallC _ _ con) = forallCError con
 
 fromField :: GenericKind -> Int -> Type -> Q Exp
 --fromField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conE 'I `appE` varE (field nr)
-fromField gk nr t = conE 'M1 `appE` (fromFieldWrap gk nr =<< expandSyn t)
+fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< expandSyn t)
 
 fromFieldWrap :: GenericKind -> Int -> Type -> Q Exp
 fromFieldWrap _         _  ForallT{}  = rankNError
 fromFieldWrap gk        nr (SigT t _) = fromFieldWrap gk nr t
-fromFieldWrap Gen0      nr _          = conE 'K1 `appE` varE (field nr)
-fromFieldWrap (Gen1 nb) nr t          = wC t nb  `appE` varE (field nr)
+fromFieldWrap Gen0      nr _          = conE k1DataName `appE` varE (field nr)
+fromFieldWrap (Gen1 nb) nr t          = wC t nb         `appE` varE (field nr)
 
 wC :: Type -> NameBase -> Q Exp
-wC (VarT n) nb | NameBase n == nb = conE 'Par1
+wC (VarT n) nb | NameBase n == nb = conE par1DataName
 wC t nb
-  | ground t nb = conE 'K1
+  | ground t nb = conE k1DataName
   | otherwise = do
       let tyHead:tyArgs       = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
@@ -649,41 +639,42 @@ wC t nb
           inspectTy (SigT ty _) = inspectTy ty
           inspectTy (VarT a)
             | NameBase a == nb
-            = conE 'Rec1
-          inspectTy beta = infixApp (conE 'Comp1)
-                                    (varE '(.))
-                                    (varE 'fmap `appE` wC beta nb)
+            = conE rec1DataName
+          inspectTy beta = infixApp (conE comp1DataName)
+                                    (varE composeValName)
+                                    (varE fmapValName `appE` wC beta nb)
 
       itf <- isTyFamily tyHead
       if any (not . (`ground` nb)) lhsArgs
            || any (not . (`ground` nb)) tyArgs && itf
          then outOfPlaceTyVarError
          else case rhsArgs of
-              []   -> conE 'K1
+              []   -> conE k1DataName
               ty:_ -> inspectTy ty
 
 toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int -> Con -> Q Match
 toCon _ wrap m i (NormalC cn []) =
     match
-      (wrap $ conP 'M1 [lrP m i $ conP 'M1 [conP 'M1 [conP 'U1 []]]])
+      (wrap $ conP m1DataName [lrP m i $ conP m1DataName
+        [conP m1DataName [conP u1DataName []]]])
       (normalB $ conE cn) []
 toCon gk wrap m i (NormalC cn fs) =
     -- runIO (putStrLn ("constructor " ++ show ix)) >>
     match
-      (wrap $ conP 'M1 [lrP m i $ conP 'M1
+      (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (const . toField gk) [0..] fs)]])
       (normalB $ foldl appE (conE cn) (zipWith (toConUnwC gk) [0..] (map snd fs))) []
-  where prod x y = conP '(:*:) [x,y]
+  where prod x y = conP productDataName [x,y]
 toCon _ wrap m i (RecC cn []) =
     match
-      (wrap $ conP 'M1 [lrP m i $ conP 'M1 [conP 'U1 []]])
+      (wrap $ conP m1DataName [lrP m i $ conP m1DataName [conP u1DataName []]])
       (normalB $ conE cn) []
 toCon gk wrap m i (RecC cn fs) =
     match
-      (wrap $ conP 'M1 [lrP m i $ conP 'M1
+      (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (const . toField gk) [0..] fs)]])
       (normalB $ foldl appE (conE cn) (zipWith (toConUnwC gk) [0..] (map trd fs))) []
-  where prod x y = conP '(:*:) [x,y]
+  where prod x y = conP productDataName [x,y]
 toCon gk wrap m i (InfixC t1 cn t2) =
   toCon gk wrap m i (NormalC cn [t1,t2])
 toCon _ _ _ _ (ForallC _ _ con) = forallCError con
@@ -696,10 +687,10 @@ toConUnwC (Gen1 nb) nr t = do
 
 toField :: GenericKind -> Int -> Q Pat
 --toField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conP 'I [varP (field nr)]
-toField gk nr = conP 'M1 [toFieldWrap gk nr]
+toField gk nr = conP m1DataName [toFieldWrap gk nr]
 
 toFieldWrap :: GenericKind -> Int -> Q Pat
-toFieldWrap Gen0     nr = conP 'K1 [varP (field nr)]
+toFieldWrap Gen0     nr = conP k1DataName [varP (field nr)]
 toFieldWrap (Gen1 _) nr = varP (field nr)
 
 field :: Int -> Name
@@ -707,9 +698,9 @@ field n = mkName $ "f" ++ show n
 
 unwC :: Type -> NameBase -> Q Exp
 unwC (SigT t _) nb = unwC t nb
-unwC (VarT n) nb | NameBase n == nb = varE 'unPar1
+unwC (VarT n) nb | NameBase n == nb = varE unPar1ValName
 unwC t nb
-  | ground t nb = varE 'unK1
+  | ground t nb = varE unK1ValName
   | otherwise = do
       let tyHead:tyArgs      = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
@@ -720,52 +711,28 @@ unwC t nb
           inspectTy (SigT ty _) = inspectTy ty
           inspectTy (VarT a)
             | NameBase a == nb
-            = varE 'unRec1
-          inspectTy beta = infixApp (varE 'fmap `appE` unwC beta nb)
-                                    (varE '(.))
-                                    (varE 'unComp1)
+            = varE unRec1ValName
+          inspectTy beta = infixApp (varE fmapValName `appE` unwC beta nb)
+                                    (varE composeValName)
+                                    (varE unComp1ValName)
 
       itf <- isTyFamily tyHead
       if any (not . (`ground` nb)) lhsArgs
            || any (not . (`ground` nb)) tyArgs && itf
          then outOfPlaceTyVarError
          else case rhsArgs of
-              []   -> varE 'unK1
+              []   -> varE unK1ValName
               ty:_ -> inspectTy ty
 
 lrP :: Int -> Int -> (Q Pat -> Q Pat)
 lrP 1 0 p = p
-lrP _ 0 p = conP 'L1 [p]
-lrP m i p = conP 'R1 [lrP (m-1) (i-1) p]
+lrP _ 0 p = conP l1DataName [p]
+lrP m i p = conP r1DataName [lrP (m-1) (i-1) p]
 
 lrE :: Int -> Int -> (Q Exp -> Q Exp)
 lrE 1 0 e = e
-lrE _ 0 e = conE 'L1 `appE` e
-lrE m i e = conE 'R1 `appE` lrE (m-1) (i-1) e
-
-trd :: (a, b, c) -> c
-trd (_,_,c) = c
-
--- | Variant of foldr1 which returns a special element for empty lists
-foldr1' :: (a -> a -> a) -> a -> [a] -> a
-foldr1' _ x [] = x
-foldr1' _ _ [x] = x
-foldr1' f x (h:t) = f h (foldr1' f x t)
-
--- | Extracts the name of a constructor.
-constructorName :: Con -> Name
-constructorName (NormalC name      _  ) = name
-constructorName (RecC    name      _  ) = name
-constructorName (InfixC  _    name _  ) = name
-constructorName (ForallC _    _    con) = constructorName con
-
-#if MIN_VERSION_template_haskell(2,7,0)
--- | Extracts the constructors of a data or newtype declaration.
-dataDecCons :: Dec -> [Con]
-dataDecCons (DataInstD    _ _ _ cons _) = cons
-dataDecCons (NewtypeInstD _ _ _ con  _) = [con]
-dataDecCons _ = error "Must be a data or newtype declaration."
-#endif
+lrE _ 0 e = conE l1DataName `appE` e
+lrE m i e = conE r1DataName `appE` lrE (m-1) (i-1) e
 
 -- | Boilerplate for top level splices.
 --
@@ -1021,6 +988,14 @@ buildTypeInstance arity parentName tvbs _cons (DataFamily _ instTysAndKinds)
         instTypes
 #endif
 
+-- | True if the type does not mention the NameBase
+ground :: Type -> NameBase -> Bool
+ground (AppT t1 t2) nb = ground t1 nb && ground t2 nb
+ground (SigT t _)   nb = ground t nb
+ground (VarT n)     nb = NameBase n /= nb
+ground ForallT{}    _  = rankNError
+ground _            _  = True
+
 -- | One of the last type variables cannot be eta-reduced (see the canEtaReduce
 -- function for the criteria it would have to meet).
 etaReductionError :: Type -> a
@@ -1061,168 +1036,6 @@ checkDataContext _        [] x = x
 checkDataContext dataName _  _ = error $
   nameBase dataName ++ " must not have a datatype context"
 
--- | Is the given type a type family constructor (and not a data family constructor)?
-isTyFamily :: Type -> Q Bool
-isTyFamily (ConT n) = do
-    info <- reify n
-    return $ case info of
-#if MIN_VERSION_template_haskell(2,11,0)
-         FamilyI OpenTypeFamilyD{} _       -> True
-#elif MIN_VERSION_template_haskell(2,7,0)
-         FamilyI (FamilyD TypeFam _ _ _) _ -> True
-#else
-         TyConI  (FamilyD TypeFam _ _ _)   -> True
-#endif
-#if MIN_VERSION_template_haskell(2,9,0)
-         FamilyI ClosedTypeFamilyD{} _     -> True
-#endif
-         _ -> False
-isTyFamily _ = return False
-
--- | Construct a type via curried application.
-applyTyToTys :: Type -> [Type] -> Type
-applyTyToTys = foldl' AppT
-
--- | Apply a type constructor name to type variable binders.
-applyTyToTvbs :: Name -> [TyVarBndr] -> Type
-applyTyToTvbs = foldl' (\a -> AppT a . VarT . tyVarBndrToName) . ConT
-
--- | Split an applied type into its individual components. For example, this:
---
--- @
--- Either Int Char
--- @
---
--- would split to this:
---
--- @
--- [Either, Int, Char]
--- @
-unapplyTy :: Type -> [Type]
-unapplyTy = reverse . go
-  where
-    go :: Type -> [Type]
-    go (AppT t1 t2) = t2:go t1
-    go (SigT t _)   = go t
-    go t            = [t]
-
-#if MIN_VERSION_template_haskell(2,8,0)
--- | Split a type signature by the arrows on its spine. For example, this:
---
--- @
--- (Int -> String) -> Char -> ()
--- @
---
--- would split to this:
---
--- @
--- [Int -> String, Char, ()]
--- @
-uncurryTy :: Type -> [Type]
-uncurryTy (AppT (AppT ArrowT t1) t2) = t1:uncurryTy t2
-uncurryTy (SigT t _)                 = uncurryTy t
-uncurryTy t                          = [t]
-#endif
-
--- | Like uncurryType, except on a kind level.
-uncurryKind :: Kind -> [Kind]
-#if MIN_VERSION_template_haskell(2,8,0)
-uncurryKind = uncurryTy
-#else
-uncurryKind (ArrowK k1 k2) = k1:uncurryKind k2
-uncurryKind k              = [k]
-#endif
-
-canRealizeKindStar :: Kind -> Bool
-canRealizeKindStar k = case uncurryKind k of
-    [k'] -> case k' of
-#if MIN_VERSION_template_haskell(2,8,0)
-                 StarT    -> True
-                 VarT{}   -> True -- Kind k can be instantiated with *
-#else
-                 StarK    -> True
-#endif
-                 _ -> False
-    _ -> False
-
-wellKinded :: [Kind] -> Bool
-wellKinded = all canRealizeKindStar
-
--- | Replace the Name of a TyVarBndr with one from a Type (if the Type has a Name).
-replaceTyVarName :: TyVarBndr -> Type -> TyVarBndr
-replaceTyVarName tvb            (SigT t _) = replaceTyVarName tvb t
-replaceTyVarName PlainTV{}      (VarT n)   = PlainTV  n
-replaceTyVarName (KindedTV _ k) (VarT n)   = KindedTV n k
-replaceTyVarName tvb            _          = tvb
-
--- | Checks to see if the last types in a data family instance can be safely eta-
--- reduced (i.e., dropped), given the other types. This checks for three conditions:
---
--- (1) All of the dropped types are type variables
--- (2) All of the dropped types are distinct
--- (3) None of the remaining types mention any of the dropped types
-canEtaReduce :: [Type] -> [Type] -> Bool
-canEtaReduce remaining dropped =
-       all isTyVar dropped
-    && allDistinct nbs -- Make sure not to pass something of type [Type], since Type
-                       -- didn't have an Ord instance until template-haskell-2.10.0.0
-    && not (any (`mentionsNameBase` nbs) remaining)
-  where
-    nbs :: [NameBase]
-    nbs = map varTToNameBase dropped
-
--- | Extract the Name from a type variable.
-varTToName :: Type -> Name
-varTToName (VarT n)   = n
-varTToName (SigT t _) = varTToName t
-varTToName _          = error "Not a type variable!"
-
--- | Extract the NameBase from a type variable.
-varTToNameBase :: Type -> NameBase
-varTToNameBase = NameBase . varTToName
-
--- | Is the given type a variable?
-isTyVar :: Type -> Bool
-isTyVar VarT{}     = True
-isTyVar (SigT t _) = isTyVar t
-isTyVar _          = False
-
--- | Peel off a kind signature from a Type (if it has one).
-unSigT :: Type -> Type
-unSigT (SigT t _) = t
-unSigT t          = t
-
--- | Peel off a kind signature from a TyVarBndr (if it has one).
-unKindedTV :: TyVarBndr -> TyVarBndr
-unKindedTV (KindedTV n _) = PlainTV n
-unKindedTV tvb            = tvb
-
--- | Does the given type mention any of the NameBases in the list?
-mentionsNameBase :: Type -> [NameBase] -> Bool
-mentionsNameBase = go Set.empty
-  where
-    go :: Set NameBase -> Type -> [NameBase] -> Bool
-    go foralls (ForallT tvbs _ t) nbs =
-        go (foralls `Set.union` Set.fromList (map tyVarBndrToNameBase tvbs)) t nbs
-    go foralls (AppT t1 t2) nbs = go foralls t1 nbs || go foralls t2 nbs
-    go foralls (SigT t _)   nbs = go foralls t nbs
-    go foralls (VarT n)     nbs = varNb `elem` nbs && not (varNb `Set.member` foralls)
-      where
-        varNb = NameBase n
-    go _       _            _   = False
-
--- | Are all of the items in a list (which have an ordering) distinct?
---
--- This uses Set (as opposed to nub) for better asymptotic time complexity.
-allDistinct :: Ord a => [a] -> Bool
-allDistinct = allDistinct' Set.empty
-  where
-    allDistinct' :: Ord a => Set a -> [a] -> Bool
-    allDistinct' uniqs (x:xs)
-        | x `Set.member` uniqs = False
-        | otherwise            = allDistinct' (Set.insert x uniqs) xs
-    allDistinct' _ _           = True
-
 -- | Indicates whether Generic (Gen0) or Generic1 (Gen1) is being derived. Gen1
 -- bundles the Name of the last type parameter.
 data GenericKind = Gen0 | Gen1 NameBase
@@ -1238,80 +1051,3 @@ genericKindFromArity _ _   = error "Invalid arity"
 -- family instance's first constructor (for Name-generation purposes) and the types
 -- used to instantiate the instance.
 data DataVariety = DataPlain | DataFamily Name [Type]
-
--------------------------------------------------------------------------------
--- NameBase
--------------------------------------------------------------------------------
-
--- | A wrapper around Name which only uses the nameBase (not the entire Name)
--- to compare for equality. For example, if you had two Names a_123 and a_456,
--- they are not equal as Names, but they are equal as NameBases.
---
--- This is useful when inspecting type variables, since a type variable in an
--- instance context may have a distinct Name from a type variable within an
--- actual constructor declaration, but we'd want to treat them as the same
--- if they have the same nameBase (since that's what the programmer uses to
--- begin with).
-newtype NameBase = NameBase { getName :: Name }
-
-getNameBase :: NameBase -> String
-getNameBase = nameBase . getName
-
-instance Eq NameBase where
-    (==) = (==) `on` getNameBase
-
-instance Ord NameBase where
-    compare = compare `on` getNameBase
-
--- | True if the type does not mention the NameBase
-ground :: Type -> NameBase -> Bool
-ground (AppT t1 t2) nb = ground t1 nb && ground t2 nb
-ground (SigT t _)   nb = ground t nb
-ground (VarT n)     nb = NameBase n /= nb
-ground ForallT{}    _  = rankNError
-ground _            _  = True
-
--------------------------------------------------------------------------------
--- Expanding type synonyms
--------------------------------------------------------------------------------
-
--- | Expands all type synonyms in a type. Written by Dan Rosén in the
--- @genifunctors@ package (licensed under BSD3).
-expandSyn :: Type -> Q Type
-expandSyn (ForallT tvs ctx t) = fmap (ForallT tvs ctx) $ expandSyn t
-expandSyn t@AppT{}            = expandSynApp t []
-expandSyn t@ConT{}            = expandSynApp t []
-expandSyn (SigT t _)          = expandSyn t   -- Ignore kind synonyms
-expandSyn t                   = return t
-
-expandSynApp :: Type -> [Type] -> Q Type
-expandSynApp (AppT t1 t2) ts = do
-    t2' <- expandSyn t2
-    expandSynApp t1 (t2':ts)
-expandSynApp (ConT n) ts | nameBase n == "[]" = return $ foldl' AppT ListT ts
-expandSynApp t@(ConT n) ts = do
-    info <- reify n
-    case info of
-        TyConI (TySynD _ tvs rhs) ->
-            let (ts', ts'') = splitAt (length tvs) ts
-                subs = mkSubst tvs ts'
-                rhs' = subst subs rhs
-             in expandSynApp rhs' ts''
-        _ -> return $ foldl' AppT t ts
-expandSynApp t ts = do
-    t' <- expandSyn t
-    return $ foldl' AppT t' ts
-
-type Subst = Map Name Type
-
-mkSubst :: [TyVarBndr] -> [Type] -> Subst
-mkSubst vs ts =
-   let vs' = map tyVarBndrToName vs
-   in Map.fromList $ zip vs' ts
-
-subst :: Subst -> Type -> Type
-subst subs (ForallT v c t) = ForallT v c $ subst subs t
-subst subs t@(VarT n)      = fromMaybe t $ Map.lookup n subs
-subst subs (AppT t1 t2)    = AppT (subst subs t1) (subst subs t2)
-subst subs (SigT t k)      = SigT (subst subs t) k
-subst _ t                  = t
