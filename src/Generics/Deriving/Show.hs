@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE MagicHash #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
@@ -17,9 +18,10 @@ module Generics.Deriving.Show (
 
   ) where
 
-
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
+
+import GHC.Exts
 
 --------------------------------------------------------------------------------
 -- Generic show
@@ -46,10 +48,10 @@ instance (GShow c) => GShow' (K1 i c) where
 -- No instances for P or Rec because gshow is only applicable to types of kind *
 
 instance (GShow' a, Constructor c) => GShow' (M1 C c a) where
-  gshowsPrec' _ n c@(M1 x) = 
+  gshowsPrec' _ n c@(M1 x) =
     case fixity of
-      Prefix    -> showParen (n > appPrec && not (isNullary x)) 
-                    ( showString (conName c) 
+      Prefix    -> showParen (n > appPrec && not (isNullary x))
+                    ( showString (conName c)
                     . if (isNullary x) then id else showChar ' '
                     . showBraces t (gshowsPrec' t appPrec x))
       Infix _ m -> showParen (n > m) (showBraces t (gshowsPrec' t m x))
@@ -93,12 +95,12 @@ instance (GShow' a, GShow' b) => GShow' (a :*: b) where
     gshowsPrec' t n     a . showChar ','    . gshowsPrec' t n     b
   gshowsPrec' t@Pref    n (a :*: b) =
     gshowsPrec' t (n+1) a . showChar ' '    . gshowsPrec' t (n+1) b
-  
+
   -- If we have a product then it is not a nullary constructor
   isNullary _ = False
 
 
-class GShow a where 
+class GShow a where
   gshowsPrec :: Int -> a -> ShowS
   gshows :: a -> ShowS
   gshows = gshowsPrec 0
@@ -125,10 +127,12 @@ gshowsPrecdefault n = gshowsPrec' Pref n . from
 
 -- Base types instances
 instance GShow Char   where gshowsPrec = showsPrec
+instance GShow Double where gshowsPrec = showsPrec
 instance GShow Int    where gshowsPrec = showsPrec
 instance GShow Float  where gshowsPrec = showsPrec
 instance GShow String where gshowsPrec = showsPrec
 instance GShow Bool   where gshowsPrec = showsPrec
+instance GShow Word   where gshowsPrec = showsPrec
 
 intersperse :: a -> [a] -> [a]
 intersperse _ []    = []
@@ -140,3 +144,15 @@ instance (GShow a) => GShow [a] where
                    . foldr (.) id
                       (intersperse (showChar ',') (map (gshowsPrec 0) l))
                    . showChar ']'
+
+-- Unboxed types
+instance GShow UChar where
+  gshowsPrec p (UChar c)   = gshowsPrec p (C# c)
+instance GShow UDouble where
+  gshowsPrec p (UDouble d) = gshowsPrec p (D# d)
+instance GShow UFloat where
+  gshowsPrec p (UFloat f)  = gshowsPrec p (F# f)
+instance GShow UInt where
+  gshowsPrec p (UInt i)    = gshowsPrec p (I# i)
+instance GShow UWord where
+  gshowsPrec p (UWord w)   = gshowsPrec p (W# w)
