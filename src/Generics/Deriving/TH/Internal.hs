@@ -19,7 +19,6 @@ import           Data.Function (on)
 import           Data.List
 import qualified Data.Map as Map
 import           Data.Map as Map (Map)
-import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
@@ -71,7 +70,7 @@ mkSubst vs ts =
 
 subst :: Subst -> Type -> Type
 subst subs (ForallT v c t) = ForallT v c $ subst subs t
-subst subs t@(VarT n)      = fromMaybe t $ Map.lookup n subs
+subst subs t@(VarT n)      = Map.findWithDefault t n subs
 subst subs (AppT t1 t2)    = AppT (subst subs t1) (subst subs t2)
 subst subs (SigT t k)      = SigT (subst subs t) k
 subst _ t                  = t
