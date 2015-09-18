@@ -423,8 +423,6 @@ mkDataInstance dv n _isNewtype =
     name    = maybe (error "Cannot fetch module name!")  id (nameModule n)
 #if __GLASGOW_HASKELL__ >= 711
     pkgName = maybe (error "Cannot fetch package name!") id (namePackage n)
-    namePackage (Name _ (NameG _ pkg _)) = Just $ pkgString pkg
-    namePackage _                        = Nothing
 #endif
 
 liftFixity :: Fixity -> Q Exp
