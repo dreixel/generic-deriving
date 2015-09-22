@@ -603,6 +603,7 @@ import GHC.Generics
 #endif
 
 #if __GLASGOW_HASKELL__ < 711
+import GHC.Exts ( Char(C#), Double(D#), Float(F#), Int(I#), Word(W#) )
 import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
 #endif
 
@@ -749,21 +750,36 @@ data UAddr = UAddr { uAddr# :: Addr# }
 
 -- | Used for marking occurrences of Char#
 data UChar = UChar { uChar# :: Char# }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show UChar where
+  showsPrec _ (UChar c) = showsPrec 0 (C# c) . showChar '#'
 
 -- | Used for marking occurrences of Double#
 data UDouble = UDouble { uDouble# :: Double# }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show UDouble where
+  showsPrec _ (UDouble d) = showsPrec 0 (D# d) . showString "##"
 
 -- | Used for marking occurrences of Float#
 data UFloat = UFloat { uFloat# :: Float# }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show UFloat where
+  showsPrec _ (UFloat f) = showsPrec 0 (F# f) . showChar '#'
 
 -- | Used for marking occurrences of Int#
 data UInt = UInt { uInt# :: Int# }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show UInt where
+  showsPrec _ (UInt i) = showsPrec 0 (I# i) . showChar '#'
 
 -- | Used for marking occurrences of Word#
 data UWord = UWord { uWord# :: Word# }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show UWord where
+  showsPrec _ (UWord w) = showsPrec 0 (W# w) . showString "##"
 #endif
