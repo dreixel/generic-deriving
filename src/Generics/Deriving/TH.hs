@@ -522,13 +522,13 @@ repField' gk dv dt ns (f, _, t) = conT s1TypeName
 repFieldArg :: GenericKind -> Type -> Q Type
 repFieldArg _ ForallT{} = rankNError
 repFieldArg gk (SigT t _) = repFieldArg gk t
-repFieldArg Gen0 t = conT rec0TypeName `appT` boxT t (return t)
+repFieldArg Gen0 t = boxT t
 repFieldArg (Gen1 nb) (VarT t) | NameBase t == nb = conT par1TypeName
 repFieldArg gk@(Gen1 nb) t = do
   let tyHead:tyArgs      = unapplyTy t
       numLastArgs        = min 1 $ length tyArgs
       (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
-      rec0Type           = conT rec0TypeName `appT` boxT t (return t)
+      rec0Type           = boxT t
       phiType            = return $ applyTyToTys tyHead lhsArgs
 
       inspectTy :: Type -> Q Type
@@ -550,10 +550,10 @@ repFieldArg gk@(Gen1 nb) t = do
           []   -> rec0Type
           ty:_ -> inspectTy ty
 
-boxT :: Type -> Q Type -> Q Type
-boxT ty qTy = case unboxedNames ty of
+boxT :: Type -> Q Type
+boxT ty = case unboxedRepNames ty of
     Just (boxTyName, _, _) -> conT boxTyName
-    Nothing                -> qTy
+    Nothing                -> conT rec0TypeName `appT` return ty
 
 mkCaseExp :: GenericKind -> Name -> [Con]
           -> (GenericKind -> Int -> Int -> Name -> [Con] -> [Q Match])
@@ -625,13 +625,13 @@ fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< expandSyn t)
 fromFieldWrap :: GenericKind -> Int -> Type -> Q Exp
 fromFieldWrap _         _  ForallT{}  = rankNError
 fromFieldWrap gk        nr (SigT t _) = fromFieldWrap gk nr t
-fromFieldWrap Gen0      nr t          = conE k1DataName `appE` boxE t (varE $ field nr)
-fromFieldWrap (Gen1 nb) nr t          = wC t nb         `appE` boxE t (varE $ field nr)
+fromFieldWrap Gen0      nr t          = conE (boxRepName t) `appE` varE (field nr)
+fromFieldWrap (Gen1 nb) nr t          = wC t nb             `appE` varE (field nr)
 
 wC :: Type -> NameBase -> Q Exp
 wC (VarT n) nb | NameBase n == nb = conE par1DataName
 wC t nb
-  | ground t nb = conE k1DataName
+  | ground t nb = conE $ boxRepName t
   | otherwise = do
       let tyHead:tyArgs      = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
@@ -652,13 +652,11 @@ wC t nb
            || any (not . (`ground` nb)) tyArgs && itf
          then outOfPlaceTyVarError
          else case rhsArgs of
-              []   -> conE k1DataName
+              []   -> conE $ boxRepName t
               ty:_ -> inspectTy ty
 
-boxE :: Type -> Q Exp -> Q Exp
-boxE ty expr = case unboxedNames ty of
-    Just (_, boxName, _) -> conE boxName `appE` expr
-    Nothing              -> expr
+boxRepName :: Type -> Name
+boxRepName = maybe k1DataName (\(_, boxName, _) -> boxName) . unboxedRepNames
 
 toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int -> Con -> Q Match
 toCon _ wrap m i (NormalC cn []) =
@@ -670,7 +668,7 @@ toCon gk wrap m i (NormalC cn fs) =
     -- runIO (putStrLn ("constructor " ++ show ix)) >>
     match
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
-        [foldr1 prod (zipWith (const . toField gk) [0..] fs)]])
+        [foldr1 prod (zipWith (\nr -> toField gk nr . snd) [0..] fs)]])
       (normalB $ foldl appE (conE cn) (zipWith (\nr t -> expandSyn t >>= toConUnwC gk nr)
                                       [0..] (map snd fs))) []
   where prod x y = conP productDataName [x,y]
@@ -681,7 +679,7 @@ toCon _ wrap m i (RecC cn []) =
 toCon gk wrap m i (RecC cn fs) =
     match
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
-        [foldr1 prod (zipWith (const . toField gk) [0..] fs)]])
+        [foldr1 prod (zipWith (\nr (_, _, t) -> toField gk nr t) [0..] fs)]])
       (normalB $ foldl appE (conE cn) (zipWith (\nr t -> expandSyn t >>= toConUnwC gk nr)
                                                [0..] (map trd fs))) []
   where prod x y = conP productDataName [x,y]
@@ -690,16 +688,16 @@ toCon gk wrap m i (InfixC t1 cn t2) =
 toCon _ _ _ _ (ForallC _ _ con) = forallCError con
 
 toConUnwC :: GenericKind -> Int -> Type -> Q Exp
-toConUnwC Gen0      nr t = unboxE t . varE $ field nr
-toConUnwC (Gen1 nb) nr t = unboxE t (unwC t nb `appE` varE (field nr))
+toConUnwC Gen0      nr _ = varE $ field nr
+toConUnwC (Gen1 nb) nr t = unwC t nb `appE` varE (field nr)
 
-toField :: GenericKind -> Int -> Q Pat
+toField :: GenericKind -> Int -> Type -> Q Pat
 --toField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conP 'I [varP (field nr)]
-toField gk nr = conP m1DataName [toFieldWrap gk nr]
+toField gk nr t = conP m1DataName [toFieldWrap gk nr t]
 
-toFieldWrap :: GenericKind -> Int -> Q Pat
-toFieldWrap Gen0     nr = conP k1DataName [varP (field nr)]
-toFieldWrap (Gen1 _) nr = varP (field nr)
+toFieldWrap :: GenericKind -> Int -> Type -> Q Pat
+toFieldWrap Gen0     nr t = conP (boxRepName t) [varP (field nr)]
+toFieldWrap (Gen1 _) nr _ = varP (field nr)
 
 field :: Int -> Name
 field n = mkName $ "f" ++ show n
@@ -708,7 +706,7 @@ unwC :: Type -> NameBase -> Q Exp
 unwC (SigT t _) nb = unwC t nb
 unwC (VarT n) nb | NameBase n == nb = varE unPar1ValName
 unwC t nb
-  | ground t nb = varE unK1ValName
+  | ground t nb = varE $ unboxRepName t
   | otherwise = do
       let tyHead:tyArgs      = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
@@ -729,13 +727,11 @@ unwC t nb
            || any (not . (`ground` nb)) tyArgs && itf
          then outOfPlaceTyVarError
          else case rhsArgs of
-              []   -> varE unK1ValName
+              []   -> varE $ unboxRepName t
               ty:_ -> inspectTy ty
 
-unboxE :: Type -> Q Exp -> Q Exp
-unboxE ty expr = case unboxedNames ty of
-    Just (_, _, unboxName) -> varE unboxName `appE` expr
-    Nothing                -> expr
+unboxRepName :: Type -> Name
+unboxRepName = maybe unK1ValName (\(_, _, unboxName) -> unboxName) . unboxedRepNames
 
 lrP :: Int -> Int -> (Q Pat -> Q Pat)
 lrP 1 0 p = p
@@ -747,8 +743,8 @@ lrE 1 0 e = e
 lrE _ 0 e = conE l1DataName `appE` e
 lrE m i e = conE r1DataName `appE` lrE (m-1) (i-1) e
 
-unboxedNames :: Type -> Maybe (Name, Name, Name)
-unboxedNames ty
+unboxedRepNames :: Type -> Maybe (Name, Name, Name)
+unboxedRepNames ty
   | ty == ConT addrHashTypeName   = Just (uAddrTypeName,   uAddrDataName,   uAddrHashValName)
   | ty == ConT charHashTypeName   = Just (uCharTypeName,   uCharDataName,   uCharHashValName)
   | ty == ConT doubleHashTypeName = Just (uDoubleTypeName, uDoubleDataName, uDoubleHashValName)

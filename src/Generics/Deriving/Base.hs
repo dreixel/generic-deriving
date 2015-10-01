@@ -534,12 +534,12 @@ module Generics.Deriving.Base (
 -- of common unboxed types:
 --
 -- @
--- data 'UAddr'   = 'UAddr'   { 'uAddr#'   :: 'Addr#'   }
--- data 'UChar'   = 'UChar'   { 'uChar#'   :: 'Char#'   }
--- data 'UDouble' = 'UDouble' { 'uDouble#' :: 'Double#' }
--- data 'UFloat'  = 'UFloat'  { 'uFloat#'  :: 'Float#'  }
--- data 'UInt'    = 'UInt'    { 'uInt#'    :: 'Int#'    }
--- data 'UWord'   = 'UWord'   { 'uWord#'   :: 'Word#'   }
+-- data 'UAddr' p   = 'UAddr'   { 'uAddr#'   :: 'Addr#'   }
+-- data 'UChar' p   = 'UChar'   { 'uChar#'   :: 'Char#'   }
+-- data 'UDouble' p = 'UDouble' { 'uDouble#' :: 'Double#' }
+-- data 'UFloat' p  = 'UFloat'  { 'uFloat#'  :: 'Float#'  }
+-- data 'UInt' p    = 'UInt'    { 'uInt#'    :: 'Int#'    }
+-- data 'UWord' p   = 'UWord'   { 'uWord#'   :: 'Word#'   }
 -- @
 --
 -- The declaration
@@ -556,7 +556,7 @@ module Generics.Deriving.Base (
 --   type 'Rep' IntHash =
 --     'D1' D1IntHash
 --       ('C1' C1_0IntHash
---         ('S1' 'NoSelector' ('Rec0' 'UInt')))
+--         ('S1' 'NoSelector' 'UInt'))
 -- @
 --
 -- These data types allow users to give specific implementations of a generic
@@ -603,7 +603,6 @@ import GHC.Generics
 #endif
 
 #if __GLASGOW_HASKELL__ < 711
-import GHC.Exts ( Char(C#), Double(D#), Float(F#), Int(I#), Word(W#) )
 import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
 #endif
 
@@ -745,41 +744,26 @@ class Generic1 f where
 
 #if __GLASGOW_HASKELL__ < 711
 -- | Used for marking occurrences of Addr#
-data UAddr = UAddr { uAddr# :: Addr# }
+data UAddr p = UAddr { uAddr# :: Addr# }
   deriving (Eq, Ord)
 
 -- | Used for marking occurrences of Char#
-data UChar = UChar { uChar# :: Char# }
-  deriving (Eq, Ord)
-
-instance Show UChar where
-  showsPrec _ (UChar c) = showsPrec 0 (C# c) . showChar '#'
+data UChar p = UChar { uChar# :: Char# }
+  deriving (Eq, Ord, Show)
 
 -- | Used for marking occurrences of Double#
-data UDouble = UDouble { uDouble# :: Double# }
-  deriving (Eq, Ord)
-
-instance Show UDouble where
-  showsPrec _ (UDouble d) = showsPrec 0 (D# d) . showString "##"
+data UDouble p = UDouble { uDouble# :: Double# }
+  deriving (Eq, Ord, Show)
 
 -- | Used for marking occurrences of Float#
-data UFloat = UFloat { uFloat# :: Float# }
-  deriving (Eq, Ord)
-
-instance Show UFloat where
-  showsPrec _ (UFloat f) = showsPrec 0 (F# f) . showChar '#'
+data UFloat p = UFloat { uFloat# :: Float# }
+  deriving (Eq, Ord, Show)
 
 -- | Used for marking occurrences of Int#
-data UInt = UInt { uInt# :: Int# }
-  deriving (Eq, Ord)
-
-instance Show UInt where
-  showsPrec _ (UInt i) = showsPrec 0 (I# i) . showChar '#'
+data UInt p = UInt { uInt# :: Int# }
+  deriving (Eq, Ord, Show)
 
 -- | Used for marking occurrences of Word#
-data UWord = UWord { uWord# :: Word# }
-  deriving (Eq, Ord)
-
-instance Show UWord where
-  showsPrec _ (UWord w) = showsPrec 0 (W# w) . showString "##"
+data UWord p = UWord { uWord# :: Word# }
+  deriving (Eq, Ord, Show)
 #endif

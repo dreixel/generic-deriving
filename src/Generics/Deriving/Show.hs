@@ -99,6 +99,18 @@ instance (GShow' a, GShow' b) => GShow' (a :*: b) where
   -- If we have a product then it is not a nullary constructor
   isNullary _ = False
 
+-- Unboxed types
+instance GShow' UChar where
+  gshowsPrec' _ _ (UChar c)   = showsPrec 0 (C# c) . showChar '#'
+instance GShow' UDouble where
+  gshowsPrec' _ _ (UDouble d) = showsPrec 0 (D# d) . showString "##"
+instance GShow' UFloat where
+  gshowsPrec' _ _ (UFloat f)  = showsPrec 0 (F# f) . showChar '#'
+instance GShow' UInt where
+  gshowsPrec' _ _ (UInt i)    = showsPrec 0 (I# i) . showChar '#'
+instance GShow' UWord where
+  gshowsPrec' _ _ (UWord w)   = showsPrec 0 (W# w) . showString "##"
+
 
 class GShow a where
   gshowsPrec :: Int -> a -> ShowS
@@ -127,12 +139,10 @@ gshowsPrecdefault n = gshowsPrec' Pref n . from
 
 -- Base types instances
 instance GShow Char   where gshowsPrec = showsPrec
-instance GShow Double where gshowsPrec = showsPrec
 instance GShow Int    where gshowsPrec = showsPrec
 instance GShow Float  where gshowsPrec = showsPrec
 instance GShow String where gshowsPrec = showsPrec
 instance GShow Bool   where gshowsPrec = showsPrec
-instance GShow Word   where gshowsPrec = showsPrec
 
 intersperse :: a -> [a] -> [a]
 intersperse _ []    = []
@@ -144,15 +154,3 @@ instance (GShow a) => GShow [a] where
                    . foldr (.) id
                       (intersperse (showChar ',') (map (gshowsPrec 0) l))
                    . showChar ']'
-
--- Unboxed types
-instance GShow UChar where
-  gshowsPrec p (UChar c)   = gshowsPrec p (C# c)
-instance GShow UDouble where
-  gshowsPrec p (UDouble d) = gshowsPrec p (D# d)
-instance GShow UFloat where
-  gshowsPrec p (UFloat f)  = gshowsPrec p (F# f)
-instance GShow UInt where
-  gshowsPrec p (UInt i)    = gshowsPrec p (I# i)
-instance GShow UWord where
-  gshowsPrec p (UWord w)   = gshowsPrec p (W# w)

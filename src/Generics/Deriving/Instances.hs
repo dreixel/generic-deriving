@@ -1,5 +1,4 @@
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeOperators #-}
@@ -93,12 +92,12 @@ import Generics.Deriving.Base
 #endif
 
 #if __GLASGOW_HASKELL__ < 711
-type Rep0UAddr = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr (Rec0 UAddr)))
+type Rep0UAddr p = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr UAddr))
 
-instance Generic UAddr where
-    type Rep UAddr = Rep0UAddr
-    from (UAddr a) = M1 (M1 (M1 (K1 (UAddr a))))
-    to (M1 (M1 (M1 (K1 a)))) = UAddr (uAddr# a)
+instance Generic (UAddr p) where
+    type Rep (UAddr p) = Rep0UAddr p
+    from (UAddr a) = M1 (M1 (M1 (UAddr a)))
+    to (M1 (M1 (M1 (UAddr a)))) = UAddr a
 
 data D1UAddr
 data C1_0UAddr
@@ -117,12 +116,12 @@ instance Selector S1_0_0UAddr where
 
 -----
 
-type Rep0UChar = D1 D1UChar (C1 C1_0UChar (S1 S1_0_0UChar (Rec0 UChar)))
+type Rep0UChar p = D1 D1UChar (C1 C1_0UChar (S1 S1_0_0UChar UChar))
 
-instance Generic UChar where
-    type Rep UChar = Rep0UChar
-    from (UChar c) = M1 (M1 (M1 (K1 (UChar c))))
-    to (M1 (M1 (M1 (K1 c)))) = UChar (uChar# c)
+instance Generic (UChar p) where
+    type Rep (UChar p) = Rep0UChar p
+    from (UChar c) = M1 (M1 (M1 (UChar c)))
+    to (M1 (M1 (M1 (UChar c)))) = UChar c
 
 data D1UChar
 data C1_0UChar
@@ -141,12 +140,12 @@ instance Selector S1_0_0UChar where
 
 -----
 
-type Rep0UDouble = D1 D1UDouble (C1 C1_0UDouble (S1 S1_0_0UDouble (Rec0 UDouble)))
+type Rep0UDouble p = D1 D1UDouble (C1 C1_0UDouble (S1 S1_0_0UDouble UDouble))
 
-instance Generic UDouble where
-    type Rep UDouble = Rep0UDouble
-    from (UDouble d) = M1 (M1 (M1 (K1 (UDouble d))))
-    to (M1 (M1 (M1 (K1 d)))) = UDouble (uDouble# d)
+instance Generic (UDouble p) where
+    type Rep (UDouble p) = Rep0UDouble p
+    from (UDouble d) = M1 (M1 (M1 (UDouble d)))
+    to (M1 (M1 (M1 (UDouble d)))) = UDouble d
 
 data D1UDouble
 data C1_0UDouble
@@ -165,12 +164,12 @@ instance Selector S1_0_0UDouble where
 
 -----
 
-type Rep0UFloat = D1 D1UFloat (C1 C1_0UFloat (S1 S1_0_0UFloat (Rec0 UFloat)))
+type Rep0UFloat p = D1 D1UFloat (C1 C1_0UFloat (S1 S1_0_0UFloat UFloat))
 
-instance Generic UFloat where
-    type Rep UFloat = Rep0UFloat
-    from (UFloat f) = M1 (M1 (M1 (K1 (UFloat f))))
-    to (M1 (M1 (M1 (K1 f)))) = UFloat (uFloat# f)
+instance Generic (UFloat p) where
+    type Rep (UFloat p) = Rep0UFloat p
+    from (UFloat f) = M1 (M1 (M1 (UFloat f)))
+    to (M1 (M1 (M1 (UFloat f)))) = UFloat f
 
 data D1UFloat
 data C1_0UFloat
@@ -189,12 +188,12 @@ instance Selector S1_0_0UFloat where
 
 -----
 
-type Rep0UInt = D1 D1UInt (C1 C1_0UInt (S1 S1_0_0UInt (Rec0 UInt)))
+type Rep0UInt p = D1 D1UInt (C1 C1_0UInt (S1 S1_0_0UInt UInt))
 
-instance Generic UInt where
-    type Rep UInt = Rep0UInt
-    from (UInt i) = M1 (M1 (M1 (K1 (UInt i))))
-    to (M1 (M1 (M1 (K1 i)))) = UInt (uInt# i)
+instance Generic (UInt p) where
+    type Rep (UInt p) = Rep0UInt p
+    from (UInt i) = M1 (M1 (M1 (UInt i)))
+    to (M1 (M1 (M1 (UInt i)))) = UInt i
 
 data D1UInt
 data C1_0UInt
@@ -213,12 +212,12 @@ instance Selector S1_0_0UInt where
 
 -----
 
-type Rep0UWord = D1 D1UWord (C1 C1_0UWord (S1 S1_0_0UWord (Rec0 UWord)))
+type Rep0UWord p = D1 D1UWord (C1 C1_0UWord (S1 S1_0_0UWord UWord))
 
-instance Generic UWord where
-    type Rep UWord = Rep0UWord
-    from (UWord w) = M1 (M1 (M1 (K1 (UWord w))))
-    to (M1 (M1 (M1 (K1 w)))) = UWord (uWord# w)
+instance Generic (UWord p) where
+    type Rep (UWord p) = Rep0UWord p
+    from (UWord w) = M1 (M1 (M1 (UWord w)))
+    to (M1 (M1 (M1 (UWord w)))) = UWord w
 
 data D1UWord
 data C1_0UWord
