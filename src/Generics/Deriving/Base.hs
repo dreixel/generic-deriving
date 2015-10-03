@@ -5,6 +5,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
 
 module Generics.Deriving.Base (
@@ -515,31 +516,43 @@ module Generics.Deriving.Base (
 -- newtype (':.:') f g p = 'Comp1' { 'unComp1' :: f (g p) }
 -- @
 
--- *** Representation of unboxed types
+-- *** Representation of unlifted types
 --
 -- |
 --
 -- If one were to attempt to derive a Generic instance for a datatype with an
--- unboxed argument (for example, 'Int#'), one might expect the occurrence of
+-- unlifted argument (for example, 'Int#'), one might expect the occurrence of
 -- the 'Int#' argument to be marked with @'Rec0' 'Int#'@. This won't work,
 -- though, since 'Int#' is of kind @#@ and 'Rec0' expects a type of kind @*@.
--- We also cannot provide a 'Generic Int#' instance directly, since instances
--- cannot be given for unlifted types.
+-- In fact, polymorphism over unlifted types is disallowed completely.
 --
 -- One solution would be to represent an occurrence of 'Int#' with 'Rec0 Int'
 -- instead. With this approach, however, the programmer has no way of knowing
 -- whether the 'Int' is actually an 'Int#' in disguise.
 --
--- To work around this, six data types are provided for generic representation
--- of common unboxed types:
+-- Instead of reusing 'Rec0', a separate data family 'URec' is used to mark
+-- occurrences of common unlifted types:
 --
 -- @
--- data 'UAddr' p   = 'UAddr'   { 'uAddr#'   :: 'Addr#'   }
--- data 'UChar' p   = 'UChar'   { 'uChar#'   :: 'Char#'   }
--- data 'UDouble' p = 'UDouble' { 'uDouble#' :: 'Double#' }
--- data 'UFloat' p  = 'UFloat'  { 'uFloat#'  :: 'Float#'  }
--- data 'UInt' p    = 'UInt'    { 'uInt#'    :: 'Int#'    }
--- data 'UWord' p   = 'UWord'   { 'uWord#'   :: 'Word#'   }
+-- data family URec a p
+--
+-- data instance 'URec' ('Ptr' ()) p = 'UAddr'   { 'uAddr#'   :: 'Addr#'   }
+-- data instance 'URec' 'Char'     p = 'UChar'   { 'uChar#'   :: 'Char#'   }
+-- data instance 'URec' 'Double'   p = 'UDouble' { 'uDouble#' :: 'Double#' }
+-- data instance 'URec' 'Int'      p = 'UFloat'  { 'uFloat#'  :: 'Float#'  }
+-- data instance 'URec' 'Float'    p = 'UInt'    { 'uInt#'    :: 'Int#'    }
+-- data instance 'URec' 'Word'     p = 'UWord'   { 'uWord#'   :: 'Word#'   }
+-- @
+--
+-- Several type synonyms are provided for convenience:
+--
+-- @
+-- type 'UAddr'   = 'URec' ('Ptr' ())
+-- type 'UChar'   = 'URec' 'Char'
+-- type 'UDouble' = 'URec' 'Double'
+-- type 'UFloat'  = 'URec' 'Float'
+-- type 'UInt'    = 'URec' 'Int'
+-- type 'UWord'   = 'URec' 'Word'
 -- @
 --
 -- The declaration
@@ -559,8 +572,8 @@ module Generics.Deriving.Base (
 --         ('S1' 'NoSelector' 'UInt'))
 -- @
 --
--- These data types allow users to give specific implementations of a generic
--- function for unboxed types.
+-- Currently, only the six unlifted types listed above are generated, but this
+-- may be extended to encompass more unlifted types in the future.
 #if 0
 -- *** Limitations
 --
@@ -592,8 +605,7 @@ module Generics.Deriving.Base (
 #endif
 #if __GLASGOW_HASKELL__ < 711
   -- ** Unboxed representation types
-  UAddr(..), UChar(..), UDouble(..),
-  UFloat(..), UInt(..), UWord(..),
+    URec(..), UAddr, UChar, UDouble, UFloat, UInt, UWord
 #endif
   ) where
 
@@ -602,8 +614,13 @@ module Generics.Deriving.Base (
 import GHC.Generics
 #endif
 
+#if __GLASGOW_HASKELL__ < 709
+import Data.Word ( Word )
+#endif
+
 #if __GLASGOW_HASKELL__ < 711
 import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
+import GHC.Ptr ( Ptr )
 #endif
 
 #if __GLASGOW_HASKELL__ < 701
@@ -743,27 +760,43 @@ class Generic1 f where
 #endif
 
 #if __GLASGOW_HASKELL__ < 711
--- | Used for marking occurrences of Addr#
-data UAddr p = UAddr { uAddr# :: Addr# }
+-- | Constants of kind @#@
+data family URec (a :: *) (p :: *)
+
+-- | Used for marking occurrences of 'Addr#'
+data instance URec (Ptr ()) p = UAddr { uAddr# :: Addr# }
   deriving (Eq, Ord)
 
--- | Used for marking occurrences of Char#
-data UChar p = UChar { uChar# :: Char# }
+-- | Used for marking occurrences of 'Char#'
+data instance URec Char p = UChar { uChar# :: Char# }
   deriving (Eq, Ord, Show)
 
--- | Used for marking occurrences of Double#
-data UDouble p = UDouble { uDouble# :: Double# }
+-- | Used for marking occurrences of 'Double#'
+data instance URec Double p = UDouble { uDouble# :: Double# }
   deriving (Eq, Ord, Show)
 
--- | Used for marking occurrences of Float#
-data UFloat p = UFloat { uFloat# :: Float# }
+-- | Used for marking occurrences of 'Float#'
+data instance URec Float p = UFloat { uFloat# :: Float# }
   deriving (Eq, Ord, Show)
 
--- | Used for marking occurrences of Int#
-data UInt p = UInt { uInt# :: Int# }
+-- | Used for marking occurrences of 'Int#'
+data instance URec Int p = UInt { uInt# :: Int# }
   deriving (Eq, Ord, Show)
 
--- | Used for marking occurrences of Word#
-data UWord p = UWord { uWord# :: Word# }
+-- | Used for marking occurrences of 'Word#'
+data instance URec Word p = UWord { uWord# :: Word# }
   deriving (Eq, Ord, Show)
+
+-- | Type synonym for 'URec': 'Addr#'
+type UAddr   = URec (Ptr ())
+-- | Type synonym for 'URec': 'Char#'
+type UChar   = URec Char
+-- | Type synonym for 'URec': 'Double#'
+type UDouble = URec Double
+-- | Type synonym for 'URec': 'Float#'
+type UFloat  = URec Float
+-- | Type synonym for 'URec': 'Int#'
+type UInt    = URec Int
+-- | Type synonym for 'URec': 'Word#'
+type UWord   = URec Word
 #endif
