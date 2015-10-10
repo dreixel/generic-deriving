@@ -115,8 +115,8 @@ $(deriveRepresentable1 'MyType3False)
 # endif
 
 # if __GLASGOW_HASKELL__ >= 711
-deriving instance Generic (MyType3Hash Int b)
-deriving instance Generic1 (MyType3Hash Int)
+deriving instance Generic  (MyType3 Int b)
+deriving instance Generic1 (MyType3 Int)
 # else
 $(deriveAll0And1 'MyType3Hash)
 # endif
