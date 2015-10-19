@@ -11,6 +11,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DatatypeContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE MagicHash #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DeriveGeneric #-}
 #endif
@@ -24,6 +25,7 @@ module Main (
 import Prelude hiding (Either(..))
 import Generics.Deriving
 import Generics.Deriving.TH
+import GHC.Exts (Addr#, Char#, Double#, Float#, Int#, Word#)
 import qualified Text.Read.Lex (Lexeme)
 
 --------------------------------------------------------------------------------
@@ -46,6 +48,7 @@ data (:/:) f a = MyType1Nil
 #endif
 
 data MyType2 = MyType2 Float ([] :/: Int)
+data PlainHash a = Hash a Addr# Char# Double# Float# Int# Word#
 
 #if __GLASGOW_HASKELL__ >= 701
 deriving instance Generic (Empty a)
@@ -71,6 +74,13 @@ $(deriveRepresentable1 ''Empty)
 $(deriveRepresentable1 ''(:/:))
 #endif
 
+#if __GLASGOW_HASKELL__ >= 711
+deriving instance Generic (PlainHash a)
+deriving instance Generic1 PlainHash
+#else
+$(deriveAll0And1 ''PlainHash)
+#endif
+
 -- Test to see if generated names are unique
 data Lexeme = Lexeme
 
@@ -81,11 +91,12 @@ $(deriveAll ''Text.Read.Lex.Lexeme)
 data family MyType3 a b
 newtype instance MyType3 ()   b = MyType3Newtype b
 data    instance MyType3 Bool b = MyType3True | MyType3False
+data    instance MyType3 Int  b = MyType3Hash b Addr# Char# Double# Float# Int# Word#
 
-#if __GLASGOW_HASKELL__ < 707
+# if __GLASGOW_HASKELL__ < 707
 $(deriveMeta 'MyType3Newtype)
 $(deriveMeta 'MyType3True)
-#endif
+# endif
 
 # if __GLASGOW_HASKELL__ >= 705
 deriving instance Generic (MyType3 ()   b)
@@ -101,6 +112,13 @@ deriving instance Generic1 (MyType3 Bool)
 # else
 $(deriveRepresentable1 'MyType3Newtype)
 $(deriveRepresentable1 'MyType3False)
+# endif
+
+# if __GLASGOW_HASKELL__ >= 711
+deriving instance Generic  (MyType3 Int b)
+deriving instance Generic1 (MyType3 Int)
+# else
+$(deriveAll0And1 'MyType3Hash)
 # endif
 #endif
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeOperators #-}
@@ -8,8 +9,16 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
+#if __GLASGOW_HASKELL__ < 711
+    Rep0UAddr
+  , Rep0UChar
+  , Rep0UDouble
+  , Rep0UFloat
+  , Rep0UInt
+  , Rep0UWord
+#endif
 #if __GLASGOW_HASKELL__ < 708
-    Rep0All
+  , Rep0All
   , Rep0Any
   , Rep0Arity
   , Rep0Associativity
@@ -77,8 +86,159 @@ module Generics.Deriving.Instances (
 #if __GLASGOW_HASKELL__ < 708
 import Control.Applicative
 import Data.Monoid
-import Generics.Deriving.Base
+#endif
 
+#if __GLASGOW_HASKELL__ < 711
+import Generics.Deriving.Base
+#endif
+
+#if __GLASGOW_HASKELL__ < 711
+type Rep0UAddr p = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr UAddr))
+
+instance Generic (UAddr p) where
+    type Rep (UAddr p) = Rep0UAddr p
+    from (UAddr a) = M1 (M1 (M1 (UAddr a)))
+    to (M1 (M1 (M1 (UAddr a)))) = UAddr a
+
+data D1UAddr
+data C1_0UAddr
+data S1_0_0UAddr
+
+instance Datatype D1UAddr where
+    datatypeName _ = "UAddr"
+    moduleName   _ = "Generics.Deriving.Base"
+
+instance Constructor C1_0UAddr where
+    conName     _ = "UAddr"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UAddr where
+    selName _ = "uAddr#"
+
+-----
+
+type Rep0UChar p = D1 D1UChar (C1 C1_0UChar (S1 S1_0_0UChar UChar))
+
+instance Generic (UChar p) where
+    type Rep (UChar p) = Rep0UChar p
+    from (UChar c) = M1 (M1 (M1 (UChar c)))
+    to (M1 (M1 (M1 (UChar c)))) = UChar c
+
+data D1UChar
+data C1_0UChar
+data S1_0_0UChar
+
+instance Datatype D1UChar where
+    datatypeName _ = "UChar"
+    moduleName   _ = "Generics.Deriving.Base"
+
+instance Constructor C1_0UChar where
+    conName     _ = "UChar"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UChar where
+    selName _ = "uChar#"
+
+-----
+
+type Rep0UDouble p = D1 D1UDouble (C1 C1_0UDouble (S1 S1_0_0UDouble UDouble))
+
+instance Generic (UDouble p) where
+    type Rep (UDouble p) = Rep0UDouble p
+    from (UDouble d) = M1 (M1 (M1 (UDouble d)))
+    to (M1 (M1 (M1 (UDouble d)))) = UDouble d
+
+data D1UDouble
+data C1_0UDouble
+data S1_0_0UDouble
+
+instance Datatype D1UDouble where
+    datatypeName _ = "UDouble"
+    moduleName   _ = "Generics.Deriving.Base"
+
+instance Constructor C1_0UDouble where
+    conName     _ = "UDouble"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UDouble where
+    selName _ = "uDouble#"
+
+-----
+
+type Rep0UFloat p = D1 D1UFloat (C1 C1_0UFloat (S1 S1_0_0UFloat UFloat))
+
+instance Generic (UFloat p) where
+    type Rep (UFloat p) = Rep0UFloat p
+    from (UFloat f) = M1 (M1 (M1 (UFloat f)))
+    to (M1 (M1 (M1 (UFloat f)))) = UFloat f
+
+data D1UFloat
+data C1_0UFloat
+data S1_0_0UFloat
+
+instance Datatype D1UFloat where
+    datatypeName _ = "UFloat"
+    moduleName   _ = "Generics.Deriving.Base"
+
+instance Constructor C1_0UFloat where
+    conName     _ = "UFloat"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UFloat where
+    selName _ = "uFloat#"
+
+-----
+
+type Rep0UInt p = D1 D1UInt (C1 C1_0UInt (S1 S1_0_0UInt UInt))
+
+instance Generic (UInt p) where
+    type Rep (UInt p) = Rep0UInt p
+    from (UInt i) = M1 (M1 (M1 (UInt i)))
+    to (M1 (M1 (M1 (UInt i)))) = UInt i
+
+data D1UInt
+data C1_0UInt
+data S1_0_0UInt
+
+instance Datatype D1UInt where
+    datatypeName _ = "UInt"
+    moduleName   _ = "Generics.Deriving.Base"
+
+instance Constructor C1_0UInt where
+    conName     _ = "UInt"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UInt where
+    selName _ = "uInt#"
+
+-----
+
+type Rep0UWord p = D1 D1UWord (C1 C1_0UWord (S1 S1_0_0UWord UWord))
+
+instance Generic (UWord p) where
+    type Rep (UWord p) = Rep0UWord p
+    from (UWord w) = M1 (M1 (M1 (UWord w)))
+    to (M1 (M1 (M1 (UWord w)))) = UWord w
+
+data D1UWord
+data C1_0UWord
+data S1_0_0UWord
+
+instance Datatype D1UWord where
+    datatypeName _ = "UWord"
+    moduleName   _ = "Generics.Deriving.Base"
+
+instance Constructor C1_0UWord where
+    conName     _ = "UWord"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UWord where
+    selName _ = "uWord#"
+#endif
+
+-----
+
+#if __GLASGOW_HASKELL__ < 708
 --------------------------------------------------------------------------------
 -- Representations for base types
 --------------------------------------------------------------------------------
