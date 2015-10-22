@@ -6,10 +6,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 #endif
 
-#if __GLASGOW_HASKELL__ >= 707
-{-# LANGUAGE PolyKinds #-}
-#endif
-
 -- | This module provides two main features:
 --
 --     1. 'GMonoid', a generic version of the 'Monoid' type class, including instances
@@ -186,12 +182,6 @@ instance GMonoid (Endo a) where
   gmempty = mempty
   gmappend = mappend
 
-#if MIN_VERSION_base(4,7,0)
-instance GMonoid (Proxy s) where
-  gmempty  = mempty
-  gmappend = mappend
-#endif
-
 #if MIN_VERSION_base(4,8,0)
 instance Alternative f => GMonoid (Alt f a) where
   gmempty  = mempty
@@ -213,6 +203,12 @@ instance GMonoid b => GMonoid (a -> b) where
 instance GMonoid a => GMonoid (Const a b) where
   gmempty  = gmemptydefault
   gmappend = gmappenddefault
+
+#if MIN_VERSION_base(4,7,0)
+instance GMonoid (Proxy s) where
+  gmempty  = memptydefault
+  gmappend = mappenddefault
+#endif
 
 #if MIN_VERSION_base(4,8,0)
 instance GMonoid a => GMonoid (Identity a) where
