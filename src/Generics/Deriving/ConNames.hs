@@ -1,8 +1,8 @@
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -29,7 +29,7 @@ module Generics.Deriving.ConNames (
 import Generics.Deriving.Base
 
 
-class ConNames f where 
+class ConNames f where
     gconNames  :: f a -> [String]
     gconNameOf :: f a -> String
 
@@ -44,7 +44,7 @@ instance (ConNames f) => ConNames (D1 c f) where
     gconNames (_ :: (D1 c f) a) = gconNames (undefined :: f a)
 
     gconNameOf (M1 x) = gconNameOf x
-    
+
 instance (Constructor c) => ConNames (C1 c f) where
     gconNames x = [conName x]
 

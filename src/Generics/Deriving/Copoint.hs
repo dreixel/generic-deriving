@@ -1,14 +1,14 @@
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeOperators #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
 
 module Generics.Deriving.Copoint (
   -- * GCopoint class
-    GCopoint(..), 
+    GCopoint(..),
 
   -- * Default method
   gcopointdefault
@@ -46,12 +46,12 @@ instance (GCopoint' f, GCopoint' g) => GCopoint' (f :+: g) where
 
 -- Favours left "hole" for copoint
 instance (GCopoint' f, GCopoint' g) => GCopoint' (f :*: g) where
-    gcopoint' (a :*: b) = case (gcopoint' a) of  
+    gcopoint' (a :*: b) = case (gcopoint' a) of
                             Just x -> Just x
                             Nothing -> gcopoint' b
 
 instance (GCopoint f) => GCopoint' (Rec1 f) where
-    gcopoint' (Rec1 a) = Just $ gcopoint a 
+    gcopoint' (Rec1 a) = Just $ gcopoint a
 
 instance (GCopoint f, GCopoint' g) => GCopoint' (f :.: g) where
     gcopoint' (Comp1 x) = gcopoint' . gcopoint $ x

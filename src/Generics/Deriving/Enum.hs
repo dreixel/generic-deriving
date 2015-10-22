@@ -1,8 +1,8 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
@@ -158,7 +158,7 @@ class (Ord a) => GIx a where
 rangeDefault :: (GEq a, Generic a, Enum' (Rep a))
              => (a,a) -> [a]
 rangeDefault = t (map to enum') where
-  t l (x,y) = 
+  t l (x,y) =
     case (findIndex (geq x) l, findIndex (geq y) l) of
       (Nothing, _)     -> error "rangeDefault: no corresponding index"
       (_, Nothing)     -> error "rangeDefault: no corresponding index"
@@ -178,7 +178,7 @@ indexDefault = t (map to enum') where
 inRangeDefault :: (GEq a, Generic a, Enum' (Rep a))
                => (a,a) -> a -> Bool
 inRangeDefault = t (map to enum') where
-  t l (x,y) z = 
+  t l (x,y) z =
     case (findIndex (geq x) l, findIndex (geq y) l) of
       (Nothing, _)     -> error "indexDefault: no corresponding index"
       (_, Nothing)     -> error "indexDefault: no corresponding index"
