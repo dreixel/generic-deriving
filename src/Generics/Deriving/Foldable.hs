@@ -31,10 +31,17 @@ module Generics.Deriving.Foldable (
   , gfind
   ) where
 
+import Control.Applicative (Const)
+
 import Data.Maybe
 import Data.Monoid
+
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
+
+#if MIN_VERSION_base(4,8,0)
+import Data.Functor.Identity (Identity)
+#endif
 
 --------------------------------------------------------------------------------
 -- Generic fold
@@ -113,10 +120,24 @@ gfoldMapdefault :: (Generic1 t, GFoldable' (Rep1 t), Monoid m)
 gfoldMapdefault f x = gfoldMap' f (from1 x)
 
 -- Base types instances
-instance GFoldable Maybe where
+instance GFoldable [] where
   gfoldMap = gfoldMapdefault
 
-instance GFoldable [] where
+instance GFoldable ((,) a) where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable (Const m) where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable (Either a) where
+  gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GFoldable Identity where
+  gfoldMap = gfoldMapdefault
+#endif
+
+instance GFoldable Maybe where
   gfoldMap = gfoldMapdefault
 
 gtoList :: GFoldable t => t a -> [a]

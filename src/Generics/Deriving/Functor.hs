@@ -25,8 +25,6 @@ import           Data.Monoid (First, Last)
 import           Generics.Deriving.Base
 import           Generics.Deriving.Instances ()
 
-import           System.Console.GetOpt (ArgDescr, ArgOrder, OptDescr)
-
 import           Text.ParserCombinators.ReadP (ReadP)
 import           Text.ParserCombinators.ReadPrec (ReadPrec)
 
@@ -95,12 +93,6 @@ instance GFunctor f => GFunctor (Alt f) where
   gmap = gmapdefault
 #endif
 
-instance GFunctor ArgDescr where
-  gmap = fmap
-
-instance GFunctor ArgOrder where
-  gmap = fmap
-
 instance Arrow a => GFunctor (ArrowMonad a) where
   gmap = fmap
 
@@ -129,9 +121,6 @@ instance GFunctor Last where
 
 instance GFunctor Maybe where
   gmap = gmapdefault
-
-instance GFunctor OptDescr where
-  gmap = fmap
 
 instance GFunctor ReadP where
   gmap = fmap
