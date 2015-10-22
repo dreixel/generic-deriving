@@ -15,8 +15,7 @@ module Generics.Deriving.Functor (
   ) where
 
 import           Control.Applicative (Const, WrappedArrow, WrappedMonad, ZipList)
-import           Control.Arrow (Arrow, ArrowMonad)
-import           Control.Exception (Handler)
+import           Control.Arrow (Arrow)
 import qualified Control.Monad.ST as Strict (ST)
 import qualified Control.Monad.ST.Lazy as Lazy (ST)
 
@@ -93,9 +92,6 @@ instance GFunctor f => GFunctor (Alt f) where
   gmap = gmapdefault
 #endif
 
-instance Arrow a => GFunctor (ArrowMonad a) where
-  gmap = fmap
-
 instance GFunctor (Const m) where
   gmap = gmapdefault
 
@@ -104,9 +100,6 @@ instance GFunctor (Either a) where
 
 instance GFunctor First where
   gmap = gmapdefault
-
-instance GFunctor Handler where
-  gmap = fmap
 
 #if MIN_VERSION_base(4,8,0)
 instance GFunctor Identity where
