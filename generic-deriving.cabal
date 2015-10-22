@@ -24,7 +24,7 @@ stability:              experimental
 build-type:             Simple
 cabal-version:          >= 1.6
 tested-with:            GHC == 7.0.3, GHC == 7.2.1, GHC == 7.4.1, GHC == 7.6.1, GHC == 7.7.20130624
-extra-source-files:     examples/Examples.hs
+extra-source-files:     examples/Examples.hs, README.md
 
 source-repository head
   type: git
