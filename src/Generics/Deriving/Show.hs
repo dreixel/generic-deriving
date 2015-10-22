@@ -121,15 +121,10 @@ class GShow a where
   default gshowsPrec :: (Generic a, GShow' (Rep a))
                      => Int -> a -> ShowS
   gshowsPrec = gshowsPrecdefault
-
-instance (GShow a) => GShow (Maybe a)
-
-#else
+#endif
 
 instance (GShow a) => GShow (Maybe a) where
   gshowsPrec = gshowsPrecdefault
-
-#endif
 
 gshowsPrecdefault :: (Generic a, GShow' (Rep a))
                   => Int -> a -> ShowS

@@ -87,21 +87,11 @@ instance (Enum' f, Enum' g) => Enum' (f :+: g) where
 instance (Enum' f, Enum' g) => Enum' (f :*: g) where
   enum' = diag [ [ x :*: y | y <- enum' ] | x <- enum' ]
 
-
-#if __GLASGOW_HASKELL__ < 701
-
 instance (GEnum a) => GEnum (Maybe a) where
   genum = genumDefault
 
 instance (GEnum a) => GEnum [a] where
   genum = genumDefault
-
-#else
-
-instance (GEnum a) => GEnum (Maybe a)
-instance (GEnum a) => GEnum [a]
-
-#endif
 
 genumDefault :: (Generic a, Enum' (Rep a)) => [a]
 genumDefault = map to enum'
@@ -185,8 +175,6 @@ inRangeDefault = t (map to enum') where
       (Just i, Just j) -> maybe False (const True)
                             (findIndex (geq z) (take (j-i) (drop i l)))
 
-#if __GLASGOW_HASKELL__ < 701
-
 instance (GEq a, GEnum a, GIx a) => GIx (Maybe a) where
   range = rangeDefault
   index = indexDefault
@@ -196,13 +184,6 @@ instance (GEq a, GEnum a, GIx a) => GIx [a] where
   range = rangeDefault
   index = indexDefault
   inRange = inRangeDefault
-
-#else
-
-instance (GEq a, GEnum a, GIx a) => GIx (Maybe a)
-instance (GEq a, GEnum a, GIx a) => GIx [a]
-
-#endif
 
 instance GIx Int where
     range (m,n) = [m..n]

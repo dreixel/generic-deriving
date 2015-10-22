@@ -15,19 +15,14 @@ module Generics.Deriving.Eq (
   -- * Generic show class
     GEq(..)
 
-#if __GLASGOW_HASKELL__ >= 701
--- Nothing
-#else
   -- * Default definition
   , geqdefault
-#endif
 
   ) where
 
 
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
--- import GHC.Generics
 
 import GHC.Exts
 
@@ -83,15 +78,11 @@ class GEq a where
 
 #if __GLASGOW_HASKELL__ >= 701
   default geq :: (Generic a, GEq' (Rep a)) => a -> a -> Bool
-  geq x y = geq' (from x) (from y)
+  geq = geqdefault
 #endif
 
-#if __GLASGOW_HASKELL__ >= 701
--- Nothing; the default is in the class
-#else
 geqdefault :: (Generic a, GEq' (Rep a)) => a -> a -> Bool
 geqdefault x y = geq' (from x) (from y)
-#endif
 
 -- Base types instances
 instance GEq Char   where geq = (==)
@@ -99,17 +90,8 @@ instance GEq Int    where geq = (==)
 instance GEq Float  where geq = (==)
 
 
-#if __GLASGOW_HASKELL__ < 701
-
 instance (GEq a) => GEq (Maybe a) where
   geq = geqdefault
 
 instance (GEq a) => GEq [a] where
   geq = geqdefault
-
-#else
-
-instance (GEq a) => GEq (Maybe a)
-instance (GEq a) => GEq [a]
-
-#endif
