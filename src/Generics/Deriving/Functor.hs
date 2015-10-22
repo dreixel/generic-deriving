@@ -14,8 +14,26 @@ module Generics.Deriving.Functor (
 
   ) where
 
-import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
+import           Control.Applicative (Const, WrappedArrow, WrappedMonad, ZipList)
+import           Control.Arrow (Arrow, ArrowMonad)
+import           Control.Exception (Handler)
+import qualified Control.Monad.ST as Strict (ST)
+import qualified Control.Monad.ST.Lazy as Lazy (ST)
+
+import           Data.Monoid (First, Last)
+
+import           Generics.Deriving.Base
+import           Generics.Deriving.Instances ()
+
+import           System.Console.GetOpt (ArgDescr, ArgOrder, OptDescr)
+
+import           Text.ParserCombinators.ReadP (ReadP)
+import           Text.ParserCombinators.ReadPrec (ReadPrec)
+
+#if MIN_VERSION_base(4,8,0)
+import           Data.Functor.Identity (Identity)
+import           Data.Monoid (Alt)
+#endif
 
 --------------------------------------------------------------------------------
 -- Generic fmap
@@ -63,8 +81,75 @@ gmapdefault :: (Generic1 f, GFunctor' (Rep1 f))
 gmapdefault f = to1 . gmap' f . from1
 
 -- Base types instances
-instance GFunctor Maybe where
+instance GFunctor ((->) r) where
+  gmap = fmap
+
+instance GFunctor ((,) a) where
   gmap = gmapdefault
 
 instance GFunctor [] where
+  gmap = gmapdefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GFunctor f => GFunctor (Alt f) where
+  gmap = gmapdefault
+#endif
+
+instance GFunctor ArgDescr where
+  gmap = fmap
+
+instance GFunctor ArgOrder where
+  gmap = fmap
+
+instance Arrow a => GFunctor (ArrowMonad a) where
+  gmap = fmap
+
+instance GFunctor (Const m) where
+  gmap = gmapdefault
+
+instance GFunctor (Either a) where
+  gmap = gmapdefault
+
+instance GFunctor First where
+  gmap = gmapdefault
+
+instance GFunctor Handler where
+  gmap = fmap
+
+#if MIN_VERSION_base(4,8,0)
+instance GFunctor Identity where
+  gmap = gmapdefault
+#endif
+
+instance GFunctor IO where
+  gmap = fmap
+
+instance GFunctor Last where
+  gmap = gmapdefault
+
+instance GFunctor Maybe where
+  gmap = gmapdefault
+
+instance GFunctor OptDescr where
+  gmap = fmap
+
+instance GFunctor ReadP where
+  gmap = fmap
+
+instance GFunctor ReadPrec where
+  gmap = fmap
+
+instance GFunctor (Lazy.ST s) where
+  gmap = fmap
+
+instance GFunctor (Strict.ST s) where
+  gmap = fmap
+
+instance Arrow a => GFunctor (WrappedArrow a b) where
+  gmap = fmap
+
+instance Monad m => GFunctor (WrappedMonad m) where
+  gmap = fmap
+
+instance GFunctor ZipList where
   gmap = gmapdefault
