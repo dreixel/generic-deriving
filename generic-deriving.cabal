@@ -62,5 +62,4 @@ library
   if impl(ghc > 7.0)
     build-depends:      ghc-prim < 1
 
-  extensions:           CPP
   ghc-options:          -Wall

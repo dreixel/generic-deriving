@@ -1,6 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
@@ -104,8 +103,8 @@ instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :+: g) b where
   transformM' f (R1 a) = liftM R1 (transformM' f a)
 
 instance (Uniplate' f b, Uniplate' g b) => Uniplate' (f :*: g) b where
-  children' (a :*: b) = children' a ++ children' b 
-  descend' f (a :*: b) = descend' f a :*: descend' f b 
+  children' (a :*: b) = children' a ++ children' b
+  descend' f (a :*: b) = descend' f a :*: descend' f b
   descendM' f (a :*: b) = liftM2 (:*:) (descendM' f a) (descendM' f b)
   transform' f (a :*: b) = transform' f a :*: transform' f b
   transformM' f (a :*: b) = liftM2 (:*:) (transformM' f a) (transformM' f b)
@@ -141,7 +140,7 @@ instance (Context' g b) => Context' (f :*: g) b where
   context' (a :*: b) cs = a :*: context' b cs
 
 
-class Uniplate a where 
+class Uniplate a where
   children :: a -> [a]
 #if __GLASGOW_HASKELL__ >= 701
   default children :: (Generic a, Uniplate' (Rep a) a) => a -> [a]

@@ -1,5 +1,6 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeOperators #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
