@@ -272,8 +272,10 @@ instance GEq CSpeed where
   geq = (==)
 #endif
 
+#if MIN_VERSION_base(4,4,0)
 instance GEq CSUSeconds where
   geq = (==)
+#endif
 
 instance GEq CShort where
   geq = (==)
@@ -320,8 +322,10 @@ instance GEq CULLong where
 instance GEq CULong where
   geq = (==)
 
+#if MIN_VERSION_base(4,4,0)
 instance GEq CUSeconds where
   geq = (==)
+#endif
 
 instance GEq CUShort where
   geq = (==)
