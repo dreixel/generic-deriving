@@ -462,7 +462,7 @@ instance GEq a => GEq (Sum a) where
   geq = geqdefault
 
 instance GEq (U1 p) where
-  geq = (==)
+  geq = geqdefault
 
 #if MIN_VERSION_base(4,8,0)
 instance GEq Void where
