@@ -14,18 +14,12 @@ module Generics.Deriving.Functor (
 
   ) where
 
-import           Control.Applicative (Const, WrappedArrow, WrappedMonad, ZipList)
-import           Control.Arrow (Arrow)
-import qualified Control.Monad.ST as Strict (ST)
-import qualified Control.Monad.ST.Lazy as Lazy (ST)
+import           Control.Applicative (Const, ZipList)
 
 import           Data.Monoid (First, Last)
 
 import           Generics.Deriving.Base
 import           Generics.Deriving.Instances ()
-
-import           Text.ParserCombinators.ReadP (ReadP)
-import           Text.ParserCombinators.ReadPrec (ReadPrec)
 
 #if MIN_VERSION_base(4,8,0)
 import           Data.Functor.Identity (Identity)
@@ -114,24 +108,6 @@ instance GFunctor Last where
 
 instance GFunctor Maybe where
   gmap = gmapdefault
-
-instance GFunctor ReadP where
-  gmap = fmap
-
-instance GFunctor ReadPrec where
-  gmap = fmap
-
-instance GFunctor (Lazy.ST s) where
-  gmap = fmap
-
-instance GFunctor (Strict.ST s) where
-  gmap = fmap
-
-instance Arrow a => GFunctor (WrappedArrow a b) where
-  gmap = fmap
-
-instance Monad m => GFunctor (WrappedMonad m) where
-  gmap = fmap
 
 instance GFunctor ZipList where
   gmap = gmapdefault
