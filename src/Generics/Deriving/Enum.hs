@@ -605,13 +605,6 @@ instance GIx Bool where
   index   = indexDefault
   inRange = inRangeDefault
 
-#if defined(HTYPE_CC_T)
-instance GIx CCc where
-  range   = rangeEnum
-  index   = indexIntegral
-  inRange = inRangeOrd
-#endif
-
 instance GIx CChar where
   range   = rangeEnum
   index   = indexIntegral
@@ -705,13 +698,6 @@ instance GIx CSChar where
   range   = rangeEnum
   index   = indexIntegral
   inRange = inRangeOrd
-
-#if defined(HTYPE_SPEED_T)
-instance GIx CSpeed where
-  range   = rangeEnum
-  index   = indexIntegral
-  inRange = inRangeOrd
-#endif
 
 instance GIx CShort where
   range   = rangeEnum
