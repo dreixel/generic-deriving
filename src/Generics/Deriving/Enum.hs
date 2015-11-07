@@ -556,23 +556,6 @@ instance (GEq a, GEnum a, GIx a) => GIx [a] where
   index   = indexDefault
   inRange = inRangeDefault
 
-instance (GEq (f p), GEnum (f p), GIx (f p), GEq (g p), GEnum (g p), GIx (g p))
-    => GIx ((f :+: g) p) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
-instance (GEq (f p), GEnum (f p), GIx (f p), GEq (g p), GEnum (g p), GIx (g p))
-    => GIx ((f :*: g) p) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
-instance (GEq (f (g p)), GEnum (f (g p)), GIx (f (g p))) => GIx ((f :.: g) p) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
 instance GIx All where
   range   = rangeDefault
   index   = indexDefault
@@ -669,11 +652,6 @@ instance GIx COff where
   index   = indexIntegral
   inRange = inRangeOrd
 #endif
-
-instance (GEq a, GEnum a, GIx a) => GIx (Const a b) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
 
 #if defined(HTYPE_PID_T)
 instance GIx CPid where
@@ -842,17 +820,7 @@ instance GIx IntPtr where
   index   = indexIntegral
   inRange = inRangeOrd
 
-instance (GEq c, GEnum c, GIx c) => GIx (K1 i c p) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
 instance (GEq a, GEnum a, GIx a) => GIx (Last a) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
-instance (GEq (f p), GEnum (f p), GIx (f p)) => GIx (M1 i c f p) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
@@ -874,11 +842,6 @@ instance GIx Ordering where
   index   = indexDefault
   inRange = inRangeDefault
 
-instance (GEq p, GEnum p, GIx p) => GIx (Par1 p) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
 instance (GEq a, GEnum a, GIx a) => GIx (Product a) where
   range   = rangeDefault
   index   = indexDefault
@@ -891,17 +854,7 @@ instance GIx (Proxy s) where
   inRange = inRangeDefault
 #endif
 
-instance (GEq (f p), GEnum (f p), GIx (f p)) => GIx (Rec1 f p) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
 instance (GEq a, GEnum a, GIx a) => GIx (Sum a) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-
-instance GIx (U1 p) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
@@ -935,8 +888,3 @@ instance GIx WordPtr where
   range   = rangeEnum
   index   = indexIntegral
   inRange = inRangeOrd
-
-instance (GEq a, GEnum a, GIx a) => GIx (ZipList a) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
