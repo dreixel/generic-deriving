@@ -24,7 +24,6 @@ module Generics.Deriving.Eq (
 import Control.Applicative (Const, ZipList)
 
 import Data.Char (GeneralCategory)
-import Data.Complex (Complex(..))
 import Data.Int
 import Data.Monoid (All, Any, Dual, First, Last, Product, Sum)
 import Data.Word
@@ -39,7 +38,6 @@ import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 
 import GHC.Exts hiding (Any)
-import GHC.Real (Ratio(..))
 
 import System.Exit (ExitCode)
 import System.IO (BufferMode, Handle, HandlePosn, IOMode, SeekMode)
@@ -238,15 +236,6 @@ instance GEq CNlink where
 instance GEq COff where
   geq = (==)
 #endif
-
-instance
-#if MIN_VERSION_base(4,4,0)
-    GEq a
-#else
-    (GEq a, RealFloat a)
-#endif
-    => GEq (Complex a) where
-  geq (a1 :+ a2) (b1 :+ b2) = geq a1 b1 && geq a2 b2
 
 instance GEq a => GEq (Const a b) where
   geq = geqdefault
@@ -449,15 +438,6 @@ instance GEq (f p) => GEq (Rec1 f p) where
 
 instance GEq SeekMode where
   geq = (==)
-
-instance
-#if MIN_VERSION_base(4,4,0)
-    GEq a
-#else
-    (GEq a, Integral a)
-#endif
-    => GEq (Ratio a) where
-  geq (a1 :% a2) (b1 :% b2) = geq a1 b1 && geq a2 b2
 
 instance GEq (StablePtr a) where
   geq = (==)
