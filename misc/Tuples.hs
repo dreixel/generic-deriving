@@ -34,9 +34,9 @@ createDataDecls m = let n = shows m
 
 dataInstance :: Int -> ShowS
 dataInstance m = let n = shows m
-                     l1 =   showString "instance Datatype Tuple" 
+                     l1 =   showString "instance Datatype Tuple"
                           . n . u . showString " where"
-                     l2 =   tab . showString "datatypeName _ = \"" 
+                     l2 =   tab . showString "datatypeName _ = \""
                           . tuple m . showChar '"'
                      l3 = tab . showString "moduleName   _ = \"Prelude\""
                  in unlinesS [l1, l2, l3]
@@ -48,7 +48,7 @@ conInstance m = let n = shows m
 
 -- x is 0 or 1
 pairPat, repName, rep, repInst, funs :: Int -> Int -> ShowS
-pairPat x m = tuple m . sp . 
+pairPat x m = tuple m . sp .
                 (concatS $ intersperse sp (take (m - x) vars))
 
 repName x m = showString "Rep" . shows x . showString "Tuple" . shows m . u
@@ -56,12 +56,12 @@ repName x m = showString "Rep" . shows x . showString "Tuple" . shows m . u
 rep x m = let n    = shows m
               v    = take (m - x) vars
               vs   = concatS $ intersperse sp v
-              recs = concatS $ intersperse (showString " :*: ") $ 
+              recs = concatS $ intersperse (showString " :*: ") $
                        map (showString "Rec0 " .) v
               last = showString $ if (x == 1) then " :*: Par1" else ""
               body = recs . last
           in    showString "type " . repName x m . sp . vs
-              . showString " = D1 Tuple" . n . showString "_  (C1 Tuple" . n 
+              . showString " = D1 Tuple" . n . showString "_  (C1 Tuple" . n
               . showString "C_ (S1 NoSelector (" . body . showString ")))"
 
 repInst x m = let n = shows m
@@ -72,7 +72,7 @@ repInst x m = let n = shows m
                  . vs . showString ") where"
                  . newline . funs x m
 
-funs x m = 
+funs x m =
   let v    = take (m - x) vars
       recs = concatS $ intersperse (showString " :*: ") $
                map (showString "K1 " .) v
@@ -82,7 +82,7 @@ funs x m =
       body = paren (showString "M1 (M1 (M1 (" . recs . last . showString ")))")
       pat  = paren (pairPat 0 m)
   in tab . concatS (intersperse sp [showString "from" . shows x, pat, eq, body])
-     . newline . 
+     . newline .
      tab . concatS (intersperse sp [showString "to"   . shows x, body, eq, pat])
 
 
