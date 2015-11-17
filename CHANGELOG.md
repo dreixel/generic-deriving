@@ -4,6 +4,7 @@
 * Allow deriving of Generic(1) for constructor-less plain datatypes (but not
   data families, due to technical restrictions)
 * Support for unboxed representation types on GHC 7.11+
+* More `GCopoint`, `GEnum`, `GEq`, `GFoldable`, `GFunctor`, `GIx`, `GMonoid`, `GShow`, and `GTraversable` instances
 * The field accessors for the `(:+:)` type in `Generics.Deriving.Base` have
   been removed to be consistent with `GHC.Generics`
 * Ensure that TH generates definitions for isNewtype and packageName, if a

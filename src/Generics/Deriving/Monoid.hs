@@ -53,9 +53,18 @@ module Generics.Deriving.Monoid (
 
 --------------------------------------------------------------------------------
 
+import Control.Applicative
+import Data.Monoid
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
-import Data.Monoid
+
+#if MIN_VERSION_base(4,7,0)
+import Data.Proxy (Proxy)
+#endif
+
+#if MIN_VERSION_base(4,8,0)
+import Data.Functor.Identity (Identity)
+#endif
 
 --------------------------------------------------------------------------------
 
@@ -185,6 +194,21 @@ instance GMonoid a => GMonoid (Maybe a) where
 instance GMonoid b => GMonoid (a -> b) where
   gmempty _ = gmempty
   gmappend f g x = gmappend (f x) (g x)
+instance GMonoid a => GMonoid (Const a b) where
+  gmempty  = gmemptydefault
+  gmappend = gmappenddefault
+
+#if MIN_VERSION_base(4,7,0)
+instance GMonoid (Proxy s) where
+  gmempty  = memptydefault
+  gmappend = mappenddefault
+#endif
+
+#if MIN_VERSION_base(4,8,0)
+instance GMonoid a => GMonoid (Identity a) where
+  gmempty  = gmemptydefault
+  gmappend = gmappenddefault
+#endif
 
 -- Tuple instances
 instance (GMonoid a,GMonoid b) => GMonoid (a,b) where
@@ -215,4 +239,3 @@ instance (GMonoid a,GMonoid b,GMonoid c,GMonoid d,GMonoid e,GMonoid f,GMonoid g,
   gmempty = (gmempty,gmempty,gmempty,gmempty,gmempty,gmempty,gmempty,gmempty)
   gmappend (a1,b1,c1,d1,e1,f1,g1,h1) (a2,b2,c2,d2,e2,f2,g2,h2) =
     (gmappend a1 a2,gmappend b1 b2,gmappend c1 c2,gmappend d1 d2,gmappend e1 e2,gmappend f1 f2,gmappend g1 g2,gmappend h1 h2)
-

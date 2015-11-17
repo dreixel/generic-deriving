@@ -15,10 +15,15 @@ module Generics.Deriving.Traversable (
   ) where
 
 import Control.Applicative
+
 import Generics.Deriving.Base
 import Generics.Deriving.Foldable
 import Generics.Deriving.Functor
 import Generics.Deriving.Instances ()
+
+#if MIN_VERSION_base(4,8,0)
+import Data.Functor.Identity (Identity)
+#endif
 
 --------------------------------------------------------------------------------
 -- Generic traverse
@@ -75,8 +80,22 @@ gtraversedefault :: (Generic1 t, GTraversable' (Rep1 t), Applicative f)
 gtraversedefault f x = to1 <$> gtraverse' f (from1 x)
 
 -- Base types instances
-instance GTraversable Maybe where
+instance GTraversable [] where
   gtraverse = gtraversedefault
 
-instance GTraversable [] where
+instance GTraversable ((,) a) where
+  gtraverse = gtraversedefault
+
+instance GTraversable (Const m) where
+  gtraverse = gtraversedefault
+
+instance GTraversable (Either a) where
+  gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GTraversable Identity where
+  gtraverse = gtraversedefault
+#endif
+
+instance GTraversable Maybe where
   gtraverse = gtraversedefault

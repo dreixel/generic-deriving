@@ -2,14 +2,14 @@
 module Generics.Deriving (
 
     module Generics.Deriving.Base,
-    module Generics.Deriving.Copoint, 
+    module Generics.Deriving.Copoint,
     module Generics.Deriving.ConNames,
     module Generics.Deriving.Enum,
     module Generics.Deriving.Eq,
     module Generics.Deriving.Functor,
     module Generics.Deriving.Show,
     module Generics.Deriving.Uniplate
-    
+
   ) where
 
 import Generics.Deriving.Base

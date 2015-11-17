@@ -14,8 +14,17 @@ module Generics.Deriving.Functor (
 
   ) where
 
-import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
+import           Control.Applicative (Const, ZipList)
+
+import           Data.Monoid (First, Last)
+
+import           Generics.Deriving.Base
+import           Generics.Deriving.Instances ()
+
+#if MIN_VERSION_base(4,8,0)
+import           Data.Functor.Identity (Identity)
+import           Data.Monoid (Alt)
+#endif
 
 --------------------------------------------------------------------------------
 -- Generic fmap
@@ -63,8 +72,42 @@ gmapdefault :: (Generic1 f, GFunctor' (Rep1 f))
 gmapdefault f = to1 . gmap' f . from1
 
 -- Base types instances
-instance GFunctor Maybe where
+instance GFunctor ((->) r) where
+  gmap = fmap
+
+instance GFunctor ((,) a) where
   gmap = gmapdefault
 
 instance GFunctor [] where
+  gmap = gmapdefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GFunctor f => GFunctor (Alt f) where
+  gmap = gmapdefault
+#endif
+
+instance GFunctor (Const m) where
+  gmap = gmapdefault
+
+instance GFunctor (Either a) where
+  gmap = gmapdefault
+
+instance GFunctor First where
+  gmap = gmapdefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GFunctor Identity where
+  gmap = gmapdefault
+#endif
+
+instance GFunctor IO where
+  gmap = fmap
+
+instance GFunctor Last where
+  gmap = gmapdefault
+
+instance GFunctor Maybe where
+  gmap = gmapdefault
+
+instance GFunctor ZipList where
   gmap = gmapdefault

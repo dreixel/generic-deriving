@@ -4,8 +4,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
+#endif
+
+#if __GLASGOW_HASKELL__ < 709
+{-# LANGUAGE OverlappingInstances #-}
 #endif
 
 --------------------------------------------------------------------------------
@@ -69,14 +74,22 @@ instance Uniplate' U1 a where
   transform' _ U1 = U1
   transformM' _ U1 = return U1
 
-instance (Uniplate a) => Uniplate' (K1 i a) a where
+instance
+#if __GLASGOW_HASKELL__ >= 709
+    {-# OVERLAPPING #-}
+#endif
+    (Uniplate a) => Uniplate' (K1 i a) a where
   children' (K1 a) = [a]
   descend' f (K1 a) = K1 (f a)
   descendM' f (K1 a) = liftM K1 (f a)
   transform' f (K1 a) = K1 (transform f a)
   transformM' f (K1 a) = liftM K1 (transformM f a)
 
-instance Uniplate' (K1 i a) b where
+instance
+#if __GLASGOW_HASKELL__ >= 709
+    {-# OVERLAPPABLE #-}
+#endif
+    Uniplate' (K1 i a) b where
   children' (K1 _) = []
   descend' _ (K1 a) = K1 a
   descendM' _ (K1 a) = return (K1 a)
@@ -118,11 +131,19 @@ class Context' f b where
 instance Context' U1 b where
   context' U1 _ = U1
 
-instance Context' (K1 i a) a where
+instance
+#if __GLASGOW_HASKELL__ >= 709
+    {-# OVERLAPPING #-}
+#endif
+    Context' (K1 i a) a where
   context' _      []    = error "Generics.Deriving.Uniplate.context: empty list"
   context' (K1 _) (c:_) = K1 c
 
-instance Context' (K1 i a) b where
+instance
+#if __GLASGOW_HASKELL__ >= 709
+    {-# OVERLAPPABLE #-}
+#endif
+    Context' (K1 i a) b where
   context' (K1 a) _ = K1 a
 
 instance (Context' f b) => Context' (M1 i c f) b where
@@ -132,11 +153,19 @@ instance (Context' f b, Context' g b) => Context' (f :+: g) b where
   context' (L1 a) cs = L1 (context' a cs)
   context' (R1 a) cs = R1 (context' a cs)
 
-instance (Context' g a) => Context' (M1 i c (K1 j a) :*: g) a where
+instance
+#if __GLASGOW_HASKELL__ >= 709
+    {-# OVERLAPPING #-}
+#endif
+    (Context' g a) => Context' (M1 i c (K1 j a) :*: g) a where
   context' _                 []     = error "Generics.Deriving.Uniplate.context: empty list"
   context' (M1 (K1 _) :*: b) (c:cs) = M1 (K1 c) :*: context' b cs
 
-instance (Context' g b) => Context' (f :*: g) b where
+instance
+#if __GLASGOW_HASKELL__ >= 709
+    {-# OVERLAPPABLE #-}
+#endif
+    (Context' g b) => Context' (f :*: g) b where
   context' (a :*: b) cs = a :*: context' b cs
 
 

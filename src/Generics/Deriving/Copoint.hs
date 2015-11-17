@@ -15,9 +15,16 @@ module Generics.Deriving.Copoint (
 
   ) where
 
+import Control.Applicative (WrappedMonad)
+
+import Data.Monoid (Dual, Sum)
+
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 
+#if MIN_VERSION_base(4,8,0)
+import Data.Functor.Identity (Identity)
+#endif
 
 --------------------------------------------------------------------------------
 -- Generic copoint
@@ -71,3 +78,36 @@ gcopointdefault x = case (gcopoint' . from1 $ x) of
                       Nothing -> error "Data type is not copointed"
 
 -- instance (Generic1 d, GCopoint' (Rep1 d)) => GCopoint d
+
+-- Base types instances
+instance GCopoint ((,) a) where
+  gcopoint = gcopointdefault
+
+instance GCopoint ((,,) a b) where
+  gcopoint = gcopointdefault
+
+instance GCopoint ((,,,) a b c) where
+  gcopoint = gcopointdefault
+
+instance GCopoint ((,,,,) a b c d) where
+  gcopoint = gcopointdefault
+
+instance GCopoint ((,,,,,) a b c d e) where
+  gcopoint = gcopointdefault
+
+instance GCopoint ((,,,,,,) a b c d e f) where
+  gcopoint = gcopointdefault
+
+instance GCopoint Dual where
+  gcopoint = gcopointdefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GCopoint Identity where
+  gcopoint = gcopointdefault
+#endif
+
+instance GCopoint Sum where
+  gcopoint = gcopointdefault
+
+instance GCopoint m => GCopoint (WrappedMonad m) where
+  gcopoint = gcopointdefault
