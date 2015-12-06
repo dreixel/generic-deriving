@@ -527,11 +527,6 @@ from1ValName = mkGD7'1_v "from1"
 moduleNameValName :: Name
 moduleNameValName = mkGD7'1_v "moduleName"
 
-#if __GLASGOW_HASKELL__ >= 711
-packageNameValName :: Name
-packageNameValName = mkGD7'1_v "packageName"
-#endif
-
 selNameValName :: Name
 selNameValName = mkGD7'1_v "selName"
 
@@ -610,3 +605,26 @@ fmapValName = mkNameG_v "base" "GHC.Base" "fmap"
 
 undefinedValName :: Name
 undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
+
+#if __GLASGOW_HASKELL__ >= 711
+infixIDataName :: Name
+infixIDataName = mkGD7'11_d "InfixI"
+
+metaConsDataName :: Name
+metaConsDataName = mkGD7'11_d "MetaCons"
+
+metaDataDataName :: Name
+metaDataDataName = mkGD7'11_d "MetaData"
+
+metaNoSelDataName :: Name
+metaNoSelDataName = mkGD7'11_d "MetaNoSel"
+
+metaSelDataName :: Name
+metaSelDataName = mkGD7'11_d "MetaSel"
+
+prefixIDataName :: Name
+prefixIDataName = mkGD7'11_d "PrefixI"
+
+packageNameValName :: Name
+packageNameValName = mkGD7'1_v "packageName"
+#endif

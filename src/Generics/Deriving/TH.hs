@@ -98,13 +98,12 @@ import qualified Data.Set as Set
 import           Data.Set (Set)
 #endif
 
-import           Generics.Deriving.Base
 import           Generics.Deriving.TH.Internal
 
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH.Syntax (Name(..), NameFlavour(..), Lift(..),
                                             modString, pkgString)
-import           Language.Haskell.TH hiding (Fixity())
+import           Language.Haskell.TH
 
 -- | Given the names of a generic class, a type to instantiate, a function in
 -- the class and the default implementation, generates the code for a basic
@@ -283,7 +282,7 @@ makeRepCommon :: Int -> Name -> Q Type
 makeRepCommon arity n = do
   i <- reifyDataInfo n
   case i of
-    Left msg               -> error msg
+    Left msg                  -> error msg
     Right (name, _, _, _, dv) -> conT $ genRepName arity dv name
 
 -- | Generates a lambda expression which behaves like 'from'.
@@ -426,15 +425,14 @@ mkDataInstance dv n _isNewtype =
 #endif
 
 liftFixity :: Fixity -> Q Exp
-liftFixity Prefix      = conE prefixDataName
-liftFixity (Infix a n) = conE infixDataName
+liftFixity (Fixity n a) = conE infixDataName
     `appE` liftAssociativity a
     `appE` lift n
 
-liftAssociativity :: Associativity -> Q Exp
-liftAssociativity LeftAssociative  = conE leftAssociativeDataName
-liftAssociativity RightAssociative = conE rightAssociativeDataName
-liftAssociativity NotAssociative   = conE notAssociativeDataName
+liftAssociativity :: FixityDirection -> Q Exp
+liftAssociativity InfixL = conE leftAssociativeDataName
+liftAssociativity InfixR = conE rightAssociativeDataName
+liftAssociativity InfixN = conE notAssociativeDataName
 
 mkConstrInstance :: DataVariety -> Name -> Con -> Q Dec
 mkConstrInstance dv dt (NormalC n _) = mkConstrInstanceWith dv dt n []
@@ -445,21 +443,16 @@ mkConstrInstance dv dt (InfixC _ n _) =
       i <- reify n
 #if __GLASGOW_HASKELL__ >= 711
       fi <- case i of
-                 DataConI{} -> fmap convertFixity $ reifyFixity n
-                 _ -> return Prefix
+                 DataConI{} -> reifyFixity n
+                 _ -> error $ "Not a data constructor name: " ++ show n
 #else
       let fi = case i of
-                 DataConI _ _ _ f -> convertFixity f
-                 _ -> Prefix
+                 DataConI _ _ _ f -> f
+                 _ -> error $ "Not a data constructor name: " ++ show n
 #endif
       instanceD (cxt []) (appT (conT constructorTypeName) (conT $ genName dv [dt, n]))
         [funD conNameValName   [clause [wildP] (normalB (stringE (nameBase n))) []],
          funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
-  where
-    convertFixity (Fixity n' d) = Infix (convertDirection d) n'
-    convertDirection InfixL = LeftAssociative
-    convertDirection InfixR = RightAssociative
-    convertDirection InfixN = NotAssociative
 mkConstrInstance _ _ (ForallC _ _ con) = forallCError con
 
 mkConstrInstanceWith :: DataVariety -> Name -> Name -> [Q Dec] -> Q Dec
@@ -500,24 +493,17 @@ repCon gk dv dt (RecC n fs) =
       (foldr1 prod (map (repField' gk dv dt n) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT productTypeName `appT` a `appT` b
-
-repCon gk dv dt (InfixC t1 n t2) = repCon gk dv dt (NormalC n [t1,t2])
-repCon _ _ _ (ForallC _ _ con) = forallCError con
-
---dataDeclToType :: (Name, [Name]) -> Type
---dataDeclToType (dt, vs) = foldl (\a b -> AppT a (VarT b)) (ConT dt) vs
+repCon gk dv dt (InfixC t1 n t2)  = repCon gk dv dt (NormalC n [t1,t2])
+repCon _  _  _  (ForallC _ _ con) = forallCError con
 
 repField :: GenericKind -> Type -> Q Type
---repField d t | t == dataDeclToType d = conT ''I
 repField gk t = conT s1TypeName `appT` conT noSelectorTypeName `appT`
                    (repFieldArg gk =<< expandSyn t)
 
 repField' :: GenericKind -> DataVariety -> Name -> Name -> (Name, Strict, Type) -> Q Type
---repField' d ns (_, _, t) | t == dataDeclToType d = conT ''I
 repField' gk dv dt ns (f, _, t) = conT s1TypeName
     `appT` conT (genName dv [dt, ns, f])
     `appT` (repFieldArg gk =<< expandSyn t)
--- Note: we should generate Par0 too, at some point
 
 repFieldArg :: GenericKind -> Type -> Q Type
 repFieldArg _ ForallT{} = rankNError
@@ -619,7 +605,6 @@ fromCon gk wrap m i (InfixC t1 cn t2) =
 fromCon _ _ _ _ (ForallC _ _ con) = forallCError con
 
 fromField :: GenericKind -> Int -> Type -> Q Exp
---fromField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conE 'I `appE` varE (field nr)
 fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< expandSyn t)
 
 fromFieldWrap :: GenericKind -> Int -> Type -> Q Exp
@@ -665,7 +650,6 @@ toCon _ wrap m i (NormalC cn []) =
         [conP m1DataName [conP u1DataName []]]])
       (normalB $ conE cn) []
 toCon gk wrap m i (NormalC cn fs) =
-    -- runIO (putStrLn ("constructor " ++ show ix)) >>
     match
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (\nr -> toField gk nr . snd) [0..] fs)]])
@@ -692,7 +676,6 @@ toConUnwC Gen0      nr _ = varE $ field nr
 toConUnwC (Gen1 nb) nr t = unwC t nb `appE` varE (field nr)
 
 toField :: GenericKind -> Int -> Type -> Q Pat
---toField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conP 'I [varP (field nr)]
 toField gk nr t = conP m1DataName [toFieldWrap gk nr t]
 
 toFieldWrap :: GenericKind -> Int -> Type -> Q Pat
