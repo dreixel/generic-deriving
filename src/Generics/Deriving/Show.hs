@@ -28,6 +28,7 @@ import Control.Applicative (Const, ZipList)
 import Data.Char (GeneralCategory)
 import Data.Int
 import Data.Monoid (All, Any, Dual, First, Last, Product, Sum)
+import Data.Version (Version)
 import Data.Word
 
 import Foreign.C.Types
@@ -43,6 +44,10 @@ import System.Exit (ExitCode)
 import System.IO (BufferMode, Handle, HandlePosn, IOMode, SeekMode)
 import System.IO.Error (IOErrorType)
 import System.Posix.Types
+
+#if MIN_VERSION_base(4,4,0)
+import Data.Complex (Complex)
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Proxy (Proxy)
@@ -104,7 +109,7 @@ instance (GShow' a, Constructor c) => GShow' (M1 C c a) where
             showBraces Tup     p = showChar '(' . p . showChar ')'
             showBraces Pref    p = p
             showBraces (Inf _) p = p
-            
+
             conIsTuple :: C1 c f p -> Bool
             conIsTuple y = tupleName (conName y) where
               tupleName ('(':',':_) = True
@@ -302,6 +307,11 @@ instance GShow COff where
   gshowsPrec = showsPrec
 #endif
 
+#if MIN_VERSION_base(4,4,0)
+instance GShow a => GShow (Complex a) where
+  gshowsPrec = gshowsPrecdefault
+#endif
+
 instance GShow a => GShow (Const a b) where
   gshowsPrec = gshowsPrecdefault
 
@@ -397,7 +407,7 @@ instance (GShow a, GShow b) => GShow (Either a b) where
   gshowsPrec = gshowsPrecdefault
 
 instance GShow ExitCode where
-  gshowsPrec = showsPrec
+  gshowsPrec = gshowsPrecdefault
 
 instance GShow Fd where
   gshowsPrec = showsPrec
@@ -512,6 +522,9 @@ instance GShow a => GShow (Sum a) where
   gshowsPrec = gshowsPrecdefault
 
 instance GShow (U1 p) where
+  gshowsPrec = gshowsPrecdefault
+
+instance GShow Version where
   gshowsPrec = gshowsPrecdefault
 
 #if MIN_VERSION_base(4,8,0)

@@ -39,6 +39,14 @@ import Data.Monoid
 import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 
+#if MIN_VERSION_base(4,4,0)
+import Data.Complex (Complex)
+#endif
+
+#if MIN_VERSION_base(4,7,0)
+import Data.Proxy (Proxy)
+#endif
+
 #if MIN_VERSION_base(4,8,0)
 import Data.Functor.Identity (Identity)
 #endif
@@ -126,6 +134,11 @@ instance GFoldable [] where
 instance GFoldable ((,) a) where
   gfoldMap = gfoldMapdefault
 
+#if MIN_VERSION_base(4,4,0)
+instance GFoldable Complex where
+  gfoldMap = gfoldMapdefault
+#endif
+
 instance GFoldable (Const m) where
   gfoldMap = gfoldMapdefault
 
@@ -139,6 +152,11 @@ instance GFoldable Identity where
 
 instance GFoldable Maybe where
   gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,7,0)
+instance GFoldable Proxy where
+  gfoldMap = gfoldMapdefault
+#endif
 
 gtoList :: GFoldable t => t a -> [a]
 gtoList = gfoldr (:) []
@@ -193,4 +211,3 @@ gnotElem x = not . gelem x
 
 gfind :: GFoldable t => (a -> Bool) -> t a -> Maybe a
 gfind p = listToMaybe . gconcatMap (\ x -> if p x then [x] else [])
-

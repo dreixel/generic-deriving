@@ -38,7 +38,12 @@ import Generics.Deriving.Base
 import Generics.Deriving.Instances ()
 import Generics.Deriving.Eq
 
+import System.Exit (ExitCode)
 import System.Posix.Types
+
+#if MIN_VERSION_base(4,4,0)
+import Data.Complex (Complex)
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Proxy (Proxy)
@@ -256,6 +261,11 @@ instance GEnum COff where
   genum = genumNum
 #endif
 
+#if MIN_VERSION_base(4,4,0)
+instance GEnum a => GEnum (Complex a) where
+  genum = genumDefault
+#endif
+
 instance GEnum a => GEnum (Const a b) where
   genum = genumDefault
 
@@ -348,6 +358,9 @@ instance GEnum a => GEnum (Dual a) where
   genum = genumDefault
 
 instance (GEnum a, GEnum b) => GEnum (Either a b) where
+  genum = genumDefault
+
+instance GEnum ExitCode where
   genum = genumDefault
 
 instance GEnum Fd where
@@ -763,6 +776,11 @@ instance (GEq a, GEnum a, GIx a) => GIx (Dual a) where
   inRange = inRangeDefault
 
 instance (GEq a, GEnum a, GIx a, GEq b, GEnum b, GIx b) => GIx (Either a b) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+
+instance GIx ExitCode where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault

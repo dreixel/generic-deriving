@@ -14,16 +14,24 @@ module Generics.Deriving.Functor (
 
   ) where
 
-import           Control.Applicative (Const, ZipList)
+import Control.Applicative (Const, ZipList)
 
-import           Data.Monoid (First, Last)
+import Data.Monoid (First, Last)
 
-import           Generics.Deriving.Base
-import           Generics.Deriving.Instances ()
+import Generics.Deriving.Base
+import Generics.Deriving.Instances ()
+
+#if MIN_VERSION_base(4,4,0)
+import Data.Complex (Complex)
+#endif
+
+#if MIN_VERSION_base(4,7,0)
+import Data.Proxy (Proxy)
+#endif
 
 #if MIN_VERSION_base(4,8,0)
-import           Data.Functor.Identity (Identity)
-import           Data.Monoid (Alt)
+import Data.Functor.Identity (Identity)
+import Data.Monoid (Alt)
 #endif
 
 --------------------------------------------------------------------------------
@@ -86,6 +94,11 @@ instance GFunctor f => GFunctor (Alt f) where
   gmap = gmapdefault
 #endif
 
+#if MIN_VERSION_base(4,4,0)
+instance GFunctor Complex where
+  gmap = gmapdefault
+#endif
+
 instance GFunctor (Const m) where
   gmap = gmapdefault
 
@@ -108,6 +121,11 @@ instance GFunctor Last where
 
 instance GFunctor Maybe where
   gmap = gmapdefault
+
+#if MIN_VERSION_base(4,7,0)
+instance GFunctor Proxy where
+  gmap = gmapdefault
+#endif
 
 instance GFunctor ZipList where
   gmap = gmapdefault

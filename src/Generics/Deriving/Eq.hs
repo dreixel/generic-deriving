@@ -26,6 +26,7 @@ import Control.Applicative (Const, ZipList)
 import Data.Char (GeneralCategory)
 import Data.Int
 import Data.Monoid (All, Any, Dual, First, Last, Product, Sum)
+import Data.Version (Version)
 import Data.Word
 
 import Foreign.C.Error
@@ -43,6 +44,10 @@ import System.Exit (ExitCode)
 import System.IO (BufferMode, Handle, HandlePosn, IOMode, SeekMode)
 import System.IO.Error (IOErrorType)
 import System.Posix.Types
+
+#if MIN_VERSION_base(4,4,0)
+import Data.Complex (Complex)
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Proxy (Proxy)
@@ -239,6 +244,11 @@ instance GEq COff where
   geq = (==)
 #endif
 
+#if MIN_VERSION_base(4,4,0)
+instance GEq a => GEq (Complex a) where
+  geq = geqdefault
+#endif
+
 instance GEq a => GEq (Const a b) where
   geq = geqdefault
 
@@ -337,7 +347,7 @@ instance GEq Errno where
   geq = (==)
 
 instance GEq ExitCode where
-  geq = (==)
+  geq = geqdefault
 
 instance GEq Fd where
   geq = (==)
@@ -449,6 +459,9 @@ instance GEq a => GEq (Sum a) where
 
 instance GEq (U1 p) where
   geq = geqdefault
+
+instance GEq Version where
+  geq = (==)
 
 #if MIN_VERSION_base(4,8,0)
 instance GEq Void where

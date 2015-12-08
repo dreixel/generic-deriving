@@ -21,6 +21,14 @@ import Generics.Deriving.Foldable
 import Generics.Deriving.Functor
 import Generics.Deriving.Instances ()
 
+#if MIN_VERSION_base(4,4,0)
+import Data.Complex (Complex)
+#endif
+
+#if MIN_VERSION_base(4,7,0)
+import Data.Proxy (Proxy)
+#endif
+
 #if MIN_VERSION_base(4,8,0)
 import Data.Functor.Identity (Identity)
 #endif
@@ -86,6 +94,11 @@ instance GTraversable [] where
 instance GTraversable ((,) a) where
   gtraverse = gtraversedefault
 
+#if MIN_VERSION_base(4,4,0)
+instance GTraversable Complex where
+  gtraverse = gtraversedefault
+#endif
+
 instance GTraversable (Const m) where
   gtraverse = gtraversedefault
 
@@ -99,3 +112,8 @@ instance GTraversable Identity where
 
 instance GTraversable Maybe where
   gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,7,0)
+instance GTraversable Proxy where
+  gtraverse = gtraversedefault
+#endif

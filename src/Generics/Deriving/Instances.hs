@@ -11,12 +11,21 @@ module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
 #if __GLASGOW_HASKELL__ < 711
-    Rep0UAddr
+    Rep0ExitCode
+  , Rep0UAddr
   , Rep0UChar
   , Rep0UDouble
   , Rep0UFloat
   , Rep0UInt
   , Rep0UWord
+  , Rep0Version
+# if __GLASGOW_HASKELL__ >= 701
+  , Rep0Complex
+  , Rep1Complex
+# endif
+# if __GLASGOW_HASKELL__ >= 707
+  , Rep1Proxy
+# endif
 #endif
 #if __GLASGOW_HASKELL__ < 708
   , Rep0All
@@ -89,11 +98,47 @@ import Control.Applicative
 import Data.Monoid
 #endif
 
-#if __GLASGOW_HASKELL__ < 711
-import Generics.Deriving.Base
+#if __GLASGOW_HASKELL__ >= 701 && __GLASGOW_HASKELL__ < 711
+import Data.Complex (Complex(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 707 && __GLASGOW_HASKELL__ < 711
+import Data.Proxy (Proxy(..))
 #endif
 
 #if __GLASGOW_HASKELL__ < 711
+import Data.Version (Version(..))
+import Generics.Deriving.Base
+import System.Exit (ExitCode(..))
+#endif
+
+#if __GLASGOW_HASKELL__ < 711
+type Rep0ExitCode = D1 D1ExitCode (C1 C1_0ExitCode U1
+                               :+: C1 C1_1ExitCode (S1 NoSelector (Rec0 Int)))
+
+instance Generic ExitCode where
+    type Rep ExitCode = Rep0ExitCode
+    from ExitSuccess     = M1 (L1 (M1 U1))
+    from (ExitFailure g) = M1 (R1 (M1 (M1 (K1 g))))
+    to (M1 (L1 (M1 U1)))          = ExitSuccess
+    to (M1 (R1 (M1 (M1 (K1 g))))) = ExitFailure g
+
+data D1ExitCode
+data C1_0ExitCode
+data C1_1ExitCode
+
+instance Datatype D1ExitCode where
+    datatypeName _ = "ExitCode"
+    moduleName   _ = "GHC.IO.Exception"
+
+instance Constructor C1_0ExitCode where
+    conName _ = "ExitSuccess"
+
+instance Constructor C1_1ExitCode where
+    conName _ = "ExitFailure"
+
+-----
+
 type Rep0UAddr p = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr UAddr))
 
 instance Generic (UAddr p) where
@@ -235,6 +280,86 @@ instance Constructor C1_0UWord where
 
 instance Selector S1_0_0UWord where
     selName _ = "uWord#"
+
+-----
+
+type Rep0Version = D1 D1Version (C1 C1_0Version (S1 S1_0_0Version (Rec0 [Int])
+                                             :*: S1 S1_0_1Version (Rec0 [String])))
+
+instance Generic Version where
+    type Rep Version = Rep0Version
+    from (Version b t) = M1 (M1 (M1 (K1 b) :*: M1 (K1 t)))
+    to (M1 (M1 (M1 (K1 b) :*: M1 (K1 t)))) = Version b t
+
+data D1Version
+data C1_0Version
+data S1_0_0Version
+data S1_0_1Version
+
+instance Datatype D1Version where
+    datatypeName _ = "Version"
+    moduleName   _ = "Data.Version"
+
+instance Constructor C1_0Version where
+    conName     _ = "Version"
+    conIsRecord _ = True
+
+instance Selector S1_0_0Version where
+    selName _ = "versionBranch"
+
+instance Selector S1_0_1Version where
+    selName _ = "versionTags"
+
+-----
+
+# if __GLASGOW_HASKELL__ >= 701
+type Rep0Complex a = D1 D1Complex (C1 C1_0Complex (S1 NoSelector (Rec0 a)
+                                               :*: S1 NoSelector (Rec0 a)))
+type Rep1Complex = D1 D1Complex (C1 C1_0Complex (S1 NoSelector Par1
+                                             :*: S1 NoSelector Par1))
+
+instance Generic (Complex a) where
+    type Rep (Complex a) = Rep0Complex a
+    from (a :+ b) = M1 (M1 (M1 (K1 a) :*: M1 (K1 b)))
+    to (M1 (M1 (M1 (K1 a) :*: M1 (K1 b)))) = a :+ b
+
+instance Generic1 Complex where
+    type Rep1 Complex = Rep1Complex
+    from1 (a :+ b) = M1 (M1 (M1 (Par1 a) :*: M1 (Par1 b)))
+    to1 (M1 (M1 (M1 a :*: M1 b))) = unPar1 a :+ unPar1 b
+
+data D1Complex
+data C1_0Complex
+
+instance Datatype D1Complex where
+    datatypeName _ = "Complex"
+    moduleName   _ = "Data.Complex"
+
+instance Constructor C1_0Complex where
+    conName   _ = ":+"
+    conFixity _ = Infix LeftAssociative 9
+# endif
+
+-----
+
+# if __GLASGOW_HASKELL__ >= 707
+type Rep1Proxy = D1 D1Proxy (C1 C1_0Proxy U1)
+
+instance Generic1 Proxy where
+    type Rep1 Proxy = Rep1Proxy
+    from1 Proxy      = M1 (M1 U1)
+    to1 (M1 (M1 U1)) = Proxy
+
+data D1Proxy
+data C1_0Proxy
+
+instance Datatype D1Proxy where
+    datatypeName _ = "Proxy"
+    moduleName   _ = "Data.Proxy"
+
+instance Constructor C1_0Proxy where
+    conName _ = "Proxy"
+# endif
 #endif
 
 -----
@@ -310,7 +435,7 @@ data C1_1Arity
 
 instance Datatype D1Arity where
     datatypeName _ = "Arity"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -346,7 +471,7 @@ data C1_2Associativity
 
 instance Datatype D1Associativity where
     datatypeName _ = "Associativity"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -496,7 +621,7 @@ data C1_1Fixity
 
 instance Datatype D1Fixity where
     datatypeName _ = "Fixity"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -706,7 +831,7 @@ data C1_0U1
 
 instance Datatype D1U1 where
     datatypeName _ = "U1"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -730,7 +855,7 @@ data S1_0_0Par1
 
 instance Datatype D1Par1 where
     datatypeName _ = "Par1"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -758,7 +883,7 @@ data S1_0_0Rec1
 
 instance Datatype D1Rec1 where
     datatypeName _ = "Rec1"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -786,7 +911,7 @@ data S1_0_0K1
 
 instance Datatype D1K1 where
     datatypeName _ = "K1"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -814,7 +939,7 @@ data S1_0_0M1
 
 instance Datatype D1M1 where
     datatypeName _ = "M1"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -847,7 +972,7 @@ data C1_1ConSum
 
 instance Datatype D1ConSum where
     datatypeName _ = ":+:"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -875,7 +1000,7 @@ data C1_ConProduct
 
 instance Datatype D1ConProduct where
     datatypeName _ = ":*:"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
@@ -901,7 +1026,7 @@ data S1_0_0ConCompose
 
 instance Datatype D1ConCompose where
     datatypeName _ = ":.:"
-# if __GLASGOW_HASKELL < 701
+# if __GLASGOW_HASKELL__ < 701
     moduleName   _ = "Generics.Deriving.Base"
 # else
     moduleName   _ = "GHC.Generics"
