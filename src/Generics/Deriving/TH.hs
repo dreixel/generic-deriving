@@ -87,8 +87,6 @@ module Generics.Deriving.TH (
     , makeTo1
   ) where
 
-import           Data.Char (isAlphaNum, ord)
-import           Data.List
 #if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
 import qualified Data.Map as Map
 import           Data.Map as Map (Map)
@@ -98,13 +96,15 @@ import qualified Data.Set as Set
 import           Data.Set (Set)
 #endif
 
-import           Generics.Deriving.Base
 import           Generics.Deriving.TH.Internal
+#if __GLASGOW_HASKELL__ >= 711
+import           Generics.Deriving.TH.Post711
+#else
+import           Generics.Deriving.TH.Pre711
+#endif
 
 import           Language.Haskell.TH.Lib
-import           Language.Haskell.TH.Syntax (Name(..), NameFlavour(..), Lift(..),
-                                            modString, pkgString)
-import           Language.Haskell.TH hiding (Fixity())
+import           Language.Haskell.TH
 
 -- | Given the names of a generic class, a type to instantiate, a function in
 -- the class and the default implementation, generates the code for a basic
@@ -147,29 +147,6 @@ deriveAll0And1 n =
      c <- deriveRepresentable1 n
      return (a ++ b ++ c)
 
--- | Given the type and the name (as string) for the type to derive,
--- generate the 'Data' instance, the 'Constructor' instances, and the 'Selector'
--- instances.
-deriveMeta :: Name -> Q [Dec]
-deriveMeta n =
-  do a <- deriveData n
-     b <- deriveConstructors n
-     c <- deriveSelectors n
-     return (a ++ b ++ c)
-
--- | Given a datatype name, derive a datatype and instance of class 'Datatype'.
-deriveData :: Name -> Q [Dec]
-deriveData = dataInstance
-
--- | Given a datatype name, derive datatypes and
--- instances of class 'Constructor'.
-deriveConstructors :: Name -> Q [Dec]
-deriveConstructors = constrInstance
-
--- | Given a datatype name, derive datatypes and instances of class 'Selector'.
-deriveSelectors :: Name -> Q [Dec]
-deriveSelectors = selectInstance
-
 -- | Given the type and the name (as string) for the Representable0 type
 -- synonym to derive, generate the 'Representable0' instance.
 deriveRepresentable0 :: Name -> Q [Dec]
@@ -199,7 +176,7 @@ deriveRep1 = deriveRepCommon 1
 deriveRepCommon :: Int -> Name -> Q [Dec]
 deriveRepCommon arity n = do
   i <- reifyDataInfo n
-  let (name, _, allTvbs, cons, dv) = either error id i
+  let (name, isNT, allTvbs, cons, dv) = either error id i
       (tvbs, _, gk) = buildTypeInstance arity name allTvbs cons dv
 
   fmap (:[]) $ tySynD (genRepName arity dv name)
@@ -207,7 +184,7 @@ deriveRepCommon arity n = do
                                             -- the TyVarBndrs in a type synonym
                                             -- declaration, so we don't need to
                                             -- splice them explicitly
-                      (repType gk dv name cons)
+                      (repType gk dv name isNT cons)
 
 deriveInst :: Name -> Q [Dec]
 deriveInst = deriveInstCommon genericTypeName repTypeName 0 fromValName toValName
@@ -283,7 +260,7 @@ makeRepCommon :: Int -> Name -> Q Type
 makeRepCommon arity n = do
   i <- reifyDataInfo n
   case i of
-    Left msg               -> error msg
+    Left msg                  -> error msg
     Right (name, _, _, _, dv) -> conT $ genRepName arity dv name
 
 -- | Generates a lambda expression which behaves like 'from'.
@@ -310,54 +287,6 @@ makeFunCommon maker arity n = do
       (_, _, gk) = buildTypeInstance arity name allTvbs cons dv
   mkCaseExp gk name cons maker
 
-dataInstance :: Name -> Q [Dec]
-dataInstance n = do
-  i <- reifyDataInfo n
-  case i of
-    Left  _                    -> return []
-    Right (n', isNT, _, _, dv) -> mkInstance n' dv isNT
-  where
-    mkInstance n' dv isNT = do
-      ds <- mkDataData dv n'
-      is <- mkDataInstance dv n' isNT
-      return $ [ds,is]
-
-constrInstance :: Name -> Q [Dec]
-constrInstance n = do
-  i <- reifyDataInfo n
-  case i of
-    Left  _               -> return []
-    Right (n', _, _, cs, dv) -> mkInstance n' cs dv
-  where
-    mkInstance n' cs dv = do
-      ds <- mapM (mkConstrData dv n') cs
-      is <- mapM (mkConstrInstance dv n') cs
-      return $ ds ++ is
-
-selectInstance :: Name -> Q [Dec]
-selectInstance n = do
-  i <- reifyDataInfo n
-  case i of
-    Left  _               -> return []
-    Right (n', _, _, cs, dv) -> mkInstance n' cs dv
-  where
-    mkInstance n' cs dv = do
-      ds <- mapM (mkSelectData dv n') cs
-      is <- mapM (mkSelectInstance dv n') cs
-      return $ concat (ds ++ is)
-
-genName :: DataVariety -> [Name] -> Name
-genName dv ns = mkName
-              . showsDataVariety dv
-              . intercalate "_"
-              . consQualName
-              $ map (sanitizeName . nameBase) ns
-  where
-    consQualName :: [String] -> [String]
-    consQualName = case ns of
-        []  -> id
-        n:_ -> (showNameQual n :)
-
 genRepName :: Int -> DataVariety -> Name -> Name
 genRepName arity dv n = mkName
                       . showsDataVariety dv
@@ -366,118 +295,9 @@ genRepName arity dv n = mkName
                       . sanitizeName
                       $ nameBase n
 
-showsDataVariety :: DataVariety -> ShowS
-showsDataVariety dv = (++ '_':label dv)
-  where
-    label DataPlain        = "Plain"
-    label (DataFamily n _) = "Family_" ++ sanitizeName (nameBase n)
-
-showNameQual :: Name -> String
-showNameQual = sanitizeName . showQual
-  where
-    showQual (Name _ (NameQ m))       = modString m
-    showQual (Name _ (NameG _ pkg m)) = pkgString pkg ++ ":" ++ modString m
-    showQual _                        = ""
-
--- | Credit to Víctor López Juan for this trick
-sanitizeName :: String -> String
-sanitizeName nb = 'N':(
-    nb >>= \x -> case x of
-      c | isAlphaNum c || c == '\''-> [c]
-      '_' -> "__"
-      c   -> "_" ++ show (ord c))
-
-mkDataData :: DataVariety -> Name -> Q Dec
-mkDataData dv n = dataD (cxt []) (genName dv [n]) [] [] []
-
-mkConstrData :: DataVariety -> Name -> Con -> Q Dec
-mkConstrData dv dt (NormalC n _) =
-  dataD (cxt []) (genName dv [dt, n]) [] [] []
-mkConstrData dv dt r@(RecC _ _) =
-  mkConstrData dv dt (stripRecordNames r)
-mkConstrData dv dt (InfixC t1 n t2) =
-  mkConstrData dv dt (NormalC n [t1,t2])
-mkConstrData _ _ (ForallC _ _ con) = forallCError con
-
-mkSelectData :: DataVariety -> Name -> Con -> Q [Dec]
-mkSelectData dv dt (RecC n fs) = return (map one fs)
-  where one (f, _, _) = DataD [] (genName dv [dt, n, f]) [] [] []
-mkSelectData _ _ _ = return []
-
-
-mkDataInstance :: DataVariety -> Name -> Bool -> Q Dec
-mkDataInstance dv n _isNewtype =
-  instanceD (cxt []) (appT (conT datatypeTypeName) (conT $ genName dv [n])) $
-    [ funD datatypeNameValName [clause [wildP] (normalB (stringE (nameBase n))) []]
-    , funD moduleNameValName   [clause [wildP] (normalB (stringE name)) []]
-#if __GLASGOW_HASKELL__ >= 711
-    , funD packageNameValName  [clause [wildP] (normalB (stringE pkgName)) []]
-#endif
-    ]
-#if __GLASGOW_HASKELL__ >= 708
- ++ if _isNewtype
-       then [funD isNewtypeValName [clause [wildP] (normalB (conE trueDataName)) []]]
-       else []
-#endif
-  where
-    name    = maybe (error "Cannot fetch module name!")  id (nameModule n)
-#if __GLASGOW_HASKELL__ >= 711
-    pkgName = maybe (error "Cannot fetch package name!") id (namePackage n)
-#endif
-
-liftFixity :: Fixity -> Q Exp
-liftFixity Prefix      = conE prefixDataName
-liftFixity (Infix a n) = conE infixDataName
-    `appE` liftAssociativity a
-    `appE` lift n
-
-liftAssociativity :: Associativity -> Q Exp
-liftAssociativity LeftAssociative  = conE leftAssociativeDataName
-liftAssociativity RightAssociative = conE rightAssociativeDataName
-liftAssociativity NotAssociative   = conE notAssociativeDataName
-
-mkConstrInstance :: DataVariety -> Name -> Con -> Q Dec
-mkConstrInstance dv dt (NormalC n _) = mkConstrInstanceWith dv dt n []
-mkConstrInstance dv dt (RecC    n _) = mkConstrInstanceWith dv dt n
-      [ funD conIsRecordValName [clause [wildP] (normalB (conE trueDataName)) []]]
-mkConstrInstance dv dt (InfixC _ n _) =
-    do
-      i <- reify n
-#if __GLASGOW_HASKELL__ >= 711
-      fi <- case i of
-                 DataConI{} -> fmap convertFixity $ reifyFixity n
-                 _ -> return Prefix
-#else
-      let fi = case i of
-                 DataConI _ _ _ f -> convertFixity f
-                 _ -> Prefix
-#endif
-      instanceD (cxt []) (appT (conT constructorTypeName) (conT $ genName dv [dt, n]))
-        [funD conNameValName   [clause [wildP] (normalB (stringE (nameBase n))) []],
-         funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
-  where
-    convertFixity (Fixity n' d) = Infix (convertDirection d) n'
-    convertDirection InfixL = LeftAssociative
-    convertDirection InfixR = RightAssociative
-    convertDirection InfixN = NotAssociative
-mkConstrInstance _ _ (ForallC _ _ con) = forallCError con
-
-mkConstrInstanceWith :: DataVariety -> Name -> Name -> [Q Dec] -> Q Dec
-mkConstrInstanceWith dv dt n extra =
-  instanceD (cxt []) (appT (conT constructorTypeName) (conT $ genName dv [dt, n]))
-    (funD conNameValName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
-
-mkSelectInstance :: DataVariety -> Name -> Con -> Q [Dec]
-mkSelectInstance dv dt (RecC n fs) = return (map one fs) where
-  one (f, _, _) =
-    InstanceD ([]) (AppT (ConT selectorTypeName) (ConT $ genName dv [dt, n, f]))
-      [FunD selNameValName [Clause [WildP]
-        (NormalB (LitE (StringL (nameBase f)))) []]]
-mkSelectInstance _ _ _ = return []
-
-repType :: GenericKind -> DataVariety -> Name -> [Con] -> Q Type
-repType gk dv dt cs =
-    conT d1TypeName `appT` (conT $ genName dv [dt]) `appT`
+repType :: GenericKind -> DataVariety -> Name -> Bool -> [Con] -> Q Type
+repType gk dv dt isNT cs =
+    conT d1TypeName `appT` mkMetaDataType dv dt isNT `appT`
       foldr1' sum' (conT v1TypeName)
         (map (repCon gk dv dt) cs)
   where
@@ -486,38 +306,31 @@ repType gk dv dt cs =
 
 repCon :: GenericKind -> DataVariety -> Name -> Con -> Q Type
 repCon _ dv dt (NormalC n []) =
-    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT`
-     (conT s1TypeName `appT` conT noSelectorTypeName `appT` conT u1TypeName)
+    conT c1TypeName `appT` mkMetaConsType dv dt n False `appT`
+     (conT s1TypeName `appT` mkMetaNoSelType `appT` conT u1TypeName)
 repCon gk dv dt (NormalC n fs) =
-    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT`
+    conT c1TypeName `appT` mkMetaConsType dv dt n False `appT`
      (foldr1 prod (map (repField gk . snd) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT productTypeName `appT` a `appT` b
 repCon _ dv dt (RecC n []) =
-    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT` conT u1TypeName
+    conT c1TypeName `appT` mkMetaConsType dv dt n True `appT` conT u1TypeName
 repCon gk dv dt (RecC n fs) =
-    conT c1TypeName `appT` (conT $ genName dv [dt, n]) `appT`
+    conT c1TypeName `appT` mkMetaConsType dv dt n True `appT`
       (foldr1 prod (map (repField' gk dv dt n) fs)) where
     prod :: Q Type -> Q Type -> Q Type
     prod a b = conT productTypeName `appT` a `appT` b
-
-repCon gk dv dt (InfixC t1 n t2) = repCon gk dv dt (NormalC n [t1,t2])
-repCon _ _ _ (ForallC _ _ con) = forallCError con
-
---dataDeclToType :: (Name, [Name]) -> Type
---dataDeclToType (dt, vs) = foldl (\a b -> AppT a (VarT b)) (ConT dt) vs
+repCon gk dv dt (InfixC t1 n t2)  = repCon gk dv dt (NormalC n [t1,t2])
+repCon _  _  _  (ForallC _ _ con) = forallCError con
 
 repField :: GenericKind -> Type -> Q Type
---repField d t | t == dataDeclToType d = conT ''I
-repField gk t = conT s1TypeName `appT` conT noSelectorTypeName `appT`
+repField gk t = conT s1TypeName `appT` mkMetaNoSelType `appT`
                    (repFieldArg gk =<< expandSyn t)
 
 repField' :: GenericKind -> DataVariety -> Name -> Name -> (Name, Strict, Type) -> Q Type
---repField' d ns (_, _, t) | t == dataDeclToType d = conT ''I
 repField' gk dv dt ns (f, _, t) = conT s1TypeName
-    `appT` conT (genName dv [dt, ns, f])
+    `appT` mkMetaSelType dv dt ns f
     `appT` (repFieldArg gk =<< expandSyn t)
--- Note: we should generate Par0 too, at some point
 
 repFieldArg :: GenericKind -> Type -> Q Type
 repFieldArg _ ForallT{} = rankNError
@@ -619,7 +432,6 @@ fromCon gk wrap m i (InfixC t1 cn t2) =
 fromCon _ _ _ _ (ForallC _ _ con) = forallCError con
 
 fromField :: GenericKind -> Int -> Type -> Q Exp
---fromField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conE 'I `appE` varE (field nr)
 fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< expandSyn t)
 
 fromFieldWrap :: GenericKind -> Int -> Type -> Q Exp
@@ -665,7 +477,6 @@ toCon _ wrap m i (NormalC cn []) =
         [conP m1DataName [conP u1DataName []]]])
       (normalB $ conE cn) []
 toCon gk wrap m i (NormalC cn fs) =
-    -- runIO (putStrLn ("constructor " ++ show ix)) >>
     match
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (\nr -> toField gk nr . snd) [0..] fs)]])
@@ -692,7 +503,6 @@ toConUnwC Gen0      nr _ = varE $ field nr
 toConUnwC (Gen1 nb) nr t = unwC t nb `appE` varE (field nr)
 
 toField :: GenericKind -> Int -> Type -> Q Pat
---toField (dt, vs) nr t | t == dataDeclToType (dt, vs) = conP 'I [varP (field nr)]
 toField gk nr t = conP m1DataName [toFieldWrap gk nr t]
 
 toFieldWrap :: GenericKind -> Int -> Type -> Q Pat
@@ -752,72 +562,6 @@ unboxedRepNames ty
   | ty == ConT intHashTypeName    = Just (uIntTypeName,    uIntDataName,    uIntHashValName)
   | ty == ConT wordHashTypeName   = Just (uWordTypeName,   uWordDataName,   uWordHashValName)
   | otherwise                     = Nothing
-
--- | Boilerplate for top level splices.
---
--- The given Name must meet one of two criteria:
---
--- 1. It must be the name of a type constructor of a plain data type or newtype.
--- 2. It must be the name of a data family instance or newtype instance constructor.
---
--- Any other value will result in an exception.
-reifyDataInfo :: Name
-              -> Q (Either String (Name, Bool, [TyVarBndr], [Con], DataVariety))
-reifyDataInfo name = do
-  info <- reify name
-  case info of
-    TyConI dec ->
-      return $ case dec of
-        DataD    ctxt _ tvbs cons _ -> Right $
-          checkDataContext name ctxt (name, False, tvbs, cons, DataPlain)
-        NewtypeD ctxt _ tvbs con  _ -> Right $
-          checkDataContext name ctxt (name, True, tvbs, [con], DataPlain)
-        TySynD{} -> Left $ ns ++ "Type synonyms are not supported."
-        _        -> Left $ ns ++ "Unsupported type: " ++ show dec
-#if MIN_VERSION_template_haskell(2,7,0)
-# if MIN_VERSION_template_haskell(2,11,0)
-    DataConI _ _ parentName   -> do
-# else
-    DataConI _ _ parentName _ -> do
-# endif
-      parentInfo <- reify parentName
-      return $ case parentInfo of
-# if MIN_VERSION_template_haskell(2,11,0)
-        FamilyI (DataFamilyD _ tvbs _) decs ->
-# else
-        FamilyI (FamilyD DataFam _ tvbs _) decs ->
-# endif
-          -- This isn't total, but the API requires that the data family instance have
-          -- at least one constructor anyways, so this will always succeed.
-          let instDec = flip find decs $ any ((name ==) . constructorName) . dataDecCons
-           in case instDec of
-                Just (DataInstD    ctxt _ instTys cons _) -> Right $
-                  checkDataContext parentName ctxt
-                    (parentName, False, tvbs, cons, DataFamily (constructorName $ head cons) instTys)
-                Just (NewtypeInstD ctxt _ instTys con  _) -> Right $
-                  checkDataContext parentName ctxt
-                    (parentName, True, tvbs, [con], DataFamily (constructorName con) instTys)
-                _ -> Left $ ns ++
-                  "Could not find data or newtype instance constructor."
-        _ -> Left $ ns ++ "Data constructor " ++ show name ++
-          " is not from a data family instance constructor."
-# if MIN_VERSION_template_haskell(2,11,0)
-    FamilyI DataFamilyD{} _ ->
-# else
-    FamilyI (FamilyD DataFam _ _ _) _ ->
-# endif
-      return . Left $
-        ns ++ "Cannot use a data family name. Use a data family instance constructor instead."
-    _ -> return . Left $ ns ++ "The name must be of a plain data type constructor, "
-                            ++ "or a data family instance constructor."
-#else
-    DataConI{} -> return . Left $ ns ++ "Cannot use a data constructor."
-        ++ "\n\t(Note: if you are trying to derive for a data family instance, use GHC >= 7.4 instead.)"
-    _          -> return . Left $ ns ++ "The name must be of a plain type constructor."
-#endif
-  where
-    ns :: String
-    ns = "Generics.Deriving.TH.reifyDataInfo: "
 
 -- | Deduces the non-eta-reduced type variables, the instance type, the GenericKind
 -- value to use for a Generic(1) instance.
@@ -1015,46 +759,6 @@ ground (VarT n)     nb = NameBase n /= nb
 ground ForallT{}    _  = rankNError
 ground _            _  = True
 
--- | One of the last type variables cannot be eta-reduced (see the canEtaReduce
--- function for the criteria it would have to meet).
-etaReductionError :: Type -> a
-etaReductionError instanceType = error $
-  "Cannot eta-reduce to an instance of form \n\tinstance (...) => "
-  ++ pprint instanceType
-
--- | Either the given data type doesn't have enough type variables, or one of
--- the type variables to be eta-reduced cannot realize kind *.
-derivingKindError :: Name -> a
-derivingKindError tyConName = error
-  . showString "Cannot derive well-kinded instance of form ‘Generic1 "
-  . showParen True
-    ( showString (nameBase tyConName)
-    . showString " ..."
-    )
-  . showString "‘\n\tClass Generic1 expects an argument of kind * -> *"
-  $ ""
-
-outOfPlaceTyVarError :: a
-outOfPlaceTyVarError = error $
-    "Type applied to an argument involving the last parameter is not of kind * -> *"
-
--- | Deriving Generic(1) doesn't work with ExistentialQuantification
-forallCError :: Con -> a
-forallCError con = error $
-  nameBase (constructorName con) ++ " must be a vanilla data constructor"
-
--- | Cannot have a constructor argument of form (forall a1 ... an. <type>)
--- when deriving Generic(1)
-rankNError :: a
-rankNError = error "Cannot have polymorphic arguments"
-
--- | One cannot derive Generic(1) instance for anything that uses DatatypeContexts,
--- so check to make sure the Cxt field of a datatype is null.
-checkDataContext :: Name -> Cxt -> a -> a
-checkDataContext _        [] x = x
-checkDataContext dataName _  _ = error $
-  nameBase dataName ++ " must not have a datatype context"
-
 -- | Indicates whether Generic (Gen0) or Generic1 (Gen1) is being derived. Gen1
 -- bundles the Name of the last type parameter.
 data GenericKind = Gen0 | Gen1 NameBase
@@ -1064,9 +768,3 @@ genericKindFromArity :: Int -> [NameBase] -> GenericKind
 genericKindFromArity 0 _   = Gen0
 genericKindFromArity 1 nbs = Gen1 $ head nbs
 genericKindFromArity _ _   = error "Invalid arity"
-
--- | Indicates whether Generic(1) is being derived for a plain data type (DataPlain)
--- or a data family instance (DataFamily). DataFamily bundles the Name of the data
--- family instance's first constructor (for Name-generation purposes) and the types
--- used to instantiate the instance.
-data DataVariety = DataPlain | DataFamily Name [Type]

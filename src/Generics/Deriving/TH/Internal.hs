@@ -15,6 +15,7 @@
 
 module Generics.Deriving.TH.Internal where
 
+import           Data.Char (isAlphaNum, ord)
 import           Data.Function (on)
 import           Data.List
 import qualified Data.Map as Map
@@ -23,6 +24,7 @@ import qualified Data.Set as Set
 import           Data.Set (Set)
 
 import           Language.Haskell.TH.Lib
+import           Language.Haskell.TH.Ppr (pprint)
 import           Language.Haskell.TH.Syntax
 
 #ifndef CURRENT_PACKAGE_KEY
@@ -303,6 +305,139 @@ dataDecCons (NewtypeInstD _ _ _ con  _) = [con]
 dataDecCons _ = error "Must be a data or newtype declaration."
 #endif
 
+-- | Indicates whether Generic(1) is being derived for a plain data type (DataPlain)
+-- or a data family instance (DataFamily). DataFamily bundles the Name of the data
+-- family instance's first constructor (for Name-generation purposes) and the types
+-- used to instantiate the instance.
+data DataVariety = DataPlain | DataFamily Name [Type]
+
+showsDataVariety :: DataVariety -> ShowS
+showsDataVariety dv = (++ '_':label dv)
+  where
+    label DataPlain        = "Plain"
+    label (DataFamily n _) = "Family_" ++ sanitizeName (nameBase n)
+
+showNameQual :: Name -> String
+showNameQual = sanitizeName . showQual
+  where
+    showQual (Name _ (NameQ m))       = modString m
+    showQual (Name _ (NameG _ pkg m)) = pkgString pkg ++ ":" ++ modString m
+    showQual _                        = ""
+
+-- | Credit to Víctor López Juan for this trick
+sanitizeName :: String -> String
+sanitizeName nb = 'N':(
+    nb >>= \x -> case x of
+      c | isAlphaNum c || c == '\''-> [c]
+      '_' -> "__"
+      c   -> "_" ++ show (ord c))
+
+-- | One of the last type variables cannot be eta-reduced (see the canEtaReduce
+-- function for the criteria it would have to meet).
+etaReductionError :: Type -> a
+etaReductionError instanceType = error $
+  "Cannot eta-reduce to an instance of form \n\tinstance (...) => "
+  ++ pprint instanceType
+
+-- | Either the given data type doesn't have enough type variables, or one of
+-- the type variables to be eta-reduced cannot realize kind *.
+derivingKindError :: Name -> a
+derivingKindError tyConName = error
+  . showString "Cannot derive well-kinded instance of form ‘Generic1 "
+  . showParen True
+    ( showString (nameBase tyConName)
+    . showString " ..."
+    )
+  . showString "‘\n\tClass Generic1 expects an argument of kind * -> *"
+  $ ""
+
+outOfPlaceTyVarError :: a
+outOfPlaceTyVarError = error $
+    "Type applied to an argument involving the last parameter is not of kind * -> *"
+
+-- | Deriving Generic(1) doesn't work with ExistentialQuantification
+forallCError :: Con -> a
+forallCError con = error $
+  nameBase (constructorName con) ++ " must be a vanilla data constructor"
+
+-- | Cannot have a constructor argument of form (forall a1 ... an. <type>)
+-- when deriving Generic(1)
+rankNError :: a
+rankNError = error "Cannot have polymorphic arguments"
+
+-- | Boilerplate for top level splices.
+--
+-- The given Name must meet one of two criteria:
+--
+-- 1. It must be the name of a type constructor of a plain data type or newtype.
+-- 2. It must be the name of a data family instance or newtype instance constructor.
+--
+-- Any other value will result in an exception.
+reifyDataInfo :: Name
+              -> Q (Either String (Name, Bool, [TyVarBndr], [Con], DataVariety))
+reifyDataInfo name = do
+  info <- reify name
+  case info of
+    TyConI dec ->
+      return $ case dec of
+        DataD    ctxt _ tvbs cons _ -> Right $
+          checkDataContext name ctxt (name, False, tvbs, cons, DataPlain)
+        NewtypeD ctxt _ tvbs con  _ -> Right $
+          checkDataContext name ctxt (name, True, tvbs, [con], DataPlain)
+        TySynD{} -> Left $ ns ++ "Type synonyms are not supported."
+        _        -> Left $ ns ++ "Unsupported type: " ++ show dec
+#if MIN_VERSION_template_haskell(2,7,0)
+# if MIN_VERSION_template_haskell(2,11,0)
+    DataConI _ _ parentName   -> do
+# else
+    DataConI _ _ parentName _ -> do
+# endif
+      parentInfo <- reify parentName
+      return $ case parentInfo of
+# if MIN_VERSION_template_haskell(2,11,0)
+        FamilyI (DataFamilyD _ tvbs _) decs ->
+# else
+        FamilyI (FamilyD DataFam _ tvbs _) decs ->
+# endif
+          -- This isn't total, but the API requires that the data family instance have
+          -- at least one constructor anyways, so this will always succeed.
+          let instDec = flip find decs $ any ((name ==) . constructorName) . dataDecCons
+           in case instDec of
+                Just (DataInstD    ctxt _ instTys cons _) -> Right $
+                  checkDataContext parentName ctxt
+                    (parentName, False, tvbs, cons, DataFamily (constructorName $ head cons) instTys)
+                Just (NewtypeInstD ctxt _ instTys con  _) -> Right $
+                  checkDataContext parentName ctxt
+                    (parentName, True, tvbs, [con], DataFamily (constructorName con) instTys)
+                _ -> Left $ ns ++
+                  "Could not find data or newtype instance constructor."
+        _ -> Left $ ns ++ "Data constructor " ++ show name ++
+          " is not from a data family instance constructor."
+# if MIN_VERSION_template_haskell(2,11,0)
+    FamilyI DataFamilyD{} _ ->
+# else
+    FamilyI (FamilyD DataFam _ _ _) _ ->
+# endif
+      return . Left $
+        ns ++ "Cannot use a data family name. Use a data family instance constructor instead."
+    _ -> return . Left $ ns ++ "The name must be of a plain data type constructor, "
+                            ++ "or a data family instance constructor."
+#else
+    DataConI{} -> return . Left $ ns ++ "Cannot use a data constructor."
+        ++ "\n\t(Note: if you are trying to derive for a data family instance, use GHC >= 7.4 instead.)"
+    _          -> return . Left $ ns ++ "The name must be of a plain type constructor."
+#endif
+  where
+    ns :: String
+    ns = "Generics.Deriving.TH.reifyDataInfo: "
+
+-- | One cannot derive Generic(1) instance for anything that uses DatatypeContexts,
+-- so check to make sure the Cxt field of a datatype is null.
+checkDataContext :: Name -> Cxt -> a -> a
+checkDataContext _        [] x = x
+checkDataContext dataName _  _ = error $
+  nameBase dataName ++ " must not have a datatype context"
+
 -------------------------------------------------------------------------------
 -- Manually quoted names
 -------------------------------------------------------------------------------
@@ -527,11 +662,6 @@ from1ValName = mkGD7'1_v "from1"
 moduleNameValName :: Name
 moduleNameValName = mkGD7'1_v "moduleName"
 
-#if __GLASGOW_HASKELL__ >= 711
-packageNameValName :: Name
-packageNameValName = mkGD7'1_v "packageName"
-#endif
-
 selNameValName :: Name
 selNameValName = mkGD7'1_v "selName"
 
@@ -578,6 +708,13 @@ trueDataName = mkNameG_d "ghc-prim" "GHC.Types" "True"
 trueDataName = mkNameG_d "ghc-prim" "GHC.Bool" "True"
 #endif
 
+falseDataName :: Name
+#if __GLASGOW_HASKELL__ >= 701
+falseDataName = mkNameG_d "ghc-prim" "GHC.Types" "False"
+#else
+falseDataName = mkNameG_d "ghc-prim" "GHC.Bool" "False"
+#endif
+
 mkGHCPrim_tc :: String -> Name
 mkGHCPrim_tc = mkNameG_tc "ghc-prim" "GHC.Prim"
 
@@ -610,3 +747,26 @@ fmapValName = mkNameG_v "base" "GHC.Base" "fmap"
 
 undefinedValName :: Name
 undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
+
+#if __GLASGOW_HASKELL__ >= 711
+infixIDataName :: Name
+infixIDataName = mkGD7'11_d "InfixI"
+
+metaConsDataName :: Name
+metaConsDataName = mkGD7'11_d "MetaCons"
+
+metaDataDataName :: Name
+metaDataDataName = mkGD7'11_d "MetaData"
+
+metaNoSelDataName :: Name
+metaNoSelDataName = mkGD7'11_d "MetaNoSel"
+
+metaSelDataName :: Name
+metaSelDataName = mkGD7'11_d "MetaSel"
+
+prefixIDataName :: Name
+prefixIDataName = mkGD7'11_d "PrefixI"
+
+packageNameValName :: Name
+packageNameValName = mkGD7'1_v "packageName"
+#endif

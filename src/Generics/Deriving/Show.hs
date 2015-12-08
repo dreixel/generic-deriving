@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -103,6 +104,8 @@ instance (GShow' a, Constructor c) => GShow' (M1 C c a) where
             showBraces Tup     p = showChar '(' . p . showChar ')'
             showBraces Pref    p = p
             showBraces (Inf _) p = p
+            
+            conIsTuple :: C1 c f p -> Bool
             conIsTuple y = tupleName (conName y) where
               tupleName ('(':',':_) = True
               tupleName _           = False
@@ -220,8 +223,10 @@ instance GShow (f a) => GShow (Alt f a) where
 instance GShow Any where
   gshowsPrec = gshowsPrecdefault
 
+#if __GLASGOW_HASKELL__ < 711
 instance GShow Arity where
   gshowsPrec = gshowsPrecdefault
+#endif
 
 instance GShow Associativity where
   gshowsPrec = gshowsPrecdefault

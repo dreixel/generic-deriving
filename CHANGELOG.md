@@ -1,3 +1,7 @@
+# next
+* On GHC 7.11 and up, `Generics.Deriving.TH` uses the new type literal-based
+  machinery
+
 # 1.9.0
 * Allow deriving of Generic1 using Template Haskell
 * Allow deriving of Generic(1) for data families

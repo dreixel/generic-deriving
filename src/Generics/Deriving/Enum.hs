@@ -183,8 +183,10 @@ instance GEnum (f a) => GEnum (Alt f a) where
 instance GEnum Any where
   genum = genumDefault
 
+#if __GLASGOW_HASKELL__ < 711
 instance GEnum Arity where
   genum = genumDefault
+#endif
 
 instance GEnum Associativity where
   genum = genumDefault
@@ -573,10 +575,12 @@ instance GIx Any where
   index   = indexDefault
   inRange = inRangeDefault
 
+#if __GLASGOW_HASKELL__ < 711
 instance GIx Arity where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
+#endif
 
 instance GIx Associativity where
   range   = rangeDefault
