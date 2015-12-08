@@ -160,8 +160,10 @@ instance GEq (f a) => GEq (Alt f a) where
 instance GEq Any where
   geq = geqdefault
 
+#if __GLASGOW_HASKELL__ < 711
 instance GEq Arity where
   geq = geqdefault
+#endif
 
 instance GEq Associativity where
   geq = geqdefault

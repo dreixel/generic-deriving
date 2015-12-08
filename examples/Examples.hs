@@ -1,20 +1,26 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DatatypeContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE DatatypeContexts #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DeriveGeneric #-}
 #endif
+
+#if __GLASGOW_HASKELL__ >= 711
+{-# LANGUAGE DataKinds #-}
+#endif
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main (

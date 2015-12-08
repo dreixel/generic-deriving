@@ -12,13 +12,24 @@
 -- generics introduced in GHC 7.11.
 -----------------------------------------------------------------------------
 
-module Generics.Deriving.TH.Post711 where
+module Generics.Deriving.TH.Post711 (
+      deriveMeta
+    , deriveData
+    , deriveConstructors
+    , deriveSelectors
+    , mkMetaDataType
+    , mkMetaConsType
+    , mkMetaSelType
+    , mkMetaNoSelType
+  ) where
 
 import Generics.Deriving.TH.Internal
+
+import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Syntax
 
-mkMetaDataType :: Name -> Bool -> Q Type
-mkMetaDataType n isNewtype =
+mkMetaDataType :: DataVariety -> Name -> Bool -> Q Type
+mkMetaDataType _ n isNewtype =
            promotedT metaDataDataName
     `appT` litT (strTyLit (nameBase n))
     `appT` litT (strTyLit m)
@@ -29,8 +40,8 @@ mkMetaDataType n isNewtype =
     m   = maybe (error "Cannot fetch module name!")  id (nameModule n)
     pkg = maybe (error "Cannot fetch package name!") id (namePackage n)
 
-mkMetaConsType :: Name -> Bool -> Q Type
-mkMetaConsType n conIsRecord = do
+mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Q Type
+mkMetaConsType _ _ n conIsRecord = do
     i <- reify n
     fi <- case i of
                DataConI{} -> reifyFixity n
@@ -43,7 +54,7 @@ mkMetaConsType n conIsRecord = do
 promoteBool :: Bool -> Q Type
 promoteBool b = promotedT boolDataName
   where
-    promoteBool
+    boolDataName
       | b         = trueDataName
       | otherwise = falseDataName
 
@@ -51,7 +62,7 @@ fixityIPromotedType :: Bool -> Fixity -> Q Type
 fixityIPromotedType True (Fixity n a) =
          promotedT infixIDataName
   `appT` promoteAssociativity a
-  `appT` litT (intTyLit n)
+  `appT` litT (numTyLit (toInteger n))
 fixityIPromotedType False _ = promotedT prefixIDataName
 
 promoteAssociativity :: FixityDirection -> Q Type
@@ -59,11 +70,39 @@ promoteAssociativity InfixL = promotedT leftAssociativeDataName
 promoteAssociativity InfixR = promotedT rightAssociativeDataName
 promoteAssociativity InfixN = promotedT notAssociativeDataName
 
-mkMetaSelType :: Name -> Q Type
-mkMetaSelType n = promotedT metaSelDataName `appT` litT (strTyLit (nameBase n))
+mkMetaSelType :: DataVariety -> Name -> Name -> Name -> Q Type
+mkMetaSelType _ _ _ n = promotedT metaSelDataName `appT` litT (strTyLit (nameBase n))
 
 mkMetaNoSelType :: Q Type
 mkMetaNoSelType = promotedT metaNoSelDataName
 
+-- | Given the type and the name (as string) for the type to derive,
+-- generate the 'Data' instance, the 'Constructor' instances, and the 'Selector'
+-- instances.
+--
+-- On GHC 7.11 and up, this functionality is no longer used in GHC generics,
+-- so this function generates no declarations.
 deriveMeta :: Name -> Q [Dec]
 deriveMeta _ = return []
+
+-- | Given a datatype name, derive a datatype and instance of class 'Datatype'.
+--
+-- On GHC 7.11 and up, this functionality is no longer used in GHC generics,
+-- so this function generates no declarations.
+deriveData :: Name -> Q [Dec]
+deriveData _ = return []
+
+-- | Given a datatype name, derive datatypes and
+-- instances of class 'Constructor'.
+--
+-- On GHC 7.11 and up, this functionality is no longer used in GHC generics,
+-- so this function generates no declarations.
+deriveConstructors :: Name -> Q [Dec]
+deriveConstructors _ = return []
+
+-- | Given a datatype name, derive datatypes and instances of class 'Selector'.
+--
+-- On GHC 7.11 and up, this functionality is no longer used in GHC generics,
+-- so this function generates no declarations.
+deriveSelectors :: Name -> Q [Dec]
+deriveSelectors _ = return []

@@ -59,7 +59,7 @@ library
 
   other-modules:        Generics.Deriving.TH.Internal
                         Paths_generic_deriving
-  if impl(ghc >= 8.0)
+  if impl(ghc >= 7.11)
     other-modules:      Generics.Deriving.TH.Post711
   else
     other-modules:      Generics.Deriving.TH.Pre711
