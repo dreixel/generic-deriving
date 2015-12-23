@@ -1,6 +1,8 @@
 # next
 * On GHC 7.11 and up, `Generics.Deriving.TH` uses the new type literal-based
   machinery
+* More sensible `GEnum` instances for fixed-size integral types
+* Added `GEnum Natural` instance
 * Backported `Generic(1)` instances added in GHC 7.11. Specifically, `Generic`
   instances for `Complex` (`base-4.4` and later) `ExitCode`, and `Version`; and
   `Generic1` instances for `Complex` (`base-4.4` and later) and `Proxy`

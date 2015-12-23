@@ -137,9 +137,16 @@ class GEnum a where
   genum = genumDefault
 #endif
 
-genumNum :: (Enum a, Num a) => [a]
-genumNum = [0..] ||| (neg 0) where
-  neg n = (n-1) : neg (n-1)
+genumNumUnbounded :: (Enum a, Num a) => [a]
+genumNumUnbounded = pos 0 ||| neg 0 where
+  pos n = n     : pos (n + 1)
+  neg n = (n-1) : neg (n - 1)
+
+genumNumBounded :: (Bounded a, Enum a, Num a) => [a]
+genumNumBounded = genumNumWithBounds minBound maxBound
+
+genumNumWithBounds :: (Enum a, Num a) => a -> a -> [a]
+genumNumWithBounds minB maxB = [0 .. maxB] ||| [-1, -2 .. minB]
 
 -- Base types instances
 instance GEnum () where
@@ -201,64 +208,67 @@ instance GEnum Bool where
 
 #if defined(HTYPE_CC_T)
 instance GEnum CCc where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_CC_T))
+                             (fromIntegral (maxBound :: HTYPE_CC_T))
 #endif
 
 instance GEnum CChar where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CClock where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_CLOCK_T))
+                             (fromIntegral (maxBound :: HTYPE_CLOCK_T))
 
 #if defined(HTYPE_DEV_T)
 instance GEnum CDev where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_DEV_T))
+                             (fromIntegral (maxBound :: HTYPE_DEV_T))
 #endif
 
 instance GEnum CDouble where
-  genum = genumNum
+  genum = genumNumUnbounded
 
 instance GEnum CFloat where
-  genum = genumNum
+  genum = genumNumUnbounded
 
 #if defined(HTYPE_GID_T)
 instance GEnum CGid where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 #if defined(HTYPE_INO_T)
 instance GEnum CIno where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 instance GEnum CInt where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CIntMax where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CIntPtr where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CLLong where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CLong where
-  genum = genumNum
+  genum = genumNumBounded
 
 #if defined(HTYPE_MODE_T)
 instance GEnum CMode where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 #if defined(HTYPE_NLINK_T)
 instance GEnum CNlink where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 #if defined(HTYPE_OFF_T)
 instance GEnum COff where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 #if MIN_VERSION_base(4,4,0)
@@ -271,88 +281,92 @@ instance GEnum a => GEnum (Const a b) where
 
 #if defined(HTYPE_PID_T)
 instance GEnum CPid where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 instance GEnum CPtrdiff where
-  genum = genumNum
+  genum = genumNumBounded
 
 #if defined(HTYPE_RLIM_T)
 instance GEnum CRLim where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 instance GEnum CSChar where
-  genum = genumNum
+  genum = genumNumBounded
 
 #if defined(HTYPE_SPEED_T)
 instance GEnum CSpeed where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_SPEED_T))
+                             (fromIntegral (maxBound :: HTYPE_SPEED_T))
 #endif
 
 #if MIN_VERSION_base(4,4,0)
 instance GEnum CSUSeconds where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_SUSECONDS_T))
+                             (fromIntegral (maxBound :: HTYPE_SUSECONDS_T))
 #endif
 
 instance GEnum CShort where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CSigAtomic where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CSize where
-  genum = genumNum
+  genum = genumNumBounded
 
 #if defined(HTYPE_SSIZE_T)
 instance GEnum CSsize where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 #if defined(HTYPE_TCFLAG_T)
 instance GEnum CTcflag where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 instance GEnum CTime where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_TIME_T))
+                             (fromIntegral (maxBound :: HTYPE_TIME_T))
 
 instance GEnum CUChar where
-  genum = genumNum
+  genum = genumNumBounded
 
 #if defined(HTYPE_UID_T)
 instance GEnum CUid where
-  genum = genumNum
+  genum = genumNumBounded
 #endif
 
 instance GEnum CUInt where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CUIntMax where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CUIntPtr where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CULLong where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CULong where
-  genum = genumNum
+  genum = genumNumBounded
 
 #if MIN_VERSION_base(4,4,0)
 instance GEnum CUSeconds where
-  genum = genumNum
+  genum = genumNumWithBounds (fromIntegral (minBound :: HTYPE_USECONDS_T))
+                             (fromIntegral (maxBound :: HTYPE_USECONDS_T))
 #endif
 
 instance GEnum CUShort where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum CWchar where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Double where
-  genum = genumNum
+  genum = genumNumUnbounded
 
 instance GEnum a => GEnum (Dual a) where
   genum = genumDefault
@@ -364,7 +378,7 @@ instance GEnum ExitCode where
   genum = genumDefault
 
 instance GEnum Fd where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum a => GEnum (First a) where
   genum = genumDefault
@@ -373,7 +387,7 @@ instance GEnum Fixity where
   genum = genumDefault
 
 instance GEnum Float where
-  genum = genumNum
+  genum = genumNumUnbounded
 
 #if MIN_VERSION_base(4,8,0)
 instance GEnum a => GEnum (Identity a) where
@@ -381,25 +395,25 @@ instance GEnum a => GEnum (Identity a) where
 #endif
 
 instance GEnum Int where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Int8 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Int16 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Int32 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Int64 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Integer where
-  genum = genumNum
+  genum = genumNumUnbounded
 
 instance GEnum IntPtr where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum c => GEnum (K1 i c p) where
   genum = genumDefault
@@ -412,6 +426,11 @@ instance GEnum (f p) => GEnum (M1 i c f p) where
 
 instance GEnum a => GEnum (Maybe a) where
   genum = genumDefault
+
+#if MIN_VERSION_base(4,8,0)
+instance GEnum Natural where
+  genum = [0..]
+#endif
 
 instance GEnum Ordering where
   genum = genumDefault
@@ -437,22 +456,22 @@ instance GEnum (U1 p) where
   genum = genumDefault
 
 instance GEnum Word where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Word8 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Word16 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Word32 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum Word64 where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum WordPtr where
-  genum = genumNum
+  genum = genumNumBounded
 
 instance GEnum a => GEnum (ZipList a) where
   genum = genumDefault
