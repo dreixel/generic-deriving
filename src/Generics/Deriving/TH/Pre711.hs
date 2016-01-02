@@ -22,10 +22,12 @@ module Generics.Deriving.TH.Pre711 (
     , mkMetaDataType
     , mkMetaConsType
     , mkMetaSelType
-    , mkMetaNoSelType
+    , SelStrictInfo
+    , reifySelStrictInfo
   ) where
 
 import Data.List (intercalate)
+import Data.Maybe (fromMaybe)
 
 import Generics.Deriving.TH.Internal
 
@@ -97,11 +99,11 @@ mkDataData dv n = dataD (cxt []) (genName dv [n]) [] [] []
 mkConstrData :: DataVariety -> Name -> Con -> Q Dec
 mkConstrData dv dt (NormalC n _) =
   dataD (cxt []) (genName dv [dt, n]) [] [] []
-mkConstrData dv dt r@(RecC _ _) =
-  mkConstrData dv dt (stripRecordNames r)
+mkConstrData dv dt (RecC n f) =
+  mkConstrData dv dt (NormalC n (map shrink f))
 mkConstrData dv dt (InfixC t1 n t2) =
   mkConstrData dv dt (NormalC n [t1,t2])
-mkConstrData _ _ (ForallC _ _ con) = forallCError con
+mkConstrData _ _ con = gadtError con
 
 mkSelectData :: DataVariety -> Name -> Con -> Q [Dec]
 mkSelectData dv dt (RecC n fs) = return (map one fs)
@@ -120,7 +122,7 @@ mkDataInstance dv n isNewtype =
        else []
 #endif
   where
-    name = maybe (error "Cannot fetch module name!") id (nameModule n)
+    name = fromMaybe (error "Cannot fetch module name!") (nameModule n)
 
 liftFixity :: Fixity -> Q Exp
 liftFixity (Fixity n a) = conE infixDataName
@@ -145,7 +147,7 @@ mkConstrInstance dv dt (InfixC _ n _) =
       instanceD (cxt []) (appT (conT constructorTypeName) (mkMetaConsType dv dt n False))
         [funD conNameValName   [clause [wildP] (normalB (stringE (nameBase n))) []],
          funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
-mkConstrInstance _ _ (ForallC _ _ con) = forallCError con
+mkConstrInstance _ _ con = gadtError con
 
 mkConstrInstanceWith :: DataVariety -> Name -> Name -> Bool -> [Q Dec] -> Q Dec
 mkConstrInstanceWith dv dt n isRecord extra =
@@ -153,10 +155,10 @@ mkConstrInstanceWith dv dt n isRecord extra =
     (funD conNameValName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
 
 mkSelectInstance :: DataVariety -> Name -> Con -> Q [Dec]
-mkSelectInstance dv dt (RecC n fs) = mapM one fs where
-  one :: VarStrictType -> Q Dec
-  one (f, _, _) =
-    instanceD (cxt []) (appT (conT selectorTypeName) (mkMetaSelType dv dt n f))
+mkSelectInstance dv dt (RecC n fs) = mapM (one . fst3) fs where
+  one :: Name -> Q Dec
+  one f =
+    instanceD (cxt []) (appT (conT selectorTypeName) (mkMetaSelType dv dt n (Just f) ()))
       [funD selNameValName [clause [wildP]
         (normalB (litE (stringL (nameBase f)))) []]]
 mkSelectInstance _ _ _ = return []
@@ -179,8 +181,11 @@ mkMetaDataType dv n _ = conT $ genName dv [n]
 mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Q Type
 mkMetaConsType dv dt n _ = conT $ genName dv [dt, n]
 
-mkMetaSelType :: DataVariety -> Name -> Name -> Name -> Q Type
-mkMetaSelType dv dt n f = conT $ genName dv [dt, n, f]
+mkMetaSelType :: DataVariety -> Name -> Name -> Maybe Name -> SelStrictInfo -> Q Type
+mkMetaSelType dv dt n (Just f) () = conT $ genName dv [dt, n, f]
+mkMetaSelType _  _  _ Nothing  () = conT noSelectorTypeName
 
-mkMetaNoSelType :: Q Type
-mkMetaNoSelType = conT noSelectorTypeName
+type SelStrictInfo = ()
+
+reifySelStrictInfo :: Name -> [Strict] -> Q [SelStrictInfo]
+reifySelStrictInfo _ bangs = return (map (const ()) bangs)

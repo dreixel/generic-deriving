@@ -1,6 +1,8 @@
 # next
 * On GHC 7.11 and up, `Generics.Deriving.TH` uses the new type literal-based
   machinery
+* Fixed bug where a datatype with a single, nullary constructor would generate
+  incorrect `Generic` instances
 * More sensible `GEnum` instances for fixed-size integral types
 * Added `GEnum Natural` instance
 * Backported `Generic(1)` instances added in GHC 7.11. Specifically, `Generic`

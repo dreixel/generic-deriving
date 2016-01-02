@@ -208,11 +208,6 @@ tyVarBndrToKind :: TyVarBndr -> Kind
 tyVarBndrToKind PlainTV{}      = starK
 tyVarBndrToKind (KindedTV _ k) = k
 
-stripRecordNames :: Con -> Con
-stripRecordNames (RecC n f) =
-  NormalC n (map (\(_, s, t) -> (s, t)) f)
-stripRecordNames c = c
-
 -- | Checks to see if the last types in a data family instance can be safely eta-
 -- reduced (i.e., dropped), given the other types. This checks for three conditions:
 --
@@ -281,8 +276,17 @@ allDistinct = allDistinct' Set.empty
         | otherwise            = allDistinct' (Set.insert x uniqs) xs
     allDistinct' _ _           = True
 
-trd :: (a, b, c) -> c
-trd (_,_,c) = c
+fst3 :: (a, b, c) -> a
+fst3 (a, _, _) = a
+
+snd3 :: (a, b, c) -> b
+snd3 (_, b, _) = b
+
+trd3 :: (a, b, c) -> c
+trd3 (_, _, c) = c
+
+shrink :: (a, b, c) -> (b, c)
+shrink (_, b, c) = (b, c)
 
 -- | Variant of foldr1 which returns a special element for empty lists
 foldr1' :: (a -> a -> a) -> a -> [a] -> a
@@ -296,12 +300,24 @@ constructorName (NormalC name      _  ) = name
 constructorName (RecC    name      _  ) = name
 constructorName (InfixC  _    name _  ) = name
 constructorName (ForallC _    _    con) = constructorName con
+#if MIN_VERSION_template_haskell(2,11,0)
+constructorName (GadtC    _ _ name _) = name
+constructorName (RecGadtC _ _ name _) = name
+#endif
 
 #if MIN_VERSION_template_haskell(2,7,0)
 -- | Extracts the constructors of a data or newtype declaration.
 dataDecCons :: Dec -> [Con]
-dataDecCons (DataInstD    _ _ _ cons _) = cons
-dataDecCons (NewtypeInstD _ _ _ con  _) = [con]
+dataDecCons (DataInstD _ _ _
+# if MIN_VERSION_template_haskell(2,11,0)
+                       _
+# endif
+                       cons _) = cons
+dataDecCons (NewtypeInstD _ _ _
+# if MIN_VERSION_template_haskell(2,11,0)
+                          _
+# endif
+                          con _) = [con]
 dataDecCons _ = error "Must be a data or newtype declaration."
 #endif
 
@@ -355,9 +371,9 @@ outOfPlaceTyVarError :: a
 outOfPlaceTyVarError = error $
     "Type applied to an argument involving the last parameter is not of kind * -> *"
 
--- | Deriving Generic(1) doesn't work with ExistentialQuantification
-forallCError :: Con -> a
-forallCError con = error $
+-- | Deriving Generic(1) doesn't work with ExistentialQuantification or GADTs
+gadtError :: Con -> a
+gadtError con = error $
   nameBase (constructorName con) ++ " must be a vanilla data constructor"
 
 -- | Cannot have a constructor argument of form (forall a1 ... an. <type>)
@@ -380,9 +396,17 @@ reifyDataInfo name = do
   case info of
     TyConI dec ->
       return $ case dec of
-        DataD    ctxt _ tvbs cons _ -> Right $
+        DataD ctxt _ tvbs
+#if MIN_VERSION_template_haskell(2,11,0)
+              _
+#endif
+              cons _ -> Right $
           checkDataContext name ctxt (name, False, tvbs, cons, DataPlain)
-        NewtypeD ctxt _ tvbs con  _ -> Right $
+        NewtypeD ctxt _ tvbs
+#if MIN_VERSION_template_haskell(2,11,0)
+                 _
+#endif
+                 con _ -> Right $
           checkDataContext name ctxt (name, True, tvbs, [con], DataPlain)
         TySynD{} -> Left $ ns ++ "Type synonyms are not supported."
         _        -> Left $ ns ++ "Unsupported type: " ++ show dec
@@ -403,10 +427,18 @@ reifyDataInfo name = do
           -- at least one constructor anyways, so this will always succeed.
           let instDec = flip find decs $ any ((name ==) . constructorName) . dataDecCons
            in case instDec of
-                Just (DataInstD    ctxt _ instTys cons _) -> Right $
+                Just (DataInstD ctxt _ instTys
+# if MIN_VERSION_template_haskell(2,11,0)
+                                _
+# endif
+                                cons _) -> Right $
                   checkDataContext parentName ctxt
                     (parentName, False, tvbs, cons, DataFamily (constructorName $ head cons) instTys)
-                Just (NewtypeInstD ctxt _ instTys con  _) -> Right $
+                Just (NewtypeInstD ctxt _ instTys
+# if MIN_VERSION_template_haskell(2,11,0)
+                                   _
+# endif
+                                   con _) -> Right $
                   checkDataContext parentName ctxt
                     (parentName, True, tvbs, [con], DataFamily (constructorName con) instTys)
                 _ -> Left $ ns ++
@@ -500,6 +532,12 @@ mkGD7'11_v = mkNameG_v "base" "GHC.Generics"
 #else
 mkGD7'11_v = mkNameG_v gdPackageKey "Generics.Deriving.Base"
 #endif
+
+mkBaseName_d :: String -> String -> Name
+mkBaseName_d = mkNameG_d "base"
+
+mkGHCPrimName_d :: String -> String -> Name
+mkGHCPrimName_d = mkNameG_d "ghc-prim"
 
 comp1DataName :: Name
 comp1DataName = mkGD7'1_d "Comp1"
@@ -701,18 +739,22 @@ unPar1ValName = mkGD7'1_v "unPar1"
 unRec1ValName :: Name
 unRec1ValName = mkGD7'1_v "unRec1"
 
-trueDataName :: Name
+trueDataName, falseDataName :: Name
 #if __GLASGOW_HASKELL__ >= 701
-trueDataName = mkNameG_d "ghc-prim" "GHC.Types" "True"
+trueDataName  = mkGHCPrimName_d "GHC.Types" "True"
+falseDataName = mkGHCPrimName_d "GHC.Types" "False"
 #else
-trueDataName = mkNameG_d "ghc-prim" "GHC.Bool" "True"
+trueDataName  = mkGHCPrimName_d "GHC.Bool"  "True"
+falseDataName = mkGHCPrimName_d "GHC.Bool"  "False"
 #endif
 
-falseDataName :: Name
-#if __GLASGOW_HASKELL__ >= 701
-falseDataName = mkNameG_d "ghc-prim" "GHC.Types" "False"
+nothingDataName, justDataName :: Name
+#if __GLASGOW_HASKELL__ >= 709
+nothingDataName = mkBaseName_d "GHC.Base"   "Nothing"
+justDataName    = mkBaseName_d "GHC.Base"   "Just"
 #else
-falseDataName = mkNameG_d "ghc-prim" "GHC.Bool" "False"
+nothingDataName = mkBaseName_d "Data.Maybe" "Nothing"
+justDataName    = mkBaseName_d "Data.Maybe" "Just"
 #endif
 
 mkGHCPrim_tc :: String -> Name
@@ -749,6 +791,15 @@ undefinedValName :: Name
 undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
 
 #if __GLASGOW_HASKELL__ >= 711
+decidedLazyDataName :: Name
+decidedLazyDataName = mkGD7'11_d "DecidedLazy"
+
+decidedStrictDataName :: Name
+decidedStrictDataName = mkGD7'11_d "DecidedStrict"
+
+decidedUnpackDataName :: Name
+decidedUnpackDataName = mkGD7'11_d "DecidedUnpack"
+
 infixIDataName :: Name
 infixIDataName = mkGD7'11_d "InfixI"
 
@@ -764,8 +815,26 @@ metaNoSelDataName = mkGD7'11_d "MetaNoSel"
 metaSelDataName :: Name
 metaSelDataName = mkGD7'11_d "MetaSel"
 
+noSourceStrictnessDataName :: Name
+noSourceStrictnessDataName = mkGD7'11_d "NoSourceStrictness"
+
+noSourceUnpackednessDataName :: Name
+noSourceUnpackednessDataName = mkGD7'11_d "NoSourceUnpackedness"
+
 prefixIDataName :: Name
 prefixIDataName = mkGD7'11_d "PrefixI"
+
+sourceLazyDataName :: Name
+sourceLazyDataName = mkGD7'11_d "SourceLazy"
+
+sourceNoUnpackDataName :: Name
+sourceNoUnpackDataName = mkGD7'11_d "SourceNoUnpack"
+
+sourceStrictDataName :: Name
+sourceStrictDataName = mkGD7'11_d "SourceStrict"
+
+sourceUnpackDataName :: Name
+sourceUnpackDataName = mkGD7'11_d "SourceUnpack"
 
 packageNameValName :: Name
 packageNameValName = mkGD7'1_v "packageName"

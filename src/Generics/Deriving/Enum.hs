@@ -137,7 +137,7 @@ class GEnum a where
   genum = genumDefault
 #endif
 
-genumNumUnbounded :: (Enum a, Num a) => [a]
+genumNumUnbounded :: Num a => [a]
 genumNumUnbounded = pos 0 ||| neg 0 where
   pos n = n     : pos (n + 1)
   neg n = (n-1) : neg (n - 1)

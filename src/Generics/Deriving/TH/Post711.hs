@@ -20,8 +20,11 @@ module Generics.Deriving.TH.Post711 (
     , mkMetaDataType
     , mkMetaConsType
     , mkMetaSelType
-    , mkMetaNoSelType
+    , SelStrictInfo(..)
+    , reifySelStrictInfo
   ) where
+
+import Data.Maybe (fromMaybe)
 
 import Generics.Deriving.TH.Internal
 
@@ -37,8 +40,8 @@ mkMetaDataType _ n isNewtype =
     `appT` promoteBool isNewtype
   where
     m, pkg :: String
-    m   = maybe (error "Cannot fetch module name!")  id (nameModule n)
-    pkg = maybe (error "Cannot fetch package name!") id (namePackage n)
+    m   = fromMaybe (error "Cannot fetch module name!")  (nameModule n)
+    pkg = fromMaybe (error "Cannot fetch package name!") (namePackage n)
 
 mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Q Type
 mkMetaConsType _ _ n conIsRecord = do
@@ -70,11 +73,42 @@ promoteAssociativity InfixL = promotedT leftAssociativeDataName
 promoteAssociativity InfixR = promotedT rightAssociativeDataName
 promoteAssociativity InfixN = promotedT notAssociativeDataName
 
-mkMetaSelType :: DataVariety -> Name -> Name -> Name -> Q Type
-mkMetaSelType _ _ _ n = promotedT metaSelDataName `appT` litT (strTyLit (nameBase n))
+mkMetaSelType :: DataVariety -> Name -> Name -> Maybe Name -> SelStrictInfo -> Q Type
+mkMetaSelType _ _ _ mbF (SelStrictInfo su ss ds) =
+    let mbSelNameT = case mbF of
+            Just f  -> promotedT justDataName `appT` litT (strTyLit (nameBase f))
+            Nothing -> promotedT nothingDataName
+    in promotedT metaSelDataName
+        `appT` mbSelNameT
+        `appT` promoteSourceUnpackedness su
+        `appT` promoteSourceStrictness ss
+        `appT` promoteDecidedStrictness ds
 
-mkMetaNoSelType :: Q Type
-mkMetaNoSelType = promotedT metaNoSelDataName
+data SelStrictInfo = SelStrictInfo SourceUnpackedness SourceStrictness DecidedStrictness
+
+promoteSourceUnpackedness :: SourceUnpackedness -> Q Type
+promoteSourceUnpackedness NoSourceUnpackedness = promotedT noSourceUnpackednessDataName
+promoteSourceUnpackedness SourceNoUnpack       = promotedT sourceNoUnpackDataName
+promoteSourceUnpackedness SourceUnpack         = promotedT sourceUnpackDataName
+
+promoteSourceStrictness :: SourceStrictness -> Q Type
+promoteSourceStrictness NoSourceStrictness = promotedT noSourceStrictnessDataName
+promoteSourceStrictness SourceLazy         = promotedT sourceLazyDataName
+promoteSourceStrictness SourceStrict       = promotedT sourceStrictDataName
+
+promoteDecidedStrictness :: DecidedStrictness -> Q Type
+promoteDecidedStrictness DecidedLazy   = promotedT decidedLazyDataName
+promoteDecidedStrictness DecidedStrict = promotedT decidedStrictDataName
+promoteDecidedStrictness DecidedUnpack = promotedT decidedUnpackDataName
+
+reifySelStrictInfo :: Name -> [Bang] -> Q [SelStrictInfo]
+reifySelStrictInfo conName bangs = do
+    dcdStrs <- reifyConStrictness conName
+    let (srcUnpks, srcStrs) = unzip $ map splitBang bangs
+    return $ zipWith3 SelStrictInfo srcUnpks srcStrs dcdStrs
+
+splitBang :: Bang -> (SourceUnpackedness, SourceStrictness)
+splitBang (Bang su ss) = (su, ss)
 
 -- | Given the type and the name (as string) for the type to derive,
 -- generate the 'Data' instance, the 'Constructor' instances, and the 'Selector'

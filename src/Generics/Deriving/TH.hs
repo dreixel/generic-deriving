@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
@@ -284,7 +285,7 @@ makeFunCommon :: (GenericKind -> Int -> Int -> Name -> [Con] -> [Q Match])
 makeFunCommon maker arity n = do
   i <- reifyDataInfo n
   let (name, _, allTvbs, cons, dv) = either error id i
-      (_, _, gk) = buildTypeInstance arity name allTvbs cons dv
+      !gk = trd3 $ buildTypeInstance arity name allTvbs cons dv
   mkCaseExp gk name cons maker
 
 genRepName :: Int -> DataVariety -> Name -> Name
@@ -306,30 +307,37 @@ repType gk dv dt isNT cs =
 
 repCon :: GenericKind -> DataVariety -> Name -> Con -> Q Type
 repCon _ dv dt (NormalC n []) =
+    conT c1TypeName `appT` mkMetaConsType dv dt n False `appT` conT u1TypeName
+repCon gk dv dt (NormalC n bts) = do
+    let (bangs, ts) = unzip bts
+    ssis <- reifySelStrictInfo n bangs
     conT c1TypeName `appT` mkMetaConsType dv dt n False `appT`
-     (conT s1TypeName `appT` mkMetaNoSelType `appT` conT u1TypeName)
-repCon gk dv dt (NormalC n fs) =
-    conT c1TypeName `appT` mkMetaConsType dv dt n False `appT`
-     (foldr1 prod (map (repField gk . snd) fs)) where
-    prod :: Q Type -> Q Type -> Q Type
-    prod a b = conT productTypeName `appT` a `appT` b
+     (foldr1 prodT (zipWith (repField gk dv dt n Nothing) ssis ts))
 repCon _ dv dt (RecC n []) =
     conT c1TypeName `appT` mkMetaConsType dv dt n True `appT` conT u1TypeName
-repCon gk dv dt (RecC n fs) =
+repCon gk dv dt (RecC n vbts) = do
+    let (selNames, bangs, ts) = unzip3 vbts
+        selNames' = map Just selNames
+    ssis <- reifySelStrictInfo n bangs
     conT c1TypeName `appT` mkMetaConsType dv dt n True `appT`
-      (foldr1 prod (map (repField' gk dv dt n) fs)) where
-    prod :: Q Type -> Q Type -> Q Type
-    prod a b = conT productTypeName `appT` a `appT` b
-repCon gk dv dt (InfixC t1 n t2)  = repCon gk dv dt (NormalC n [t1,t2])
-repCon _  _  _  (ForallC _ _ con) = forallCError con
+      (foldr1 prodT (zipWith3 (repField gk dv dt n) selNames' ssis ts))
+repCon gk dv dt (InfixC t1 n t2) = repCon gk dv dt (NormalC n [t1,t2])
+repCon _ _ _ con = gadtError con
 
-repField :: GenericKind -> Type -> Q Type
-repField gk t = conT s1TypeName `appT` mkMetaNoSelType `appT`
-                   (repFieldArg gk =<< expandSyn t)
+prodT :: Q Type -> Q Type -> Q Type
+prodT a b = conT productTypeName `appT` a `appT` b
 
-repField' :: GenericKind -> DataVariety -> Name -> Name -> (Name, Strict, Type) -> Q Type
-repField' gk dv dt ns (f, _, t) = conT s1TypeName
-    `appT` mkMetaSelType dv dt ns f
+repField :: GenericKind
+         -> DataVariety
+         -> Name
+         -> Name
+         -> Maybe Name
+         -> SelStrictInfo
+         -> Type
+         -> Q Type
+repField gk dv dt ns mbF ssi t =
+           conT s1TypeName
+    `appT` mkMetaSelType dv dt ns mbF ssi
     `appT` (repFieldArg gk =<< expandSyn t)
 
 repFieldArg :: GenericKind -> Type -> Q Type
@@ -407,15 +415,14 @@ fromCon :: GenericKind -> (Q Exp -> Q Exp) -> Int -> Int -> Con -> Q Match
 fromCon _ wrap m i (NormalC cn []) =
   match
     (conP cn [])
-    (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ appE (conE m1DataName) $
-      conE m1DataName `appE` (conE u1DataName)) []
+    (normalB $ appE (conE m1DataName)
+             $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
 fromCon gk wrap m i (NormalC cn fs) =
   -- runIO (putStrLn ("constructor " ++ show ix)) >>
   match
     (conP cn (map (varP . field) [0..length fs - 1]))
     (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
-      foldr1 prod (zipWith (fromField gk) [0..] (map snd fs))) []
-  where prod x y = conE productDataName `appE` x `appE` y
+      foldr1 prodE (zipWith (fromField gk) [0..] (map snd fs))) []
 fromCon _ wrap m i (RecC cn []) =
   match
     (conP cn [])
@@ -425,11 +432,13 @@ fromCon gk wrap m i (RecC cn fs) =
   match
     (conP cn (map (varP . field) [0..length fs - 1]))
     (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
-      foldr1 prod (zipWith (fromField gk) [0..] (map trd fs))) []
-  where prod x y = conE productDataName `appE` x `appE` y
+      foldr1 prodE (zipWith (fromField gk) [0..] (map trd3 fs))) []
 fromCon gk wrap m i (InfixC t1 cn t2) =
   fromCon gk wrap m i (NormalC cn [t1,t2])
-fromCon _ _ _ _ (ForallC _ _ con) = forallCError con
+fromCon _ _ _ _ con = gadtError con
+
+prodE :: Q Exp -> Q Exp -> Q Exp
+prodE x y = conE productDataName `appE` x `appE` y
 
 fromField :: GenericKind -> Int -> Type -> Q Exp
 fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< expandSyn t)
@@ -468,13 +477,12 @@ wC t nb
               ty:_ -> inspectTy ty
 
 boxRepName :: Type -> Name
-boxRepName = maybe k1DataName (\(_, boxName, _) -> boxName) . unboxedRepNames
+boxRepName = maybe k1DataName snd3 . unboxedRepNames
 
 toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int -> Con -> Q Match
 toCon _ wrap m i (NormalC cn []) =
     match
-      (wrap $ conP m1DataName [lrP m i $ conP m1DataName
-        [conP m1DataName [conP u1DataName []]]])
+      (wrap $ conP m1DataName [lrP m i $ conP m1DataName [conP u1DataName []]])
       (normalB $ conE cn) []
 toCon gk wrap m i (NormalC cn fs) =
     match
@@ -492,11 +500,11 @@ toCon gk wrap m i (RecC cn fs) =
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (\nr (_, _, t) -> toField gk nr t) [0..] fs)]])
       (normalB $ foldl appE (conE cn) (zipWith (\nr t -> expandSyn t >>= toConUnwC gk nr)
-                                               [0..] (map trd fs))) []
+                                               [0..] (map trd3 fs))) []
   where prod x y = conP productDataName [x,y]
 toCon gk wrap m i (InfixC t1 cn t2) =
   toCon gk wrap m i (NormalC cn [t1,t2])
-toCon _ _ _ _ (ForallC _ _ con) = forallCError con
+toCon _ _ _ _ con = gadtError con
 
 toConUnwC :: GenericKind -> Int -> Type -> Q Exp
 toConUnwC Gen0      nr _ = varE $ field nr
@@ -541,7 +549,7 @@ unwC t nb
               ty:_ -> inspectTy ty
 
 unboxRepName :: Type -> Name
-unboxRepName = maybe unK1ValName (\(_, _, unboxName) -> unboxName) . unboxedRepNames
+unboxRepName = maybe unK1ValName trd3 . unboxedRepNames
 
 lrP :: Int -> Int -> (Q Pat -> Q Pat)
 lrP 1 0 p = p
@@ -727,10 +735,8 @@ buildTypeInstance arity parentName tvbs _cons (DataFamily _ instTysAndKinds)
         alignCon _ (nbs, m) | Set.null nbs = (nbs, m)
         alignCon (NormalC _ tys)    state = foldr alignTy state $ map snd tys
         alignCon (RecC    n tys)    state = alignCon (NormalC n $ map shrink tys) state
-          where
-            shrink (_, b, c) = (b, c)
         alignCon (InfixC ty1 n ty2) state = alignCon (NormalC n [ty1, ty2]) state
-        alignCon (ForallC _ _ con)   _    = forallCError con
+        alignCon con _ = gadtError con
 
         alignTy :: Type
                 -> (Set NameBase, Map NameBase Name)
