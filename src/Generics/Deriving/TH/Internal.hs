@@ -301,8 +301,10 @@ constructorName (RecC    name      _  ) = name
 constructorName (InfixC  _    name _  ) = name
 constructorName (ForallC _    _    con) = constructorName con
 #if MIN_VERSION_template_haskell(2,11,0)
-constructorName (GadtC    _ _ name _) = name
-constructorName (RecGadtC _ _ name _) = name
+constructorName (GadtC    [name] _ _) = name
+constructorName (GadtC    _      _ _) = error "GadtC must have exactly one name"
+constructorName (RecGadtC [name] _ _) = name
+constructorName (RecGadtC _      _ _) = error "RecGadtC must have exactly one name"
 #endif
 
 #if MIN_VERSION_template_haskell(2,7,0)

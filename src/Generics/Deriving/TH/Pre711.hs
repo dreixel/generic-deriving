@@ -135,23 +135,30 @@ liftAssociativity InfixR = conE rightAssociativeDataName
 liftAssociativity InfixN = conE notAssociativeDataName
 
 mkConstrInstance :: DataVariety -> Name -> Con -> Q Dec
-mkConstrInstance dv dt (NormalC n _) = mkConstrInstanceWith dv dt n False []
-mkConstrInstance dv dt (RecC    n _) = mkConstrInstanceWith dv dt n True
-      [ funD conIsRecordValName [clause [wildP] (normalB (conE trueDataName)) []]]
-mkConstrInstance dv dt (InfixC _ n _) =
-    do
-      i <- reify n
-      let fi = case i of
-                 DataConI _ _ _ f -> f
-                 _ -> error $ "Not a data constructor name: " ++ show n
-      instanceD (cxt []) (appT (conT constructorTypeName) (mkMetaConsType dv dt n False))
-        [funD conNameValName   [clause [wildP] (normalB (stringE (nameBase n))) []],
-         funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
+mkConstrInstance dv dt (NormalC n _) = mkConstrInstanceWith dv dt n False False []
+mkConstrInstance dv dt (RecC    n _) =
+    mkConstrInstanceWith dv dt n True False
+      [funD conIsRecordValName [clause [wildP] (normalB (conE trueDataName)) []]]
+mkConstrInstance dv dt (InfixC _ n _) = do
+    i <- reify n
+    let fi = case i of
+                  DataConI _ _ _ f -> f
+                  _ -> error $ "Not a data constructor name: " ++ show n
+    mkConstrInstanceWith dv dt n False True
+      [funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
 mkConstrInstance _ _ con = gadtError con
 
-mkConstrInstanceWith :: DataVariety -> Name -> Name -> Bool -> [Q Dec] -> Q Dec
-mkConstrInstanceWith dv dt n isRecord extra =
-  instanceD (cxt []) (appT (conT constructorTypeName) (mkMetaConsType dv dt n isRecord))
+mkConstrInstanceWith :: DataVariety
+                     -> Name
+                     -> Name
+                     -> Bool
+                     -> Bool
+                     -> [Q Dec]
+                     -> Q Dec
+mkConstrInstanceWith dv dt n isRecord isInfix extra =
+  instanceD
+    (cxt [])
+    (appT (conT constructorTypeName) (mkMetaConsType dv dt n isRecord isInfix))
     (funD conNameValName [clause [wildP] (normalB (stringE (nameBase n))) []] : extra)
 
 mkSelectInstance :: DataVariety -> Name -> Con -> Q [Dec]
@@ -178,8 +185,8 @@ genName dv ns = mkName
 mkMetaDataType :: DataVariety -> Name -> Bool -> Q Type
 mkMetaDataType dv n _ = conT $ genName dv [n]
 
-mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Q Type
-mkMetaConsType dv dt n _ = conT $ genName dv [dt, n]
+mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Bool -> Q Type
+mkMetaConsType dv dt n _ _ = conT $ genName dv [dt, n]
 
 mkMetaSelType :: DataVariety -> Name -> Name -> Maybe Name -> SelStrictInfo -> Q Type
 mkMetaSelType dv dt n (Just f) () = conT $ genName dv [dt, n, f]

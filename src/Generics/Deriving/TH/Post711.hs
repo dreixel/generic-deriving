@@ -43,30 +43,26 @@ mkMetaDataType _ n isNewtype =
     m   = fromMaybe (error "Cannot fetch module name!")  (nameModule n)
     pkg = fromMaybe (error "Cannot fetch package name!") (namePackage n)
 
-mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Q Type
-mkMetaConsType _ _ n conIsRecord = do
-    i <- reify n
-    fi <- case i of
-               DataConI{} -> reifyFixity n
-               _ -> error $ "Not a data constructor name: " ++ show n
+mkMetaConsType :: DataVariety -> Name -> Name -> Bool -> Bool -> Q Type
+mkMetaConsType _ _ n conIsRecord conIsInfix = do
+    mbFi <- reifyFixity n
     promotedT metaConsDataName
       `appT` litT (strTyLit (nameBase n))
-      `appT` fixityIPromotedType conIsRecord fi
+      `appT` fixityIPromotedType mbFi conIsInfix
       `appT` promoteBool conIsRecord
 
 promoteBool :: Bool -> Q Type
-promoteBool b = promotedT boolDataName
-  where
-    boolDataName
-      | b         = trueDataName
-      | otherwise = falseDataName
+promoteBool True  = promotedT trueDataName
+promoteBool False = promotedT falseDataName
 
-fixityIPromotedType :: Bool -> Fixity -> Q Type
-fixityIPromotedType True (Fixity n a) =
-         promotedT infixIDataName
-  `appT` promoteAssociativity a
-  `appT` litT (numTyLit (toInteger n))
-fixityIPromotedType False _ = promotedT prefixIDataName
+fixityIPromotedType :: Maybe Fixity -> Bool -> Q Type
+fixityIPromotedType mbFi True =
+           promotedT infixIDataName
+    `appT` promoteAssociativity a
+    `appT` litT (numTyLit (toInteger n))
+  where
+    Fixity n a = fromMaybe defaultFixity mbFi
+fixityIPromotedType _ False = promotedT prefixIDataName
 
 promoteAssociativity :: FixityDirection -> Q Type
 promoteAssociativity InfixL = promotedT leftAssociativeDataName

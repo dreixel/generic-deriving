@@ -88,6 +88,8 @@ module Generics.Deriving.TH (
     , makeTo1
   ) where
 
+import           Control.Monad ((>=>))
+
 #if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
 import qualified Data.Map as Map
 import           Data.Map as Map (Map)
@@ -306,23 +308,45 @@ repType gk dv dt isNT cs =
     sum' a b = conT sumTypeName `appT` a `appT` b
 
 repCon :: GenericKind -> DataVariety -> Name -> Con -> Q Type
-repCon _ dv dt (NormalC n []) =
-    conT c1TypeName `appT` mkMetaConsType dv dt n False `appT` conT u1TypeName
 repCon gk dv dt (NormalC n bts) = do
     let (bangs, ts) = unzip bts
     ssis <- reifySelStrictInfo n bangs
-    conT c1TypeName `appT` mkMetaConsType dv dt n False `appT`
-     (foldr1 prodT (zipWith (repField gk dv dt n Nothing) ssis ts))
-repCon _ dv dt (RecC n []) =
-    conT c1TypeName `appT` mkMetaConsType dv dt n True `appT` conT u1TypeName
+    repConWith gk dv dt n Nothing ssis ts False False
 repCon gk dv dt (RecC n vbts) = do
     let (selNames, bangs, ts) = unzip3 vbts
-        selNames' = map Just selNames
     ssis <- reifySelStrictInfo n bangs
-    conT c1TypeName `appT` mkMetaConsType dv dt n True `appT`
-      (foldr1 prodT (zipWith3 (repField gk dv dt n) selNames' ssis ts))
-repCon gk dv dt (InfixC t1 n t2) = repCon gk dv dt (NormalC n [t1,t2])
+    repConWith gk dv dt n (Just selNames) ssis ts True False
+repCon gk dv dt (InfixC t1 n t2) = do
+    let (bangs, ts) = unzip [t1, t2]
+    ssis <- reifySelStrictInfo n bangs
+    repConWith gk dv dt n Nothing ssis ts False True
 repCon _ _ _ con = gadtError con
+
+repConWith :: GenericKind
+           -> DataVariety
+           -> Name
+           -> Name
+           -> Maybe [Name]
+           -> [SelStrictInfo] -- Invariant: this has the same length...
+           -> [Type]          -- ...as this.
+           -> Bool
+           -> Bool
+           -> Q Type
+repConWith gk dv dt n mbSelNames ssis ts isRecord isInfix =
+           conT c1TypeName
+    `appT` mkMetaConsType dv dt n isRecord isInfix
+    `appT` structureType
+  where
+    structureType :: Q Type
+    structureType = case ssis of
+                         [] -> conT u1TypeName
+                         _  -> foldr1 prodT f
+
+    f :: [Q Type]
+    f = case mbSelNames of
+             Just selNames -> zipWith3 (\selName -> repField gk dv dt n (Just selName))
+                                       selNames ssis ts
+             Nothing       -> zipWith (repField gk dv dt n Nothing) ssis ts
 
 prodT :: Q Type -> Q Type -> Q Type
 prodT a b = conT productTypeName `appT` a `appT` b
@@ -418,7 +442,6 @@ fromCon _ wrap m i (NormalC cn []) =
     (normalB $ appE (conE m1DataName)
              $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
 fromCon gk wrap m i (NormalC cn fs) =
-  -- runIO (putStrLn ("constructor " ++ show ix)) >>
   match
     (conP cn (map (varP . field) [0..length fs - 1]))
     (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
@@ -488,7 +511,7 @@ toCon gk wrap m i (NormalC cn fs) =
     match
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (\nr -> toField gk nr . snd) [0..] fs)]])
-      (normalB $ foldl appE (conE cn) (zipWith (\nr t -> expandSyn t >>= toConUnwC gk nr)
+      (normalB $ foldl appE (conE cn) (zipWith (\nr -> expandSyn >=> toConUnwC gk nr)
                                       [0..] (map snd fs))) []
   where prod x y = conP productDataName [x,y]
 toCon _ wrap m i (RecC cn []) =
@@ -499,7 +522,7 @@ toCon gk wrap m i (RecC cn fs) =
     match
       (wrap $ conP m1DataName [lrP m i $ conP m1DataName
         [foldr1 prod (zipWith (\nr (_, _, t) -> toField gk nr t) [0..] fs)]])
-      (normalB $ foldl appE (conE cn) (zipWith (\nr t -> expandSyn t >>= toConUnwC gk nr)
+      (normalB $ foldl appE (conE cn) (zipWith (\nr -> expandSyn >=> toConUnwC gk nr)
                                                [0..] (map trd3 fs))) []
   where prod x y = conP productDataName [x,y]
 toCon gk wrap m i (InfixC t1 cn t2) =
