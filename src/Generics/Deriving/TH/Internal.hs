@@ -301,8 +301,8 @@ constructorName (RecC    name      _  ) = name
 constructorName (InfixC  _    name _  ) = name
 constructorName (ForallC _    _    con) = constructorName con
 #if MIN_VERSION_template_haskell(2,11,0)
-constructorName (GadtC    _ _ name _) = name
-constructorName (RecGadtC _ _ name _) = name
+constructorName (GadtC    names _ _) = head names
+constructorName (RecGadtC names _ _) = head names
 #endif
 
 #if MIN_VERSION_template_haskell(2,7,0)
