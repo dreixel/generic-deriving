@@ -61,11 +61,12 @@ promoteBool b = promotedT boolDataName
       | b         = trueDataName
       | otherwise = falseDataName
 
-fixityIPromotedType :: Bool -> Fixity -> Q Type
-fixityIPromotedType True (Fixity n a) =
+fixityIPromotedType :: Bool -> Maybe Fixity -> Q Type
+fixityIPromotedType True (Just (Fixity n a)) =
          promotedT infixIDataName
   `appT` promoteAssociativity a
   `appT` litT (numTyLit (toInteger n))
+fixityIPromotedType True  _ = promotedT prefixIDataName
 fixityIPromotedType False _ = promotedT prefixIDataName
 
 promoteAssociativity :: FixityDirection -> Q Type
