@@ -15,15 +15,22 @@ module Generics.Deriving.Copoint (
 
   ) where
 
-import Control.Applicative (WrappedMonad)
+import           Control.Applicative (WrappedMonad)
 
-import Data.Monoid (Dual, Sum)
+import           Data.Monoid (Dual)
+import qualified Data.Monoid as Monoid (Sum)
 
-import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
+import           Generics.Deriving.Base
+import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,8,0)
-import Data.Functor.Identity (Identity)
+import           Data.Functor.Identity (Identity)
+import           Data.Monoid (Alt)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+import qualified Data.Functor.Sum as Functor (Sum)
+import           Data.Semigroup (Arg, First, Last, Max, Min, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -98,16 +105,50 @@ instance GCopoint ((,,,,,) a b c d e) where
 instance GCopoint ((,,,,,,) a b c d e f) where
   gcopoint = gcopointdefault
 
+#if MIN_VERSION_base(4,8,0)
+instance GCopoint f => GCopoint (Alt f) where
+  gcopoint = gcopointdefault
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance GCopoint (Arg a) where
+  gcopoint = gcopointdefault
+#endif
+
 instance GCopoint Dual where
   gcopoint = gcopointdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GCopoint First where
+  gcopoint = gcopointdefault
+#endif
 
 #if MIN_VERSION_base(4,8,0)
 instance GCopoint Identity where
   gcopoint = gcopointdefault
 #endif
 
-instance GCopoint Sum where
+#if MIN_VERSION_base(4,9,0)
+instance GCopoint Last where
+  gcopoint = gcopointdefault
+
+instance GCopoint Max where
+  gcopoint = gcopointdefault
+
+instance GCopoint Min where
+  gcopoint = gcopointdefault
+
+instance (GCopoint f, GCopoint g) => GCopoint (Functor.Sum f g) where
+  gcopoint = gcopointdefault
+#endif
+
+instance GCopoint Monoid.Sum where
   gcopoint = gcopointdefault
 
 instance GCopoint m => GCopoint (WrappedMonad m) where
   gcopoint = gcopointdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GCopoint WrappedMonoid where
+  gcopoint = gcopointdefault
+#endif

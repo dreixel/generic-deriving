@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
@@ -31,24 +33,36 @@ module Generics.Deriving.Foldable (
   , gfind
   ) where
 
-import Control.Applicative (Const)
+import           Control.Applicative (Const, ZipList)
 
-import Data.Maybe
-import Data.Monoid
+import           Data.Maybe
+import qualified Data.Monoid as Monoid (First, Last, Product(..), Sum(..))
+import           Data.Monoid (All(..), Any(..), Dual(..), Endo(..))
+#if !(MIN_VERSION_base(4,8,0))
+import           Data.Monoid (Monoid(..))
+#endif
 
-import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
+import           Generics.Deriving.Base
+import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,4,0)
-import Data.Complex (Complex)
+import           Data.Complex (Complex)
 #endif
 
 #if MIN_VERSION_base(4,7,0)
-import Data.Proxy (Proxy)
+import           Data.Proxy (Proxy)
 #endif
 
 #if MIN_VERSION_base(4,8,0)
-import Data.Functor.Identity (Identity)
+import           Data.Functor.Identity (Identity)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+import qualified Data.Functor.Product as Functor (Product)
+import qualified Data.Functor.Sum as Functor (Sum)
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -83,6 +97,23 @@ instance (GFoldable' f, GFoldable' g) => GFoldable' (f :*: g) where
 instance (GFoldable f, GFoldable' g) => GFoldable' (f :.: g) where
   gfoldMap' f (Comp1 x) = gfoldMap (gfoldMap' f) x
 
+instance GFoldable' UAddr where
+  gfoldMap' _ (UAddr _) = mempty
+
+instance GFoldable' UChar where
+  gfoldMap' _ (UChar _) = mempty
+
+instance GFoldable' UDouble where
+  gfoldMap' _ (UDouble _) = mempty
+
+instance GFoldable' UFloat where
+  gfoldMap' _ (UFloat _) = mempty
+
+instance GFoldable' UInt where
+  gfoldMap' _ (UInt _) = mempty
+
+instance GFoldable' UWord where
+  gfoldMap' _ (UWord _) = mempty
 
 class GFoldable t where
   gfoldMap :: Monoid m => (a -> m) -> t a -> m
@@ -128,11 +159,16 @@ gfoldMapdefault :: (Generic1 t, GFoldable' (Rep1 t), Monoid m)
 gfoldMapdefault f x = gfoldMap' f (from1 x)
 
 -- Base types instances
+instance GFoldable ((,) a) where
+  gfoldMap = gfoldMapdefault
+
 instance GFoldable [] where
   gfoldMap = gfoldMapdefault
 
-instance GFoldable ((,) a) where
+#if MIN_VERSION_base(4,9,0)
+instance GFoldable (Arg a) where
   gfoldMap = gfoldMapdefault
+#endif
 
 #if MIN_VERSION_base(4,4,0)
 instance GFoldable Complex where
@@ -142,21 +178,76 @@ instance GFoldable Complex where
 instance GFoldable (Const m) where
   gfoldMap = gfoldMapdefault
 
+instance GFoldable Dual where
+  gfoldMap = gfoldMapdefault
+
 instance GFoldable (Either a) where
   gfoldMap = gfoldMapdefault
+
+instance GFoldable Monoid.First where
+  gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GFoldable (Semigroup.First) where
+  gfoldMap = gfoldMapdefault
+#endif
 
 #if MIN_VERSION_base(4,8,0)
 instance GFoldable Identity where
   gfoldMap = gfoldMapdefault
 #endif
 
+instance GFoldable Monoid.Last where
+  gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GFoldable Semigroup.Last where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable Max where
+  gfoldMap = gfoldMapdefault
+#endif
+
 instance GFoldable Maybe where
   gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GFoldable Min where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable NonEmpty where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable Option where
+  gfoldMap = gfoldMapdefault
+#endif
+
+instance GFoldable Monoid.Product where
+  gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GFoldable f, GFoldable g) => GFoldable (Functor.Product f g) where
+  gfoldMap = gfoldMapdefault
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 instance GFoldable Proxy where
   gfoldMap = gfoldMapdefault
 #endif
+
+instance GFoldable Monoid.Sum where
+  gfoldMap = gfoldMapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GFoldable f, GFoldable g) => GFoldable (Functor.Sum f g) where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable WrappedMonoid where
+  gfoldMap = gfoldMapdefault
+#endif
+
+instance GFoldable ZipList where
+  gfoldMap = gfoldMapdefault
 
 gtoList :: GFoldable t => t a -> [a]
 gtoList = gfoldr (:) []
@@ -180,10 +271,10 @@ gall :: GFoldable t => (a -> Bool) -> t a -> Bool
 gall p = getAll . gfoldMap (All . p)
 
 gsum :: (GFoldable t, Num a) => t a -> a
-gsum = getSum . gfoldMap Sum
+gsum = Monoid.getSum . gfoldMap Monoid.Sum
 
 gproduct :: (GFoldable t, Num a) => t a -> a
-gproduct = getProduct . gfoldMap Product
+gproduct = Monoid.getProduct . gfoldMap Monoid.Product
 
 gmaximum :: (GFoldable t, Ord a) => t a -> a
 gmaximum = gfoldr1 max

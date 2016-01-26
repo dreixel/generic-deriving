@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
@@ -14,23 +16,37 @@ module Generics.Deriving.Traversable (
 
   ) where
 
-import Control.Applicative
+import           Control.Applicative (Const, WrappedMonad(..), ZipList)
+#if !(MIN_VERSION_base(4,8,0))
+import           Control.Applicative (Applicative(..), (<$>))
+#endif
 
-import Generics.Deriving.Base
-import Generics.Deriving.Foldable
-import Generics.Deriving.Functor
-import Generics.Deriving.Instances ()
+import qualified Data.Monoid as Monoid (First, Last, Product, Sum)
+import           Data.Monoid (Dual)
+
+import           Generics.Deriving.Base
+import           Generics.Deriving.Foldable
+import           Generics.Deriving.Functor
+import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,4,0)
-import Data.Complex (Complex)
+import           Data.Complex (Complex)
 #endif
 
 #if MIN_VERSION_base(4,7,0)
-import Data.Proxy (Proxy)
+import           Data.Proxy (Proxy)
 #endif
 
 #if MIN_VERSION_base(4,8,0)
-import Data.Functor.Identity (Identity)
+import           Data.Functor.Identity (Identity)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+import qualified Data.Functor.Product as Functor (Product)
+import qualified Data.Functor.Sum as Functor (Sum)
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -65,6 +81,23 @@ instance (GTraversable' f, GTraversable' g) => GTraversable' (f :*: g) where
 instance (GTraversable f, GTraversable' g) => GTraversable' (f :.: g) where
   gtraverse' f (Comp1 x) = Comp1 <$> gtraverse (gtraverse' f) x
 
+instance GTraversable' UAddr where
+  gtraverse' _ (UAddr a) = pure (UAddr a)
+
+instance GTraversable' UChar where
+  gtraverse' _ (UChar c) = pure (UChar c)
+
+instance GTraversable' UDouble where
+  gtraverse' _ (UDouble d) = pure (UDouble d)
+
+instance GTraversable' UFloat where
+  gtraverse' _ (UFloat f) = pure (UFloat f)
+
+instance GTraversable' UInt where
+  gtraverse' _ (UInt i) = pure (UInt i)
+
+instance GTraversable' UWord where
+  gtraverse' _ (UWord w) = pure (UWord w)
 
 class (GFunctor t, GFoldable t) => GTraversable t where
   gtraverse :: Applicative f => (a -> f b) -> t a -> f (t b)
@@ -88,11 +121,16 @@ gtraversedefault :: (Generic1 t, GTraversable' (Rep1 t), Applicative f)
 gtraversedefault f x = to1 <$> gtraverse' f (from1 x)
 
 -- Base types instances
+instance GTraversable ((,) a) where
+  gtraverse = gtraversedefault
+
 instance GTraversable [] where
   gtraverse = gtraversedefault
 
-instance GTraversable ((,) a) where
+#if MIN_VERSION_base(4,9,0)
+instance GTraversable (Arg a) where
   gtraverse = gtraversedefault
+#endif
 
 #if MIN_VERSION_base(4,4,0)
 instance GTraversable Complex where
@@ -102,18 +140,73 @@ instance GTraversable Complex where
 instance GTraversable (Const m) where
   gtraverse = gtraversedefault
 
+instance GTraversable Dual where
+  gtraverse = gtraversedefault
+
 instance GTraversable (Either a) where
   gtraverse = gtraversedefault
+
+instance GTraversable Monoid.First where
+  gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GTraversable (Semigroup.First) where
+  gtraverse = gtraversedefault
+#endif
 
 #if MIN_VERSION_base(4,8,0)
 instance GTraversable Identity where
   gtraverse = gtraversedefault
 #endif
 
+instance GTraversable Monoid.Last where
+  gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GTraversable Semigroup.Last where
+  gtraverse = gtraversedefault
+
+instance GTraversable Max where
+  gtraverse = gtraversedefault
+#endif
+
 instance GTraversable Maybe where
   gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GTraversable Min where
+  gtraverse = gtraversedefault
+
+instance GTraversable NonEmpty where
+  gtraverse = gtraversedefault
+
+instance GTraversable Option where
+  gtraverse = gtraversedefault
+#endif
+
+instance GTraversable Monoid.Product where
+  gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GTraversable f, GTraversable g) => GTraversable (Functor.Product f g) where
+  gtraverse = gtraversedefault
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 instance GTraversable Proxy where
   gtraverse = gtraversedefault
 #endif
+
+instance GTraversable Monoid.Sum where
+  gtraverse = gtraversedefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GTraversable f, GTraversable g) => GTraversable (Functor.Sum f g) where
+  gtraverse = gtraversedefault
+
+instance GTraversable WrappedMonoid where
+  gtraverse = gtraversedefault
+#endif
+
+instance GTraversable ZipList where
+  gtraverse = gtraversedefault

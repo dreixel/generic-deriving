@@ -66,6 +66,10 @@ import Data.Proxy (Proxy)
 import Data.Functor.Identity (Identity)
 #endif
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (WrappedMonoid)
+#endif
+
 --------------------------------------------------------------------------------
 
 class GMonoid' f where
@@ -206,6 +210,12 @@ instance GMonoid (Proxy s) where
 
 #if MIN_VERSION_base(4,8,0)
 instance GMonoid a => GMonoid (Identity a) where
+  gmempty  = gmemptydefault
+  gmappend = gmappenddefault
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance GMonoid m => GMonoid (WrappedMonoid m) where
   gmempty  = gmemptydefault
   gmappend = gmappenddefault
 #endif

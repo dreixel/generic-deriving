@@ -25,34 +25,41 @@ module Generics.Deriving.Enum (
 
   ) where
 
-import Control.Applicative (Const, ZipList)
+import           Control.Applicative (Const, ZipList)
 
-import Data.Int
-import Data.Monoid (All, Any, Dual, First, Last, Product, Sum)
+import           Data.Int
+import           Data.Monoid (All, Any, Dual, Product, Sum)
+import qualified Data.Monoid as Monoid (First, Last)
 import Data.Word
 
-import Foreign.C.Types
-import Foreign.Ptr
+import           Foreign.C.Types
+import           Foreign.Ptr
 
-import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
-import Generics.Deriving.Eq
+import           Generics.Deriving.Base
+import           Generics.Deriving.Instances ()
+import           Generics.Deriving.Eq
 
-import System.Exit (ExitCode)
-import System.Posix.Types
+import           System.Exit (ExitCode)
+import           System.Posix.Types
 
 #if MIN_VERSION_base(4,4,0)
-import Data.Complex (Complex)
+import           Data.Complex (Complex)
 #endif
 
 #if MIN_VERSION_base(4,7,0)
-import Data.Proxy (Proxy)
+import           Data.Proxy (Proxy)
 #endif
 
 #if MIN_VERSION_base(4,8,0)
-import Data.Functor.Identity (Identity)
-import Data.Monoid (Alt)
-import Numeric.Natural (Natural)
+import           Data.Functor.Identity (Identity)
+import           Data.Monoid (Alt)
+import           Numeric.Natural (Natural)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
 #endif
 
 -----------------------------------------------------------------------------
@@ -195,7 +202,12 @@ instance GEnum (f a) => GEnum (Alt f a) where
 instance GEnum Any where
   genum = genumDefault
 
-#if __GLASGOW_HASKELL__ < 711
+#if MIN_VERSION_base(4,9,0)
+instance (GEnum a, GEnum b) => GEnum (Arg a b) where
+  genum = genumDefault
+#endif
+
+#if !(MIN_VERSION_base(4,9,0))
 instance GEnum Arity where
   genum = genumDefault
 #endif
@@ -380,8 +392,13 @@ instance GEnum ExitCode where
 instance GEnum Fd where
   genum = genumNumBounded
 
-instance GEnum a => GEnum (First a) where
+instance GEnum a => GEnum (Monoid.First a) where
   genum = genumDefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GEnum a => GEnum (Semigroup.First a) where
+  genum = genumDefault
+#endif
 
 instance GEnum Fixity where
   genum = genumDefault
@@ -418,18 +435,41 @@ instance GEnum IntPtr where
 instance GEnum c => GEnum (K1 i c p) where
   genum = genumDefault
 
-instance GEnum a => GEnum (Last a) where
+instance GEnum a => GEnum (Monoid.Last a) where
   genum = genumDefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GEnum a => GEnum (Semigroup.Last a) where
+  genum = genumDefault
+#endif
 
 instance GEnum (f p) => GEnum (M1 i c f p) where
   genum = genumDefault
 
+#if MIN_VERSION_base(4,9,0)
+instance GEnum a => GEnum (Max a) where
+  genum = genumDefault
+#endif
+
 instance GEnum a => GEnum (Maybe a) where
   genum = genumDefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GEnum a => GEnum (Min a) where
+  genum = genumDefault
+#endif
 
 #if MIN_VERSION_base(4,8,0)
 instance GEnum Natural where
   genum = [0..]
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance GEnum a => GEnum (NonEmpty a) where
+  genum = genumDefault
+
+instance GEnum a => GEnum (Option a) where
+  genum = genumDefault
 #endif
 
 instance GEnum Ordering where
@@ -472,6 +512,11 @@ instance GEnum Word64 where
 
 instance GEnum WordPtr where
   genum = genumNumBounded
+
+#if MIN_VERSION_base(4,9,0)
+instance GEnum m => GEnum (WrappedMonoid m) where
+  genum = genumDefault
+#endif
 
 instance GEnum a => GEnum (ZipList a) where
   genum = genumDefault
@@ -607,7 +652,14 @@ instance GIx Any where
   index   = indexDefault
   inRange = inRangeDefault
 
-#if __GLASGOW_HASKELL__ < 711
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a, GEnum b) => GIx (Arg a b) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif
+
+#if !(MIN_VERSION_base(4,9,0))
 instance GIx Arity where
   range   = rangeDefault
   index   = indexDefault
@@ -809,10 +861,17 @@ instance GIx Fd where
   index   = indexIntegral
   inRange = inRangeOrd
 
-instance (GEq a, GEnum a, GIx a) => GIx (First a) where
+instance (GEq a, GEnum a, GIx a) => GIx (Monoid.First a) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a) => GIx (Semigroup.First a) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif
 
 instance GIx Fixity where
   range   = rangeDefault
@@ -861,21 +920,56 @@ instance GIx IntPtr where
   index   = indexIntegral
   inRange = inRangeOrd
 
-instance (GEq a, GEnum a, GIx a) => GIx (Last a) where
+instance (GEq a, GEnum a, GIx a) => GIx (Monoid.Last a) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a) => GIx (Semigroup.Last a) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a) => GIx (Max a) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif
 
 instance (GEq a, GEnum a, GIx a) => GIx (Maybe a) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
 
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a) => GIx (Min a) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif
+
 #if MIN_VERSION_base(4,8,0)
 instance GIx Natural where
   range   = rangeEnum
   index   = indexIntegral
   inRange = inRangeOrd
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a) => GIx (NonEmpty a) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance (GEq a, GEnum a, GIx a) => GIx (Option a) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
 #endif
 
 instance GIx Ordering where
@@ -929,3 +1023,10 @@ instance GIx WordPtr where
   range   = rangeEnum
   index   = indexIntegral
   inRange = inRangeOrd
+
+#if MIN_VERSION_base(4,9,0)
+instance (GEq m, GEnum m, GIx m) => GIx (WrappedMonoid m) where
+  range   = rangeDefault
+  index   = indexDefault
+  inRange = inRangeDefault
+#endif

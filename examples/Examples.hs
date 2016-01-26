@@ -4,6 +4,7 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -45,25 +46,24 @@ data (:/:) f a = MyType1Nil
                | MyType1Cons2 (f :/: a) Int a (f a)
                | (f :/: a) :/: MyType2
 
-#if __GLASGOW_HASKELL__ >= 701
-  deriving ( Generic
-# if __GLASGOW_HASKELL__ >= 705
-           , Generic1
-# endif
-           )
-#endif
+infixr 5 :!@!:
+data GADTSyntax a b where
+  GADTPrefix :: d -> c -> GADTSyntax c d
+  (:!@!:)    :: e -> f -> GADTSyntax e f
 
 data MyType2 = MyType2 Float ([] :/: Int)
 data PlainHash a = Hash a Addr# Char# Double# Float# Int# Word#
 
 #if __GLASGOW_HASKELL__ >= 701
 deriving instance Generic (Empty a)
+deriving instance Generic (f :/: a)
 deriving instance Generic MyType2
 #endif
 
 #if __GLASGOW_HASKELL__ < 705
 $(deriveMeta ''Empty)
 $(deriveMeta ''(:/:))
+$(deriveMeta ''GADTSyntax)
 $(deriveMeta ''MyType2)
 #endif
 
@@ -74,10 +74,15 @@ $(deriveRepresentable0 ''MyType2)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705
+deriving instance Generic (GADTSyntax a b)
 deriving instance Generic1 Empty
+deriving instance Generic1 ((:/:) f)
+deriving instance Generic1 (GADTSyntax a)
 #else
+$(deriveRepresentable0 ''GADTSyntax)
 $(deriveRepresentable1 ''Empty)
 $(deriveRepresentable1 ''(:/:))
+$(deriveRepresentable1 ''GADTSyntax)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 711
@@ -90,14 +95,14 @@ $(deriveAll0And1 ''PlainHash)
 -- Test to see if generated names are unique
 data Lexeme = Lexeme
 
-$(deriveAll ''Main.Lexeme)
-$(deriveAll ''Text.Read.Lex.Lexeme)
+$(deriveAll0 ''Main.Lexeme)
+$(deriveAll0 ''Text.Read.Lex.Lexeme)
 
 #if __GLASGOW_HASKELL__ >= 703
-data family MyType3 a b
-newtype instance MyType3 ()   b = MyType3Newtype b
-data    instance MyType3 Bool b = MyType3True | MyType3False
-data    instance MyType3 Int  b = MyType3Hash b Addr# Char# Double# Float# Int# Word#
+data family MyType3 a b (c :: * -> *) d e
+newtype instance MyType3 (f x) (f x) f x y = MyType3Newtype y
+data    instance MyType3 Bool  ()    f x y = MyType3True | MyType3False
+data    instance MyType3 Int   ()    f x y = MyType3Hash y Addr# Char# Double# Float# Int# Word#
 
 # if __GLASGOW_HASKELL__ < 707
 $(deriveMeta 'MyType3Newtype)
@@ -105,24 +110,34 @@ $(deriveMeta 'MyType3True)
 # endif
 
 # if __GLASGOW_HASKELL__ >= 705
-deriving instance Generic (MyType3 ()   b)
-deriving instance Generic (MyType3 Bool b)
+deriving instance Generic (MyType3 (f x) (f x) f x y)
+deriving instance Generic (MyType3 Bool  ()    f x y)
 # else
-$(deriveRepresentable0 'MyType3Newtype)
+$(deriveRep0 'MyType3Newtype)
+instance Generic (MyType3 (f x) (f x) f x y) where
+  type Rep (MyType3 (f x) (f x) f x y) = $(makeRep0 'MyType3Newtype) f x y
+  from = $(makeFrom0 'MyType3Newtype)
+  to = $(makeTo0 'MyType3Newtype)
+
 $(deriveRepresentable0 'MyType3True)
 # endif
 
 # if __GLASGOW_HASKELL__ >= 707
-deriving instance Generic1 (MyType3 ())
-deriving instance Generic1 (MyType3 Bool)
+deriving instance Generic1 (MyType3 (f x) (f x) f x)
+deriving instance Generic1 (MyType3 Bool  ()    f x)
 # else
-$(deriveRepresentable1 'MyType3Newtype)
+$(deriveRep1 'MyType3Newtype)
+instance Generic1 (MyType3 (f x) (f x) f x) where
+  type Rep1 (MyType3 (f x) (f x) f x) = $(makeRep1 'MyType3Newtype) f x
+  from1 = $(makeFrom1 'MyType3Newtype)
+  to1 = $(makeTo1 'MyType3Newtype)
+
 $(deriveRepresentable1 'MyType3False)
 # endif
 
 # if __GLASGOW_HASKELL__ >= 711
-deriving instance Generic  (MyType3 Int b)
-deriving instance Generic1 (MyType3 Int)
+deriving instance Generic  (MyType3 Int () f x y)
+deriving instance Generic1 (MyType3 Int () f x)
 # else
 $(deriveAll0And1 'MyType3Hash)
 # endif
@@ -170,7 +185,7 @@ instance GEnum Tree
 
 #else
 
-$(deriveAll ''Tree)
+$(deriveAll0 ''Tree)
 
 instance GShow    Tree where gshowsPrec = gshowsPrecdefault
 instance Uniplate Tree where

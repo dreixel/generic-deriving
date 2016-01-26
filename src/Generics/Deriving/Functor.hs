@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 #endif
@@ -14,24 +16,33 @@ module Generics.Deriving.Functor (
 
   ) where
 
-import Control.Applicative (Const, ZipList)
+import           Control.Applicative (Const, ZipList)
 
-import Data.Monoid (First, Last)
+import qualified Data.Monoid as Monoid (First, Last, Product, Sum)
+import           Data.Monoid (Dual)
 
-import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
+import           Generics.Deriving.Base
+import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,4,0)
-import Data.Complex (Complex)
+import           Data.Complex (Complex)
 #endif
 
 #if MIN_VERSION_base(4,7,0)
-import Data.Proxy (Proxy)
+import           Data.Proxy (Proxy)
 #endif
 
 #if MIN_VERSION_base(4,8,0)
-import Data.Functor.Identity (Identity)
-import Data.Monoid (Alt)
+import           Data.Functor.Identity (Identity)
+import           Data.Monoid (Alt)
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+import qualified Data.Functor.Product as Functor (Product)
+import qualified Data.Functor.Sum as Functor (Sum)
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -66,6 +77,23 @@ instance (GFunctor' f, GFunctor' g) => GFunctor' (f :*: g) where
 instance (GFunctor f, GFunctor' g) => GFunctor' (f :.: g) where
   gmap' f (Comp1 x) = Comp1 (gmap (gmap' f) x)
 
+instance GFunctor' UAddr where
+  gmap' _ (UAddr a) = UAddr a
+
+instance GFunctor' UChar where
+  gmap' _ (UChar c) = UChar c
+
+instance GFunctor' UDouble where
+  gmap' _ (UDouble d) = UDouble d
+
+instance GFunctor' UFloat where
+  gmap' _ (UFloat f) = UFloat f
+
+instance GFunctor' UInt where
+  gmap' _ (UInt i) = UInt i
+
+instance GFunctor' UWord where
+  gmap' _ (UWord w) = UWord w
 
 class GFunctor f where
   gmap :: (a -> b) -> f a -> f b
@@ -94,6 +122,11 @@ instance GFunctor f => GFunctor (Alt f) where
   gmap = gmapdefault
 #endif
 
+#if MIN_VERSION_base(4,9,0)
+instance GFunctor (Arg a) where
+  gmap = gmapdefault
+#endif
+
 #if MIN_VERSION_base(4,4,0)
 instance GFunctor Complex where
   gmap = gmapdefault
@@ -102,11 +135,19 @@ instance GFunctor Complex where
 instance GFunctor (Const m) where
   gmap = gmapdefault
 
+instance GFunctor Dual where
+  gmap = gmapdefault
+
 instance GFunctor (Either a) where
   gmap = gmapdefault
 
-instance GFunctor First where
+instance GFunctor Monoid.First where
   gmap = gmapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GFunctor (Semigroup.First) where
+  gmap = gmapdefault
+#endif
 
 #if MIN_VERSION_base(4,8,0)
 instance GFunctor Identity where
@@ -116,14 +157,52 @@ instance GFunctor Identity where
 instance GFunctor IO where
   gmap = fmap
 
-instance GFunctor Last where
+instance GFunctor Monoid.Last where
   gmap = gmapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance GFunctor Semigroup.Last where
+  gmap = gmapdefault
+
+instance GFunctor Max where
+  gmap = gmapdefault
+#endif
 
 instance GFunctor Maybe where
   gmap = gmapdefault
 
+#if MIN_VERSION_base(4,9,0)
+instance GFunctor Min where
+  gmap = gmapdefault
+
+instance GFunctor NonEmpty where
+  gmap = gmapdefault
+
+instance GFunctor Option where
+  gmap = gmapdefault
+#endif
+
+instance GFunctor Monoid.Product where
+  gmap = gmapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GFunctor f, GFunctor g) => GFunctor (Functor.Product f g) where
+  gmap = gmapdefault
+#endif
+
 #if MIN_VERSION_base(4,7,0)
 instance GFunctor Proxy where
+  gmap = gmapdefault
+#endif
+
+instance GFunctor Monoid.Sum where
+  gmap = gmapdefault
+
+#if MIN_VERSION_base(4,9,0)
+instance (GFunctor f, GFunctor g) => GFunctor (Functor.Sum f g) where
+  gmap = gmapdefault
+
+instance GFunctor WrappedMonoid where
   gmap = gmapdefault
 #endif
 

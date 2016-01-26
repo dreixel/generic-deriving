@@ -16,10 +16,11 @@
 module Generics.Deriving.TH.Internal where
 
 import           Data.Char (isAlphaNum, ord)
-import           Data.Function (on)
+import           Data.Foldable (foldr')
 import           Data.List
 import qualified Data.Map as Map
 import           Data.Map as Map (Map)
+import           Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
@@ -42,8 +43,17 @@ expandSyn :: Type -> Q Type
 expandSyn (ForallT tvs ctx t) = fmap (ForallT tvs ctx) $ expandSyn t
 expandSyn t@AppT{}            = expandSynApp t []
 expandSyn t@ConT{}            = expandSynApp t []
-expandSyn (SigT t _)          = expandSyn t   -- Ignore kind synonyms
+expandSyn (SigT t k)          = do t' <- expandSyn t
+                                   k' <- expandSynKind k
+                                   return (SigT t' k')
 expandSyn t                   = return t
+
+expandSynKind :: Kind -> Q Kind
+#if MIN_VERSION_template_haskell(2,8,0)
+expandSynKind = expandSyn
+#else
+expandSynKind = return -- There are no kind synonyms to deal with
+#endif
 
 expandSynApp :: Type -> [Type] -> Q Type
 expandSynApp (AppT t1 t2) ts = do
@@ -56,54 +66,139 @@ expandSynApp t@(ConT n) ts = do
         TyConI (TySynD _ tvs rhs) ->
             let (ts', ts'') = splitAt (length tvs) ts
                 subs = mkSubst tvs ts'
-                rhs' = subst subs rhs
+                rhs' = substType subs rhs
              in expandSynApp rhs' ts''
         _ -> return $ foldl' AppT t ts
 expandSynApp t ts = do
     t' <- expandSyn t
     return $ foldl' AppT t' ts
 
-type Subst = Map Name Type
+type TypeSubst = Map Name Type
+type KindSubst = Map Name Kind
 
-mkSubst :: [TyVarBndr] -> [Type] -> Subst
+mkSubst :: [TyVarBndr] -> [Type] -> TypeSubst
 mkSubst vs ts =
-   let vs' = map tyVarBndrToName vs
+   let vs' = map tyVarBndrName vs
    in Map.fromList $ zip vs' ts
 
-subst :: Subst -> Type -> Type
-subst subs (ForallT v c t) = ForallT v c $ subst subs t
-subst subs t@(VarT n)      = Map.findWithDefault t n subs
-subst subs (AppT t1 t2)    = AppT (subst subs t1) (subst subs t2)
-subst subs (SigT t k)      = SigT (subst subs t) k
-subst _ t                  = t
+substType :: TypeSubst -> Type -> Type
+substType subs (ForallT v c t) = ForallT v c $ substType subs t
+substType subs t@(VarT n)      = Map.findWithDefault t n subs
+substType subs (AppT t1 t2)    = AppT (substType subs t1) (substType subs t2)
+substType subs (SigT t k)      = SigT (substType subs t)
+#if MIN_VERSION_template_haskell(2,8,0)
+                                      (substType subs k)
+#else
+                                      k
+#endif
+substType _ t                  = t
+
+substKind :: KindSubst -> Type -> Type
+#if MIN_VERSION_template_haskell(2,8,0)
+substKind = substType
+#else
+substKind _ = id -- There are no kind variables!
+#endif
+
+substNameWithKind :: Name -> Kind -> Type -> Type
+substNameWithKind n k = substKind (Map.singleton n k)
+
+substNamesWithKindStar :: [Name] -> Type -> Type
+substNamesWithKindStar ns t = foldr' (flip substNameWithKind starK) t ns
+
+substTyVarBndrKind :: KindSubst -> TyVarBndr -> TyVarBndr
+substTyVarBndrKind _subs (KindedTV n k) = KindedTV n $
+#if MIN_VERSION_template_haskell(2,8,0)
+    substKind _subs k
+#else
+    k
+#endif
+substTyVarBndrKind _ tvb = tvb
+
+substNameWithKindStarInTyVarBndr :: Name -> TyVarBndr -> TyVarBndr
+substNameWithKindStarInTyVarBndr n = substTyVarBndrKind (Map.singleton n starK)
 
 -------------------------------------------------------------------------------
--- NameBase
+-- StarKindStatus
 -------------------------------------------------------------------------------
 
--- | A wrapper around Name which only uses the nameBase (not the entire Name)
--- to compare for equality. For example, if you had two Names a_123 and a_456,
--- they are not equal as Names, but they are equal as NameBases.
---
--- This is useful when inspecting type variables, since a type variable in an
--- instance context may have a distinct Name from a type variable within an
--- actual constructor declaration, but we'd want to treat them as the same
--- if they have the same nameBase (since that's what the programmer uses to
--- begin with).
-newtype NameBase = NameBase { getName :: Name }
+-- | Whether a type is not of kind *, is of kind *, or is a kind variable.
+data StarKindStatus = NotKindStar
+                    | KindStar
+                    | IsKindVar Name
+  deriving Eq
 
-getNameBase :: NameBase -> String
-getNameBase = nameBase . getName
+-- | Does a Type have kind * or k (for some kind variable k)?
+canRealizeKindStar :: Type -> StarKindStatus
+canRealizeKindStar t
+  | hasKindStar t = KindStar
+  | otherwise = case t of
+#if MIN_VERSION_template_haskell(2,8,0)
+                     SigT _ (VarT k) -> IsKindVar k
+#endif
+                     _               -> NotKindStar
 
-instance Eq NameBase where
-    (==) = (==) `on` getNameBase
+-- | Returns 'Just' the kind variable 'Name' of a 'StarKindStatus' if it exists.
+-- Otherwise, returns 'Nothing'.
+starKindStatusToName :: StarKindStatus -> Maybe Name
+starKindStatusToName (IsKindVar n) = Just n
+starKindStatusToName _             = Nothing
 
-instance Ord NameBase where
-    compare = compare `on` getNameBase
+-- | Concat together all of the StarKindStatuses that are IsKindVar and extract
+-- the kind variables' Names out.
+catKindVarNames :: [StarKindStatus] -> [Name]
+catKindVarNames = mapMaybe starKindStatusToName
 
 -------------------------------------------------------------------------------
 -- Assorted utilities
 -------------------------------------------------------------------------------
+
+-- | Returns True if a Type has kind *.
+hasKindStar :: Type -> Bool
+hasKindStar VarT{}         = True
+#if MIN_VERSION_template_haskell(2,8,0)
+hasKindStar (SigT _ StarT) = True
+#else
+hasKindStar (SigT _ StarK) = True
+#endif
+hasKindStar _              = False
+
+tyVarNamesOfTyVarBndr :: TyVarBndr -> [Name]
+tyVarNamesOfTyVarBndr (PlainTV n)    = [n]
+tyVarNamesOfTyVarBndr (KindedTV n k) = n:kindVarNamesOfKind k
+
+-- | Gets all of the type/kind variable names mentioned somewhere in a Type.
+tyVarNamesOfType :: Type -> [Name]
+tyVarNamesOfType = go
+  where
+    go :: Type -> [Name]
+    go (AppT t1 t2) = go t1 ++ go t2
+    go (SigT t _k)  = go t
+#if MIN_VERSION_template_haskell(2,8,0)
+                           ++ go _k
+#endif
+    go (VarT n)     = [n]
+    go _            = []
+
+-- | Gets all of the kind variable names mentioned somewhere in a Kind.
+kindVarNamesOfKind :: Kind -> [Name]
+#if MIN_VERSION_template_haskell(2,8,0)
+kindVarNamesOfKind = tyVarNamesOfType
+#else
+kindVarNamesOfKind _ = [] -- There are no kind variables
+#endif
+
+-- | Gets all of the specified type/kind variable names mentioned in a Type. In
+-- contrast to 'tyVarNamesOfType', 'visibleTyVarsOfType' does not go into kinds
+-- of 'SigT's.
+visibleTyVarsOfType :: Type -> [TyVarBndr]
+visibleTyVarsOfType = go
+  where
+    go :: Type -> [TyVarBndr]
+    go (AppT t1 t2) = go t1 ++ go t2
+    go (SigT t _)   = go t
+    go (VarT n)     = [PlainTV n]
+    go _            = []
 
 -- | Is the given type a type family constructor (and not a data family constructor)?
 isTyFamily :: Type -> Q Bool
@@ -123,13 +218,21 @@ isTyFamily (ConT n) = do
          _ -> False
 isTyFamily _ = return False
 
+-- | True if the type does not mention the Name
+ground :: Type -> Name -> Bool
+ground (AppT t1 t2) name = ground t1 name && ground t2 name
+ground (SigT t _)   name = ground t name
+ground (VarT t)     name = t /= name
+ground ForallT{}    _    = rankNError
+ground _            _    = True
+
 -- | Construct a type via curried application.
 applyTyToTys :: Type -> [Type] -> Type
 applyTyToTys = foldl' AppT
 
 -- | Apply a type constructor name to type variable binders.
 applyTyToTvbs :: Name -> [TyVarBndr] -> Type
-applyTyToTvbs = foldl' (\a -> AppT a . VarT . tyVarBndrToName) . ConT
+applyTyToTvbs = foldl' (\a -> AppT a . tyVarBndrToType) . ConT
 
 -- | Split an applied type into its individual components. For example, this:
 --
@@ -146,67 +249,63 @@ unapplyTy :: Type -> [Type]
 unapplyTy = reverse . go
   where
     go :: Type -> [Type]
-    go (AppT t1 t2) = t2:go t1
-    go (SigT t _)   = go t
-    go t            = [t]
+    go (AppT t1 t2)    = t2 : go t1
+    go (SigT t _)      = go t
+    go (ForallT _ _ t) = go t
+    go t               = [t]
 
 -- | Split a type signature by the arrows on its spine. For example, this:
 --
 -- @
--- (Int -> String) -> Char -> ()
+-- forall a b. (a -> b) -> Char -> ()
 -- @
 --
 -- would split to this:
 --
 -- @
--- [Int -> String, Char, ()]
+-- ([a, b], [a -> b, Char, ()])
 -- @
-uncurryTy :: Type -> [Type]
-uncurryTy (AppT (AppT ArrowT t1) t2) = t1:uncurryTy t2
-uncurryTy (SigT t _)                 = uncurryTy t
-uncurryTy t                          = [t]
+uncurryTy :: Type -> ([TyVarBndr], [Type])
+uncurryTy (AppT (AppT ArrowT t1) t2) =
+  let (tvbs, tys) = uncurryTy t2
+  in (tvbs, t1:tys)
+uncurryTy (SigT t _) = uncurryTy t
+uncurryTy (ForallT tvbs _ t) =
+  let (tvbs', tys) = uncurryTy t
+  in (tvbs ++ tvbs', tys)
+uncurryTy t = ([], [t])
 
 -- | Like uncurryType, except on a kind level.
-uncurryKind :: Kind -> [Kind]
+uncurryKind :: Kind -> ([TyVarBndr], [Kind])
 #if MIN_VERSION_template_haskell(2,8,0)
 uncurryKind = uncurryTy
 #else
-uncurryKind (ArrowK k1 k2) = k1:uncurryKind k2
-uncurryKind k              = [k]
+uncurryKind (ArrowK k1 k2) =
+  let (kvbs, ks) = uncurryKind k2
+  in (kvbs, k1:ks)
+uncurryKind k = ([], [k])
 #endif
 
-canRealizeKindStar :: Kind -> Bool
-canRealizeKindStar k = case uncurryKind k of
-    [k'] -> case k' of
-#if MIN_VERSION_template_haskell(2,8,0)
-                 StarT    -> True
-                 VarT{}   -> True -- Kind k can be instantiated with *
-#else
-                 StarK    -> True
-#endif
-                 _ -> False
-    _ -> False
+tyVarBndrToType :: TyVarBndr -> Type
+tyVarBndrToType (PlainTV n)    = VarT n
+tyVarBndrToType (KindedTV n k) = SigT (VarT n) k
 
-wellKinded :: [Kind] -> Bool
-wellKinded = all canRealizeKindStar
+tyVarBndrName :: TyVarBndr -> Name
+tyVarBndrName (PlainTV  name)   = name
+tyVarBndrName (KindedTV name _) = name
 
--- | Replace the Name of a TyVarBndr with one from a Type (if the Type has a Name).
-replaceTyVarName :: TyVarBndr -> Type -> TyVarBndr
-replaceTyVarName tvb            (SigT t _) = replaceTyVarName tvb t
-replaceTyVarName PlainTV{}      (VarT n)   = PlainTV  n
-replaceTyVarName (KindedTV _ k) (VarT n)   = KindedTV n k
-replaceTyVarName tvb            _          = tvb
+tyVarBndrKind :: TyVarBndr -> Kind
+tyVarBndrKind PlainTV{}      = starK
+tyVarBndrKind (KindedTV _ k) = k
 
-tyVarBndrToName :: TyVarBndr -> Name
-tyVarBndrToName (PlainTV  name)   = name
-tyVarBndrToName (KindedTV name _) = name
+-- | If a VarT is missing an explicit kind signature, steal it from a TyVarBndr.
+stealKindForType :: TyVarBndr -> Type -> Type
+stealKindForType tvb t@VarT{} = SigT t (tyVarBndrKind tvb)
+stealKindForType _   t        = t
 
-tyVarBndrToNameBase :: TyVarBndr -> NameBase
-tyVarBndrToNameBase = NameBase . tyVarBndrToName
-
-tyVarBndrToKind :: TyVarBndr -> Kind
-tyVarBndrToKind PlainTV{}      = starK
-tyVarBndrToKind (KindedTV _ k) = k
+-- | Generate a list of fresh names with a common prefix, and numbered suffixes.
+newNameList :: String -> Int -> Q [Name]
+newNameList prefix n = mapM (newName . (prefix ++) . show) [1..n]
 
 -- | Checks to see if the last types in a data family instance can be safely eta-
 -- reduced (i.e., dropped), given the other types. This checks for three conditions:
@@ -217,28 +316,55 @@ tyVarBndrToKind (KindedTV _ k) = k
 canEtaReduce :: [Type] -> [Type] -> Bool
 canEtaReduce remaining dropped =
        all isTyVar dropped
-    && allDistinct nbs -- Make sure not to pass something of type [Type], since Type
-                       -- didn't have an Ord instance until template-haskell-2.10.0.0
-    && not (any (`mentionsNameBase` nbs) remaining)
+       -- Make sure not to pass something of type [Type], since Type
+       -- didn't have an Ord instance until template-haskell-2.10.0.0
+    && allDistinct droppedNames
+    && not (any (`mentionsName` droppedNames) remaining)
   where
-    nbs :: [NameBase]
-    nbs = map varTToNameBase dropped
+    droppedNames :: [Name]
+    droppedNames = map varTToName dropped
 
--- | Extract the Name from a type variable.
+-- | Extract the Name from a type variable. If the argument Type is not a
+-- type variable, throw an error.
 varTToName :: Type -> Name
 varTToName (VarT n)   = n
 varTToName (SigT t _) = varTToName t
 varTToName _          = error "Not a type variable!"
-
--- | Extract the NameBase from a type variable.
-varTToNameBase :: Type -> NameBase
-varTToNameBase = NameBase . varTToName
 
 -- | Is the given type a variable?
 isTyVar :: Type -> Bool
 isTyVar VarT{}     = True
 isTyVar (SigT t _) = isTyVar t
 isTyVar _          = False
+
+-- | Is the given kind a variable?
+isKindVar :: Kind -> Bool
+#if MIN_VERSION_template_haskell(2,8,0)
+isKindVar = isTyVar
+#else
+isKindVar _ = False -- There are no kind variables
+#endif
+
+-- | Returns 'True' is a 'Type' contains no type variables.
+isTypeMonomorphic :: Type -> Bool
+isTypeMonomorphic = go
+  where
+    go :: Type -> Bool
+    go (AppT t1 t2) = go t1 && go t2
+    go (SigT t _k)  = go t
+#if MIN_VERSION_template_haskell(2,8,0)
+                           && go _k
+#endif
+    go VarT{}       = False
+    go _            = True
+
+-- | Returns 'True' is a 'Kind' contains no kind variables.
+isKindMonomorphic :: Kind -> Bool
+#if MIN_VERSION_template_haskell(2,8,0)
+isKindMonomorphic = isTypeMonomorphic
+#else
+isKindMonomorphic _ = True -- There are no kind variables
+#endif
 
 -- | Peel off a kind signature from a Type (if it has one).
 unSigT :: Type -> Type
@@ -250,19 +376,18 @@ unKindedTV :: TyVarBndr -> TyVarBndr
 unKindedTV (KindedTV n _) = PlainTV n
 unKindedTV tvb            = tvb
 
--- | Does the given type mention any of the NameBases in the list?
-mentionsNameBase :: Type -> [NameBase] -> Bool
-mentionsNameBase = go Set.empty
+-- | Does the given type mention any of the Names in the list?
+mentionsName :: Type -> [Name] -> Bool
+mentionsName = go
   where
-    go :: Set NameBase -> Type -> [NameBase] -> Bool
-    go foralls (ForallT tvbs _ t) nbs =
-        go (foralls `Set.union` Set.fromList (map tyVarBndrToNameBase tvbs)) t nbs
-    go foralls (AppT t1 t2) nbs = go foralls t1 nbs || go foralls t2 nbs
-    go foralls (SigT t _)   nbs = go foralls t nbs
-    go foralls (VarT n)     nbs = varNb `elem` nbs && not (varNb `Set.member` foralls)
-      where
-        varNb = NameBase n
-    go _       _            _   = False
+    go :: Type -> [Name] -> Bool
+    go (AppT t1 t2) names = go t1 names || go t2 names
+    go (SigT t _k)  names = go t names
+#if MIN_VERSION_template_haskell(2,8,0)
+                              || go _k names
+#endif
+    go (VarT n)     names = n `elem` names
+    go _            _     = False
 
 -- | Are all of the items in a list (which have an ordering) distinct?
 --
@@ -301,10 +426,8 @@ constructorName (RecC    name      _  ) = name
 constructorName (InfixC  _    name _  ) = name
 constructorName (ForallC _    _    con) = constructorName con
 #if MIN_VERSION_template_haskell(2,11,0)
-constructorName (GadtC    [name] _ _) = name
-constructorName (GadtC    _      _ _) = error "GadtC must have exactly one name"
-constructorName (RecGadtC [name] _ _) = name
-constructorName (RecGadtC _      _ _) = error "RecGadtC must have exactly one name"
+constructorName (GadtC    names _ _)    = head names
+constructorName (RecGadtC names _ _)    = head names
 #endif
 
 #if MIN_VERSION_template_haskell(2,7,0)
@@ -322,6 +445,78 @@ dataDecCons (NewtypeInstD _ _ _
                           con _) = [con]
 dataDecCons _ = error "Must be a data or newtype declaration."
 #endif
+
+-- | Indicates whether Generic or Generic1 is being derived.
+data GenericClass = Generic | Generic1 deriving Enum
+
+-- | Like 'GenericArity', but bundling two things in the 'Gen1' case:
+--
+-- 1. The 'Name' of the last type parameter.
+-- 2. If that last type parameter had kind k (where k is some kind variable),
+--    then it has 'Just' the kind variable 'Name'. Otherwise, it has 'Nothing'.
+data GenericKind = Gen0
+                 | Gen1 Name (Maybe Name)
+
+-- Determines the universally quantified type variables, the types of a constructor's
+-- arguments, and the last type parameter name (if there is one).
+reifyConTys :: GenericClass
+            -> Name
+            -> Q ([TyVarBndr], [Type], GenericKind)
+reifyConTys gClass conName = do
+    info <- reify conName
+    let (tvbs, uncTy) = case info of
+          DataConI _ ty _
+#if !(MIN_VERSION_template_haskell(2,11,0))
+                   _
+#endif
+                   -> uncurryTy ty
+          _ -> error "Must be a data constructor"
+    let (argTys, [resTy]) = splitAt (length uncTy - 1) uncTy
+    -- Make sure to expand through synonyms on the last type, or else you might
+    -- have something like
+    --
+    --   type Constant a b = a
+    --   data Good a = Good (Constant a b)
+    --
+    -- which you'd only be able to tell was legal if you expand Constant a b to a!
+    resTyExp <- expandSyn resTy
+    let numResTyVars = length . nub $ visibleTyVarsOfType resTyExp
+        -- ^ We need to grab a number of type variables from the constructor's
+        -- type signature to re-use for the Rep(1) type synonym's type variable
+        -- binders. As it turns out, that number is equal to the number of distinct
+        -- type variables which appear in the result type.
+        --
+        -- We assume that the visible type variables all come last in the list
+        -- of forall'd type variables. I suppose nothing guarantees this, but
+        -- this seems to always be the case via experimentation. Fingers crossed.
+        -- TODO: This doesn't work with -XTypeInType and data families
+        visibleTvbs = drop (length tvbs - numResTyVars) tvbs
+    let (visibleTvbs', gk) = case gClass of
+           Generic  -> (visibleTvbs, Gen0)
+           Generic1 ->
+             -- If deriving Generic1 and the last type variable is polykinded,
+             -- make sure to substitute that kind with * in the other type
+             -- variable binders' kind signatures
+             let headVisibleTvbs :: [TyVarBndr]
+                 lastVisibleTvb :: TyVarBndr
+                 (headVisibleTvbs, [lastVisibleTvb]) =
+                   splitAt (length visibleTvbs - 1) visibleTvbs
+
+                 mbLastArgKindName :: Maybe Name
+                 mbLastArgKindName = starKindStatusToName
+                                   . canRealizeKindStar
+                                   $ tyVarBndrToType lastVisibleTvb
+
+                 visibleTvbsSubst :: [TyVarBndr]
+                 visibleTvbsSubst =
+                   case mbLastArgKindName of
+                        Nothing   -> headVisibleTvbs
+                        Just lakn -> map (substNameWithKindStarInTyVarBndr lakn)
+                                         headVisibleTvbs
+             in ( visibleTvbsSubst
+                , Gen1 (tyVarBndrName lastVisibleTvb) mbLastArgKindName
+                )
+    return (visibleTvbs', argTys, gk)
 
 -- | Indicates whether Generic(1) is being derived for a plain data type (DataPlain)
 -- or a data family instance (DataFamily). DataFamily bundles the Name of the data
@@ -382,6 +577,21 @@ gadtError con = error $
 -- when deriving Generic(1)
 rankNError :: a
 rankNError = error "Cannot have polymorphic arguments"
+
+-- | Cannot have a Generic(1) instance where the instance head's type is instantiated
+-- to be a more "saturated" type than the original data declaration. That means
+-- something like this would be rejected:
+--
+-- @
+-- {-# LANGUAGE TypeInType #-}
+-- data Hm k (a :: k) deriving Generic1
+-- @
+--
+-- Since having a Generic1 instance would force k to be instantiated with *,
+-- resulting in an instance Generic1 (Hm *) instead of instance Generic1 (Hm k).
+instantiationError :: Name -> a
+instantiationError tyConName = error $
+    nameBase tyConName ++ " must not be instantiated"
 
 -- | Boilerplate for top level splices.
 --
@@ -540,6 +750,9 @@ mkBaseName_d = mkNameG_d "base"
 
 mkGHCPrimName_d :: String -> String -> Name
 mkGHCPrimName_d = mkNameG_d "ghc-prim"
+
+mkGHCPrimName_tc :: String -> String -> Name
+mkGHCPrimName_tc = mkNameG_tc "ghc-prim"
 
 comp1DataName :: Name
 comp1DataName = mkGD7'1_d "Comp1"
@@ -791,6 +1004,11 @@ fmapValName = mkNameG_v "base" "GHC.Base" "fmap"
 
 undefinedValName :: Name
 undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
+
+#if __GLASGOW_HASKELL__ >= 705 && __GLASGOW_HASKELL__ < 711
+starKindName :: Name
+starKindName = mkGHCPrimName_tc "GHC.Prim" "*"
+#endif
 
 #if __GLASGOW_HASKELL__ >= 711
 decidedLazyDataName :: Name
