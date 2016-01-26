@@ -1,4 +1,4 @@
-# next
+# 1.10.0
 * On GHC 8.0 and up, `Generics.Deriving.TH` uses the new type literal-based
   machinery
 * Rewrote the Template Haskell code to be robust. Among other things, this fixes
