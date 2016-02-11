@@ -9,6 +9,10 @@
 {-# LANGUAGE DefaultSignatures #-}
 #endif
 
+#if __GLASGOW_HASKELL__ >= 705
+{-# LANGUAGE PolyKinds #-}
+#endif
+
 #if __GLASGOW_HASKELL__ < 709
 {-# LANGUAGE OverlappingInstances #-}
 #endif
