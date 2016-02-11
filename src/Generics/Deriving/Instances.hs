@@ -5,6 +5,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
+#if __GLASGOW_HASKELL__ >= 705
+{-# LANGUAGE PolyKinds #-}
+#endif
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Generics.Deriving.Instances (

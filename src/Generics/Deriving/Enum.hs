@@ -1,10 +1,16 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 705
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 #include "HsBaseConfig.h"
@@ -482,7 +488,13 @@ instance GEnum a => GEnum (Product a) where
   genum = genumDefault
 
 #if MIN_VERSION_base(4,7,0)
-instance GEnum (Proxy s) where
+instance GEnum
+# if MIN_VERSION_base(4,9,0)
+               (Proxy s)
+# else
+               (Proxy (s :: *))
+# endif
+               where
   genum = genumDefault
 #endif
 
@@ -983,7 +995,13 @@ instance (GEq a, GEnum a, GIx a) => GIx (Product a) where
   inRange = inRangeDefault
 
 #if MIN_VERSION_base(4,7,0)
-instance GIx (Proxy s) where
+instance GIx
+# if MIN_VERSION_base(4,9,0)
+             (Proxy s)
+# else
+             (Proxy (s :: *))
+# endif
+             where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault

@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 705
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 -- | This module provides two main features:
@@ -203,7 +208,13 @@ instance GMonoid a => GMonoid (Const a b) where
   gmappend = gmappenddefault
 
 #if MIN_VERSION_base(4,7,0)
-instance GMonoid (Proxy s) where
+instance GMonoid
+# if MIN_VERSION_base(4,9,0)
+                 (Proxy s)
+# else
+                 (Proxy (s :: *))
+# endif
+                 where
   gmempty  = memptydefault
   gmappend = mappenddefault
 #endif

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -8,6 +9,10 @@
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 705
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 #include "HsBaseConfig.h"
@@ -481,7 +486,13 @@ instance GEq a => GEq (Product a) where
   geq = geqdefault
 
 #if MIN_VERSION_base(4,7,0)
-instance GEq (Proxy s) where
+instance GEq
+# if MIN_VERSION_base(4,9,0)
+             (Proxy s)
+# else
+             (Proxy (s :: *))
+# endif
+             where
   geq = geqdefault
 #endif
 

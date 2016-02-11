@@ -1,3 +1,6 @@
+# next
+* Made instances polykinded where possible
+
 # 1.10.0
 * On GHC 8.0 and up, `Generics.Deriving.TH` uses the new type literal-based
   machinery
