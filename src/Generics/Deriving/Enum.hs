@@ -158,11 +158,11 @@ genumNumUnbounded = pos 0 ||| neg 0 where
   pos n = n     : pos (n + 1)
   neg n = (n-1) : neg (n - 1)
 
-genumNumUnsigned :: (Bounded a, Enum a, Num a) => [a]
-genumNumUnsigned = [0 .. maxBound] ||| [-1, -2 .. minBound]
+genumNumSigned :: (Bounded a, Enum a, Num a) => [a]
+genumNumSigned = [0 .. maxBound] ||| [-1, -2 .. minBound]
 
-genumNumSigned :: (Enum a, Num a) => [a]
-genumNumSigned = [0 ..]
+genumNumUnsigned :: (Enum a, Num a) => [a]
+genumNumUnsigned = [0 ..]
 
 #if !(MIN_VERSION_base(4,7,0))
 coerce :: a -> b
@@ -419,25 +419,25 @@ instance GEnum a => GEnum (Identity a) where
 #endif
 
 instance GEnum Int where
-  genum = genumNumUnsigned
+  genum = genumNumSigned
 
 instance GEnum Int8 where
-  genum = genumNumUnsigned
+  genum = genumNumSigned
 
 instance GEnum Int16 where
-  genum = genumNumUnsigned
+  genum = genumNumSigned
 
 instance GEnum Int32 where
-  genum = genumNumUnsigned
+  genum = genumNumSigned
 
 instance GEnum Int64 where
-  genum = genumNumUnsigned
+  genum = genumNumSigned
 
 instance GEnum Integer where
   genum = genumNumUnbounded
 
 instance GEnum IntPtr where
-  genum = genumNumUnsigned
+  genum = genumNumSigned
 
 instance GEnum c => GEnum (K1 i c p) where
   genum = genumDefault
@@ -468,7 +468,7 @@ instance GEnum a => GEnum (Min a) where
 
 #if MIN_VERSION_base(4,8,0)
 instance GEnum Natural where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 #endif
 
 #if MIN_VERSION_base(4,9,0)
@@ -509,22 +509,22 @@ instance GEnum (U1 p) where
   genum = genumDefault
 
 instance GEnum Word where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 
 instance GEnum Word8 where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 
 instance GEnum Word16 where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 
 instance GEnum Word32 where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 
 instance GEnum Word64 where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 
 instance GEnum WordPtr where
-  genum = genumNumSigned
+  genum = genumNumUnsigned
 
 #if MIN_VERSION_base(4,9,0)
 instance GEnum m => GEnum (WrappedMonoid m) where
