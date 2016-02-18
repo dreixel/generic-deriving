@@ -52,6 +52,7 @@ library
                         Generics.Deriving.Foldable
                         Generics.Deriving.Functor
                         Generics.Deriving.Monoid
+                        Generics.Deriving.Semigroup
                         Generics.Deriving.Show
                         Generics.Deriving.Traversable
                         Generics.Deriving.Uniplate

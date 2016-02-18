@@ -1,4 +1,6 @@
-# next
+# 1.10.1
+* Added `Generics.Deriving.Semigroup`
+* Added `GMonoid` instance for `Data.Monoid.Alt`
 * Fixed a bug in the `GEnum` instances for unsigned `Integral` types
 * Added `Safe`/`Trustworthy` pragmas
 * Made instances polykinded where possible

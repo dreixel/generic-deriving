@@ -190,6 +190,11 @@ instance GMonoid [a] where
 instance GMonoid (Endo a) where
   gmempty = mempty
   gmappend = mappend
+#if MIN_VERSION_base(4,8,0)
+instance Alternative f => GMonoid (Alt f a) where
+  gmempty = mempty
+  gmappend = mappend
+#endif
 
 -- Handwritten instances
 instance GMonoid a => GMonoid (Dual a) where
