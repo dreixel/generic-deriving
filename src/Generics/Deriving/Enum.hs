@@ -7,6 +7,7 @@
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE Trustworthy #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705

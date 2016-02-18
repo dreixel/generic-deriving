@@ -1,5 +1,6 @@
 # next
 * Fixed a bug in the `GEnum` instances for unsigned `Integral` types
+* Added `Safe`/`Trustworthy` pragmas
 * Made instances polykinded where possible
 
 # 1.10.0
