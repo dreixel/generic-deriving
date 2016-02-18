@@ -27,7 +27,6 @@ import           Data.Monoid (Dual)
 import qualified Data.Monoid as Monoid (Sum)
 
 import           Generics.Deriving.Base
-import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,8,0)
 import           Data.Functor.Identity (Identity)

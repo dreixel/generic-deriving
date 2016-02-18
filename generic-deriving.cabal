@@ -58,7 +58,8 @@ library
 
                         Generics.Deriving.TH
 
-  other-modules:        Generics.Deriving.TH.Internal
+  other-modules:        Generics.Deriving.Base.Internal
+                        Generics.Deriving.TH.Internal
                         Paths_generic_deriving
   if impl(ghc >= 7.11)
     other-modules:      Generics.Deriving.TH.Post711

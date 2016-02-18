@@ -28,7 +28,6 @@ import qualified Data.Monoid as Monoid (First, Last, Product, Sum)
 import           Data.Monoid (Dual)
 
 import           Generics.Deriving.Base
-import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,4,0)
 import           Data.Complex (Complex)

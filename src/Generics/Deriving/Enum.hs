@@ -43,7 +43,6 @@ import           Foreign.C.Types
 import           Foreign.Ptr
 
 import           Generics.Deriving.Base
-import           Generics.Deriving.Instances ()
 import           Generics.Deriving.Eq
 
 import           System.Exit (ExitCode)

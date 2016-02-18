@@ -117,7 +117,7 @@ import Data.Proxy (Proxy(..))
 
 #if __GLASGOW_HASKELL__ < 711
 import Data.Version (Version(..))
-import Generics.Deriving.Base
+import Generics.Deriving.Base.Internal
 import System.Exit (ExitCode(..))
 #endif
 

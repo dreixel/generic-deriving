@@ -62,7 +62,6 @@ module Generics.Deriving.Monoid (
 import Control.Applicative
 import Data.Monoid
 import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Proxy (Proxy)

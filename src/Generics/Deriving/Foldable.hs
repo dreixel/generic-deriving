@@ -49,7 +49,6 @@ import           Data.Monoid (Monoid(..))
 #endif
 
 import           Generics.Deriving.Base
-import           Generics.Deriving.Instances ()
 
 #if MIN_VERSION_base(4,4,0)
 import           Data.Complex (Complex)

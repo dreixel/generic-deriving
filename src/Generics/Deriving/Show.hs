@@ -38,7 +38,6 @@ import           Foreign.ForeignPtr (ForeignPtr)
 import           Foreign.Ptr
 
 import           Generics.Deriving.Base
-import           Generics.Deriving.Instances ()
 
 import           GHC.Exts hiding (Any)
 

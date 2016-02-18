@@ -56,7 +56,6 @@ module Generics.Deriving.Uniplate (
 
 
 import Generics.Deriving.Base
-import Generics.Deriving.Instances ()
 
 import Control.Monad (liftM, liftM2)
 import GHC.Exts (build)
