@@ -1,3 +1,6 @@
+# 1.10.2
+* Fix TH regression on GHC 7.0
+
 # 1.10.1
 * Added `Generics.Deriving.Semigroup`
 * Added `GMonoid` instance for `Data.Monoid.Alt`

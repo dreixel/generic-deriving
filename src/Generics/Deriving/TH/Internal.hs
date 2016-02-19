@@ -703,14 +703,14 @@ mkGD7'1_d = mkNameG_d "base" "GHC.Generics"
 #elif __GLASGOW_HASKELL__ >= 701
 mkGD7'1_d = mkNameG_d "ghc-prim" "GHC.Generics"
 #else
-mkGD7'1_d = mkNameG_d gdPackageKey "Generics.Deriving.Base"
+mkGD7'1_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkGD7'11_d :: String -> Name
 #if __GLASGOW_HASKELL__ >= 711
 mkGD7'11_d = mkNameG_d "base" "GHC.Generics"
 #else
-mkGD7'11_d = mkNameG_d gdPackageKey "Generics.Deriving.Base"
+mkGD7'11_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkGD7'1_tc :: String -> Name
@@ -719,14 +719,14 @@ mkGD7'1_tc = mkNameG_tc "base" "GHC.Generics"
 #elif __GLASGOW_HASKELL__ >= 701
 mkGD7'1_tc = mkNameG_tc "ghc-prim" "GHC.Generics"
 #else
-mkGD7'1_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base"
+mkGD7'1_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkGD7'11_tc :: String -> Name
 #if __GLASGOW_HASKELL__ >= 711
 mkGD7'11_tc = mkNameG_tc "base" "GHC.Generics"
 #else
-mkGD7'11_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base"
+mkGD7'11_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkGD7'1_v :: String -> Name
@@ -735,14 +735,14 @@ mkGD7'1_v = mkNameG_v "base" "GHC.Generics"
 #elif __GLASGOW_HASKELL__ >= 701
 mkGD7'1_v = mkNameG_v "ghc-prim" "GHC.Generics"
 #else
-mkGD7'1_v = mkNameG_v gdPackageKey "Generics.Deriving.Base"
+mkGD7'1_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkGD7'11_v :: String -> Name
 #if __GLASGOW_HASKELL__ >= 711
 mkGD7'11_v = mkNameG_v "base" "GHC.Generics"
 #else
-mkGD7'11_v = mkNameG_v gdPackageKey "Generics.Deriving.Base"
+mkGD7'11_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkBaseName_d :: String -> String -> Name
