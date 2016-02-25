@@ -1,3 +1,9 @@
+# 1.10.3
+* Backported `Enum`, `Bounded`, `Ix`, `Functor`, `Applicative`, `Monad`,
+ `MonadFix`, `MonadPlus`, `MonadZip`, `Foldable`, `Traversable`, and
+ `Data` instances (introduced in `base-4.9`) for datatypes in the
+ `Generics.Deriving.Base` module
+
 # 1.10.2
 * Fix TH regression on GHC 7.0
 

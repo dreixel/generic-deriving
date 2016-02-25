@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -618,13 +623,26 @@ module Generics.Deriving.Base.Internal (
 
 #if __GLASGOW_HASKELL__ >= 701
 import GHC.Generics
+#else
+import Control.Applicative ( Alternative(..) )
+import Control.Monad ( MonadPlus(..) )
+import Control.Monad.Fix ( MonadFix(..), fix )
+import Data.Data ( Data )
+import Data.Ix ( Ix )
+import Text.ParserCombinators.ReadPrec (pfail)
+import Text.Read ( Read(..), parens, readListDefault, readListPrecDefault )
 #endif
 
 #if __GLASGOW_HASKELL__ < 709
+import Control.Applicative ( Applicative(..) )
+import Data.Foldable ( Foldable(..) )
+import Data.Monoid ( Monoid(..) )
+import Data.Traversable ( Traversable(..) )
 import Data.Word ( Word )
 #endif
 
 #if __GLASGOW_HASKELL__ < 711
+import Data.Typeable
 import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
 import GHC.Ptr ( Ptr )
 #endif
@@ -636,45 +654,160 @@ import GHC.Ptr ( Ptr )
 
 -- | Void: used for datatypes without constructors
 data V1 p
+  deriving (Functor, Foldable, Traversable, Typeable)
+
+deriving instance           Eq   (V1 p)
+deriving instance Data p => Data (V1 p)
+deriving instance           Ord  (V1 p)
+deriving instance           Show (V1 p)
+-- Implement Read instance manually to get around an old GHC bug
+-- (Trac #7931)
+instance Read (V1 p) where
+  readPrec     = parens pfail
+  readList     = readListDefault
+  readListPrec = readListPrecDefault
 
 -- | Unit: used for constructors without arguments
 data U1 p = U1
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data, Typeable)
+instance Applicative U1 where
+  pure _ = U1
+  U1 <*> U1 = U1
+
+instance Alternative U1 where
+  empty = U1
+  U1 <|> U1 = U1
+
+instance Monad U1 where
+  return _ = U1
+  U1 >>= _ = U1
 
 -- | Used for marking occurrences of the parameter
 newtype Par1 p = Par1 { unPar1 :: p }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data, Typeable)
+
+instance Applicative Par1 where
+  pure a = Par1 a
+  Par1 f <*> Par1 x = Par1 (f x)
+
+instance Monad Par1 where
+  return a = Par1 a
+  Par1 x >>= f = f x
+
+instance MonadFix Par1 where
+  mfix f = Par1 (fix (unPar1 . f))
 
 -- | Recursive calls of kind * -> *
 newtype Rec1 f p = Rec1 { unRec1 :: f p }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Functor, Show)
+
+instance Applicative f => Applicative (Rec1 f) where
+  pure a = Rec1 (pure a)
+  Rec1 f <*> Rec1 x = Rec1 (f <*> x)
+
+instance Alternative f => Alternative (Rec1 f) where
+  empty = Rec1 empty
+  Rec1 l <|> Rec1 r = Rec1 (l <|> r)
+
+instance Monad f => Monad (Rec1 f) where
+  return a = Rec1 (return a)
+  Rec1 x >>= f = Rec1 (x >>= \a -> unRec1 (f a))
+
+instance MonadFix f => MonadFix (Rec1 f) where
+  mfix f = Rec1 (mfix (unRec1 . f))
+
+instance MonadPlus f => MonadPlus (Rec1 f) where
+  mzero = Rec1 mzero
+  mplus (Rec1 a) (Rec1 b) = Rec1 (mplus a b)
 
 -- | Constants, additional parameters and recursion of kind *
 newtype K1 i c p = K1 { unK1 :: c }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Data, Typeable)
+
+instance Foldable (K1 i c) where
+  foldr _ z K1{} = z
+  foldMap _ K1{} = mempty
+
+instance Traversable (K1 i c) where
+  traverse _ (K1 c) = pure (K1 c)
 
 -- | Meta-information (constructor names, etc.)
 newtype M1 i c f p = M1 { unM1 :: f p }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+
+instance Applicative f => Applicative (M1 i c f) where
+  pure a = M1 (pure a)
+  M1 f <*> M1 x = M1 (f <*> x)
+
+instance Alternative f => Alternative (M1 i c f) where
+  empty = M1 empty
+  M1 l <|> M1 r = M1 (l <|> r)
+
+instance Monad f => Monad (M1 i c f) where
+  return a = M1 (return a)
+  M1 x >>= f = M1 (x >>= \a -> unM1 (f a))
+
+instance MonadPlus f => MonadPlus (M1 i c f) where
+  mzero = M1 mzero
+  mplus (M1 a) (M1 b) = M1 (mplus a b)
+
+instance MonadFix f => MonadFix (M1 i c f) where
+  mfix f = M1 (mfix (unM1. f))
 
 -- | Sums: encode choice between constructors
 infixr 5 :+:
 data (:+:) f g p = L1 (f p) | R1 (g p)
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
 
 -- | Products: encode multiple arguments to constructors
 infixr 6 :*:
 data (:*:) f g p = f p :*: g p
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+
+instance (Applicative f, Applicative g) => Applicative (f :*: g) where
+  pure a = pure a :*: pure a
+  (f :*: g) <*> (x :*: y) = (f <*> x) :*: (g <*> y)
+
+instance (Alternative f, Alternative g) => Alternative (f :*: g) where
+  empty = empty :*: empty
+  (x1 :*: y1) <|> (x2 :*: y2) = (x1 <|> x2) :*: (y1 <|> y2)
+
+instance (Monad f, Monad g) => Monad (f :*: g) where
+  return a = return a :*: return a
+  (m :*: n) >>= f = (m >>= \a -> fstP (f a)) :*: (n >>= \a -> sndP (f a))
+    where
+      fstP (a :*: _) = a
+      sndP (_ :*: b) = b
+
+instance (MonadFix f, MonadFix g) => MonadFix (f :*: g) where
+  mfix f = (mfix (fstP . f)) :*: (mfix (sndP . f))
+    where
+      fstP (a :*: _) = a
+      sndP (_ :*: b) = b
+
+instance (MonadPlus f, MonadPlus g) => MonadPlus (f :*: g) where
+  mzero = mzero :*: mzero
+  (x1 :*: y1) `mplus` (x2 :*: y2) =  (x1 `mplus` x2) :*: (y1 `mplus` y2)
 
 -- | Composition of functors
 infixr 7 :.:
 newtype (:.:) f g p = Comp1 { unComp1 :: f (g p) }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+
+instance (Applicative f, Applicative g) => Applicative (f :.: g) where
+  pure x = Comp1 (pure (pure x))
+  Comp1 f <*> Comp1 x = Comp1 (fmap (<*>) f <*> x)
+
+instance (Alternative f, Applicative g) => Alternative (f :.: g) where
+  empty = Comp1 empty
+  Comp1 x <|> Comp1 y = Comp1 (x <|> y)
+
 -- | Tag for K1: recursion (of kind *)
 data R
+  deriving Typeable
 -- | Tag for K1: parameters (other than the last)
 data P
+  deriving Typeable
 
 -- | Type synonym for encoding recursion (of kind *)
 type Rec0  = K1 R
@@ -683,10 +816,13 @@ type Par0  = K1 P
 
 -- | Tag for M1: datatype
 data D
+  deriving Typeable
 -- | Tag for M1: constructor
 data C
+  deriving Typeable
 -- | Tag for M1: record selector
 data S
+  deriving Typeable
 
 -- | Type synonym for encoding meta-information for datatypes
 type D1 = M1 D
@@ -710,6 +846,7 @@ class Selector s where
 
 -- | Used for constructor fields without a name
 data NoSelector
+  deriving Typeable
 
 instance Selector NoSelector where selName _ = ""
 
@@ -729,12 +866,12 @@ class Constructor c where
 
 -- | Datatype to represent the arity of a tuple.
 data Arity = NoArity | Arity Int
-  deriving (Eq, Show, Ord, Read)
+  deriving (Eq, Show, Ord, Read, Typeable)
 
 -- | Datatype to represent the fixity of a constructor. An infix
 -- | declaration directly corresponds to an application of 'Infix'.
 data Fixity = Prefix | Infix Associativity Int
-  deriving (Eq, Show, Ord, Read)
+  deriving (Eq, Show, Ord, Read, Data, Typeable)
 
 -- | Get the precedence of a fixity value.
 prec :: Fixity -> Int
@@ -745,7 +882,7 @@ prec (Infix _ n) = n
 data Associativity =  LeftAssociative
                    |  RightAssociative
                    |  NotAssociative
-  deriving (Eq, Show, Ord, Read)
+  deriving (Eq, Show, Ord, Read, Bounded, Enum, Ix, Data, Typeable)
 
 -- | Representable types of kind *
 class Generic a where
@@ -769,29 +906,103 @@ class Generic1 f where
 -- | Constants of kind @#@
 data family URec (a :: *) (p :: *)
 
+# if __GLASGOW_HASKELL__ >= 707
+deriving instance Typeable URec
+# else
+instance Typeable2 URec where
+  typeOf2 _ =
+#  if __GLASGOW_HASKELL__ >= 701
+      mkTyConApp (mkTyCon3 "generic-deriving"
+                           "Generics.Deriving.Base.Internal"
+                           "URec") []
+#  else
+      mkTyConApp (mkTyCon "Generics.Deriving.Base.Internal.URec") []
+#  endif
+# endif
+
 -- | Used for marking occurrences of 'Addr#'
 data instance URec (Ptr ()) p = UAddr { uAddr# :: Addr# }
   deriving (Eq, Ord)
+
+instance Functor (URec (Ptr ())) where
+  fmap _ (UAddr a) = UAddr a
+
+instance Foldable (URec (Ptr ())) where
+  foldr _ z UAddr{} = z
+  foldMap _ UAddr{} = mempty
+
+instance Traversable (URec (Ptr ())) where
+  traverse _ (UAddr a) = pure (UAddr a)
 
 -- | Used for marking occurrences of 'Char#'
 data instance URec Char p = UChar { uChar# :: Char# }
   deriving (Eq, Ord, Show)
 
+instance Functor (URec Char) where
+  fmap _ (UChar c) = UChar c
+
+instance Foldable (URec Char) where
+  foldr _ z UChar{} = z
+  foldMap _ UChar{} = mempty
+
+instance Traversable (URec Char) where
+  traverse _ (UChar c) = pure (UChar c)
+
 -- | Used for marking occurrences of 'Double#'
 data instance URec Double p = UDouble { uDouble# :: Double# }
   deriving (Eq, Ord, Show)
+
+instance Functor (URec Double) where
+  fmap _ (UDouble d) = UDouble d
+
+instance Foldable (URec Double) where
+  foldr _ z UDouble{} = z
+  foldMap _ UDouble{} = mempty
+
+instance Traversable (URec Double) where
+  traverse _ (UDouble d) = pure (UDouble d)
 
 -- | Used for marking occurrences of 'Float#'
 data instance URec Float p = UFloat { uFloat# :: Float# }
   deriving (Eq, Ord, Show)
 
+instance Functor (URec Float) where
+  fmap _ (UFloat f) = UFloat f
+
+instance Foldable (URec Float) where
+  foldr _ z UFloat{} = z
+  foldMap _ UFloat{} = mempty
+
+instance Traversable (URec Float) where
+  traverse _ (UFloat f) = pure (UFloat f)
+
 -- | Used for marking occurrences of 'Int#'
 data instance URec Int p = UInt { uInt# :: Int# }
   deriving (Eq, Ord, Show)
 
+instance Functor (URec Int) where
+  fmap _ (UInt i) = UInt i
+
+instance Foldable (URec Int) where
+  foldr _ z UInt{} = z
+  foldMap _ UInt{} = mempty
+
+instance Traversable (URec Int) where
+  traverse _ (UInt i) = pure (UInt i)
+
 -- | Used for marking occurrences of 'Word#'
 data instance URec Word p = UWord { uWord# :: Word# }
   deriving (Eq, Ord, Show)
+
+instance Functor (URec Word) where
+  fmap _ (UWord w) = UWord w
+
+instance Foldable (URec Word) where
+  foldr _ z UWord{} = z
+  foldMap _ UWord{} = mempty
+
+instance Traversable (URec Word) where
+  traverse _ (UWord w) = pure (UWord w)
 
 -- | Type synonym for 'URec': 'Addr#'
 type UAddr   = URec (Ptr ())

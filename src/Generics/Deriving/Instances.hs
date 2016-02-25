@@ -23,13 +23,29 @@ module Generics.Deriving.Instances (
 -- and the Generic1 instances
 #if __GLASGOW_HASKELL__ < 711
     Rep0ExitCode
-  , Rep0UAddr
-  , Rep0UChar
-  , Rep0UDouble
-  , Rep0UFloat
-  , Rep0UInt
-  , Rep0UWord
   , Rep0Version
+  , Rep1ConSum
+  , Rep1ConProduct
+  , Rep1ConCompose
+  , Rep1K1
+  , Rep1M1
+  , Rep1Par1
+  , Rep1Rec1
+  , Rep1U1
+  , Rep0V1
+  , Rep1V1
+  , Rep0UAddr
+  , Rep1UAddr
+  , Rep0UChar
+  , Rep1UChar
+  , Rep0UDouble
+  , Rep1UDouble
+  , Rep0UFloat
+  , Rep1UFloat
+  , Rep0UInt
+  , Rep1UInt
+  , Rep0UWord
+  , Rep1UWord
 # if __GLASGOW_HASKELL__ >= 701
   , Rep0Complex
   , Rep1Complex
@@ -150,150 +166,6 @@ instance Constructor C1_1ExitCode where
 
 -----
 
-type Rep0UAddr p = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr UAddr))
-
-instance Generic (UAddr p) where
-    type Rep (UAddr p) = Rep0UAddr p
-    from (UAddr a) = M1 (M1 (M1 (UAddr a)))
-    to (M1 (M1 (M1 (UAddr a)))) = UAddr a
-
-data D1UAddr
-data C1_0UAddr
-data S1_0_0UAddr
-
-instance Datatype D1UAddr where
-    datatypeName _ = "UAddr"
-    moduleName   _ = "Generics.Deriving.Base"
-
-instance Constructor C1_0UAddr where
-    conName     _ = "UAddr"
-    conIsRecord _ = True
-
-instance Selector S1_0_0UAddr where
-    selName _ = "uAddr#"
-
------
-
-type Rep0UChar p = D1 D1UChar (C1 C1_0UChar (S1 S1_0_0UChar UChar))
-
-instance Generic (UChar p) where
-    type Rep (UChar p) = Rep0UChar p
-    from (UChar c) = M1 (M1 (M1 (UChar c)))
-    to (M1 (M1 (M1 (UChar c)))) = UChar c
-
-data D1UChar
-data C1_0UChar
-data S1_0_0UChar
-
-instance Datatype D1UChar where
-    datatypeName _ = "UChar"
-    moduleName   _ = "Generics.Deriving.Base"
-
-instance Constructor C1_0UChar where
-    conName     _ = "UChar"
-    conIsRecord _ = True
-
-instance Selector S1_0_0UChar where
-    selName _ = "uChar#"
-
------
-
-type Rep0UDouble p = D1 D1UDouble (C1 C1_0UDouble (S1 S1_0_0UDouble UDouble))
-
-instance Generic (UDouble p) where
-    type Rep (UDouble p) = Rep0UDouble p
-    from (UDouble d) = M1 (M1 (M1 (UDouble d)))
-    to (M1 (M1 (M1 (UDouble d)))) = UDouble d
-
-data D1UDouble
-data C1_0UDouble
-data S1_0_0UDouble
-
-instance Datatype D1UDouble where
-    datatypeName _ = "UDouble"
-    moduleName   _ = "Generics.Deriving.Base"
-
-instance Constructor C1_0UDouble where
-    conName     _ = "UDouble"
-    conIsRecord _ = True
-
-instance Selector S1_0_0UDouble where
-    selName _ = "uDouble#"
-
------
-
-type Rep0UFloat p = D1 D1UFloat (C1 C1_0UFloat (S1 S1_0_0UFloat UFloat))
-
-instance Generic (UFloat p) where
-    type Rep (UFloat p) = Rep0UFloat p
-    from (UFloat f) = M1 (M1 (M1 (UFloat f)))
-    to (M1 (M1 (M1 (UFloat f)))) = UFloat f
-
-data D1UFloat
-data C1_0UFloat
-data S1_0_0UFloat
-
-instance Datatype D1UFloat where
-    datatypeName _ = "UFloat"
-    moduleName   _ = "Generics.Deriving.Base"
-
-instance Constructor C1_0UFloat where
-    conName     _ = "UFloat"
-    conIsRecord _ = True
-
-instance Selector S1_0_0UFloat where
-    selName _ = "uFloat#"
-
------
-
-type Rep0UInt p = D1 D1UInt (C1 C1_0UInt (S1 S1_0_0UInt UInt))
-
-instance Generic (UInt p) where
-    type Rep (UInt p) = Rep0UInt p
-    from (UInt i) = M1 (M1 (M1 (UInt i)))
-    to (M1 (M1 (M1 (UInt i)))) = UInt i
-
-data D1UInt
-data C1_0UInt
-data S1_0_0UInt
-
-instance Datatype D1UInt where
-    datatypeName _ = "UInt"
-    moduleName   _ = "Generics.Deriving.Base"
-
-instance Constructor C1_0UInt where
-    conName     _ = "UInt"
-    conIsRecord _ = True
-
-instance Selector S1_0_0UInt where
-    selName _ = "uInt#"
-
------
-
-type Rep0UWord p = D1 D1UWord (C1 C1_0UWord (S1 S1_0_0UWord UWord))
-
-instance Generic (UWord p) where
-    type Rep (UWord p) = Rep0UWord p
-    from (UWord w) = M1 (M1 (M1 (UWord w)))
-    to (M1 (M1 (M1 (UWord w)))) = UWord w
-
-data D1UWord
-data C1_0UWord
-data S1_0_0UWord
-
-instance Datatype D1UWord where
-    datatypeName _ = "UWord"
-    moduleName   _ = "Generics.Deriving.Base"
-
-instance Constructor C1_0UWord where
-    conName     _ = "UWord"
-    conIsRecord _ = True
-
-instance Selector S1_0_0UWord where
-    selName _ = "uWord#"
-
------
-
 type Rep0Version = D1 D1Version (C1 C1_0Version (S1 S1_0_0Version (Rec0 [Int])
                                              :*: S1 S1_0_1Version (Rec0 [String])))
 
@@ -320,6 +192,430 @@ instance Selector S1_0_0Version where
 
 instance Selector S1_0_1Version where
     selName _ = "versionTags"
+
+-----
+
+type Rep1ConSum f g = D1 D1ConSum (C1 C1_0ConSum (S1 NoSelector (Rec1 f))
+                               :+: C1 C1_1ConSum (S1 NoSelector (Rec1 g)))
+
+instance Generic1 (f :+: g) where
+    type Rep1 (f :+: g) = Rep1ConSum f g
+    from1 (L1 l) = M1 (L1 (M1 (M1 (Rec1 l))))
+    from1 (R1 r) = M1 (R1 (M1 (M1 (Rec1 r))))
+    to1 (M1 (L1 (M1 (M1 l)))) = L1 (unRec1 l)
+    to1 (M1 (R1 (M1 (M1 r)))) = R1 (unRec1 r)
+
+data D1ConSum
+data C1_0ConSum
+data C1_1ConSum
+
+instance Datatype D1ConSum where
+    datatypeName _ = ":+:"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0ConSum where
+    conName _ = "L1"
+
+instance Constructor C1_1ConSum where
+    conName _ = "R1"
+
+-----
+
+type Rep1ConProduct f g = D1 D1ConProduct (C1 C1_ConProduct (S1 NoSelector (Rec1 f)
+                                                         :*: S1 NoSelector (Rec1 g)))
+
+instance Generic1 (f :*: g) where
+    type Rep1 (f :*: g) = Rep1ConProduct f g
+    from1 (f :*: g) = M1 (M1 (M1 (Rec1 f) :*: M1 (Rec1 g)))
+    to1 (M1 (M1 (M1 f :*: M1 g))) = unRec1 f :*: unRec1 g
+
+data D1ConProduct
+data C1_ConProduct
+
+instance Datatype D1ConProduct where
+    datatypeName _ = ":*:"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_ConProduct where
+    conName   _ = ":*:"
+    conFixity _ = Infix RightAssociative 6
+
+-----
+
+type Rep1ConCompose f g =
+    D1 D1ConCompose (C1 C1_0ConCompose (S1 S1_0_0ConCompose (f :.: Rec1 g)))
+
+instance Functor f => Generic1 (f :.: g) where
+    type Rep1 (f :.: g) = Rep1ConCompose f g
+    from1 (Comp1 c) = M1 (M1 (M1 (Comp1 (fmap Rec1 c))))
+    to1 (M1 (M1 (M1 c))) = Comp1 (fmap unRec1 (unComp1 c))
+
+data D1ConCompose
+data C1_0ConCompose
+data S1_0_0ConCompose
+
+instance Datatype D1ConCompose where
+    datatypeName _ = ":.:"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0ConCompose where
+  conName     _ = "Comp1"
+  conIsRecord _ = True
+
+instance Selector S1_0_0ConCompose where
+  selName _ = "unComp1"
+
+-----
+
+type Rep1K1 i c = D1 D1K1 (C1 C1_0K1 (S1 S1_0_0K1 (Rec0 c)))
+
+instance Generic1 (K1 i c) where
+    type Rep1 (K1 i c) = Rep1K1 i c
+    from1 (K1 c) = M1 (M1 (M1 (K1 c)))
+    to1 (M1 (M1 (M1 c))) = K1 (unK1 c)
+
+data D1K1
+data C1_0K1
+data S1_0_0K1
+
+instance Datatype D1K1 where
+    datatypeName _ = "K1"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0K1 where
+    conName     _ = "K1"
+    conIsRecord _ = True
+
+instance Selector S1_0_0K1 where
+    selName _ = "unK1"
+
+-----
+
+type Rep1M1 i c f = D1 D1M1 (C1 C1_0M1 (S1 S1_0_0M1 (Rec1 f)))
+
+instance Generic1 (M1 i c f) where
+    type Rep1 (M1 i c f) = Rep1M1 i c f
+    from1 (M1 m) = M1 (M1 (M1 (Rec1 m)))
+    to1 (M1 (M1 (M1 m))) = M1 (unRec1 m)
+
+data D1M1
+data C1_0M1
+data S1_0_0M1
+
+instance Datatype D1M1 where
+    datatypeName _ = "M1"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0M1 where
+    conName     _ = "M1"
+    conIsRecord _ = True
+
+instance Selector S1_0_0M1 where
+    selName _ = "unM1"
+
+-----
+
+type Rep1Par1 = D1 D1Par1 (C1 C1_0Par1 (S1 S1_0_0Par1 Par1))
+
+instance Generic1 Par1 where
+    type Rep1 Par1 = Rep1Par1
+    from1 (Par1 p) = M1 (M1 (M1 (Par1 p)))
+    to1 (M1 (M1 (M1 p))) = Par1 (unPar1 p)
+
+data D1Par1
+data C1_0Par1
+data S1_0_0Par1
+
+instance Datatype D1Par1 where
+    datatypeName _ = "Par1"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0Par1 where
+    conName     _ = "Par1"
+    conIsRecord _ = True
+
+instance Selector S1_0_0Par1 where
+    selName _ = "unPar1"
+
+-----
+
+type Rep1Rec1 f = D1 D1Rec1 (C1 C1_0Rec1 (S1 S1_0_0Rec1 (Rec1 f)))
+
+instance Generic1 (Rec1 f) where
+    type Rep1 (Rec1 f) = Rep1Rec1 f
+    from1 (Rec1 r) = M1 (M1 (M1 (Rec1 r)))
+    to1 (M1 (M1 (M1 r))) = Rec1 (unRec1 r)
+
+data D1Rec1
+data C1_0Rec1
+data S1_0_0Rec1
+
+instance Datatype D1Rec1 where
+    datatypeName _ = "Rec1"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0Rec1 where
+    conName     _ = "Rec1"
+    conIsRecord _ = True
+
+instance Selector S1_0_0Rec1 where
+    selName _ = "unRec1"
+
+-----
+
+type Rep1U1 = D1 D1U1 (C1 C1_0U1 U1)
+
+instance Generic1 U1 where
+    type Rep1 U1 = Rep1U1
+    from1 U1 = M1 (M1 U1)
+    to1 (M1 (M1 U1)) = U1
+
+data D1U1
+data C1_0U1
+
+instance Datatype D1U1 where
+    datatypeName _ = "U1"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+instance Constructor C1_0U1 where
+    conName _ = "U1"
+
+-----
+
+type Rep0V1 p = D1 D1V1 V1
+type Rep1V1   = D1 D1V1 V1
+
+instance Generic (V1 p) where
+    type Rep (V1 p) = Rep0V1 p
+    from _ = M1 (error "No generic representation for empty datatype V1")
+    to (M1 _) = error "No values for empty datatype V1"
+
+instance Generic1 V1 where
+    type Rep1 V1 = Rep1V1
+    from1 _ = M1 (error "No generic representation for empty datatype V1")
+    to1 (M1 _) = error "No values for empty datatype V1"
+
+data D1V1
+
+instance Datatype D1V1 where
+    datatypeName _ = "V1"
+# if __GLASGOW_HASKELL__ < 701
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+# else
+    moduleName   _ = "GHC.Generics"
+# endif
+
+-----
+
+type Rep0UAddr p = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr UAddr))
+type Rep1UAddr   = D1 D1UAddr (C1 C1_0UAddr (S1 S1_0_0UAddr UAddr))
+
+instance Generic (UAddr p) where
+    type Rep (UAddr p) = Rep0UAddr p
+    from (UAddr a) = M1 (M1 (M1 (UAddr a)))
+    to (M1 (M1 (M1 (UAddr a)))) = UAddr a
+
+instance Generic1 UAddr where
+    type Rep1 UAddr = Rep1UAddr
+    from1 (UAddr a) = M1 (M1 (M1 (UAddr a)))
+    to1 (M1 (M1 (M1 (UAddr a)))) = UAddr a
+
+data D1UAddr
+data C1_0UAddr
+data S1_0_0UAddr
+
+instance Datatype D1UAddr where
+    datatypeName _ = "UAddr"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+
+instance Constructor C1_0UAddr where
+    conName     _ = "UAddr"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UAddr where
+    selName _ = "uAddr#"
+
+-----
+
+type Rep0UChar p = D1 D1UChar (C1 C1_0UChar (S1 S1_0_0UChar UChar))
+type Rep1UChar   = D1 D1UChar (C1 C1_0UChar (S1 S1_0_0UChar UChar))
+
+instance Generic (UChar p) where
+    type Rep (UChar p) = Rep0UChar p
+    from (UChar c) = M1 (M1 (M1 (UChar c)))
+    to (M1 (M1 (M1 (UChar c)))) = UChar c
+
+instance Generic1 UChar where
+    type Rep1 UChar = Rep1UChar
+    from1 (UChar c) = M1 (M1 (M1 (UChar c)))
+    to1 (M1 (M1 (M1 (UChar c)))) = UChar c
+
+data D1UChar
+data C1_0UChar
+data S1_0_0UChar
+
+instance Datatype D1UChar where
+    datatypeName _ = "UChar"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+
+instance Constructor C1_0UChar where
+    conName     _ = "UChar"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UChar where
+    selName _ = "uChar#"
+
+-----
+
+type Rep0UDouble p = D1 D1UDouble (C1 C1_0UDouble (S1 S1_0_0UDouble UDouble))
+type Rep1UDouble   = D1 D1UDouble (C1 C1_0UDouble (S1 S1_0_0UDouble UDouble))
+
+instance Generic (UDouble p) where
+    type Rep (UDouble p) = Rep0UDouble p
+    from (UDouble d) = M1 (M1 (M1 (UDouble d)))
+    to (M1 (M1 (M1 (UDouble d)))) = UDouble d
+
+instance Generic1 UDouble where
+    type Rep1 UDouble = Rep1UDouble
+    from1 (UDouble d) = M1 (M1 (M1 (UDouble d)))
+    to1 (M1 (M1 (M1 (UDouble d)))) = UDouble d
+
+data D1UDouble
+data C1_0UDouble
+data S1_0_0UDouble
+
+instance Datatype D1UDouble where
+    datatypeName _ = "UDouble"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+
+instance Constructor C1_0UDouble where
+    conName     _ = "UDouble"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UDouble where
+    selName _ = "uDouble#"
+
+-----
+
+type Rep0UFloat p = D1 D1UFloat (C1 C1_0UFloat (S1 S1_0_0UFloat UFloat))
+type Rep1UFloat   = D1 D1UFloat (C1 C1_0UFloat (S1 S1_0_0UFloat UFloat))
+
+instance Generic (UFloat p) where
+    type Rep (UFloat p) = Rep0UFloat p
+    from (UFloat f) = M1 (M1 (M1 (UFloat f)))
+    to (M1 (M1 (M1 (UFloat f)))) = UFloat f
+
+instance Generic1 UFloat where
+    type Rep1 UFloat = Rep1UFloat
+    from1 (UFloat f) = M1 (M1 (M1 (UFloat f)))
+    to1 (M1 (M1 (M1 (UFloat f)))) = UFloat f
+
+data D1UFloat
+data C1_0UFloat
+data S1_0_0UFloat
+
+instance Datatype D1UFloat where
+    datatypeName _ = "UFloat"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+
+instance Constructor C1_0UFloat where
+    conName     _ = "UFloat"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UFloat where
+    selName _ = "uFloat#"
+
+-----
+
+type Rep0UInt p = D1 D1UInt (C1 C1_0UInt (S1 S1_0_0UInt UInt))
+type Rep1UInt   = D1 D1UInt (C1 C1_0UInt (S1 S1_0_0UInt UInt))
+
+instance Generic (UInt p) where
+    type Rep (UInt p) = Rep0UInt p
+    from (UInt i) = M1 (M1 (M1 (UInt i)))
+    to (M1 (M1 (M1 (UInt i)))) = UInt i
+
+instance Generic1 UInt where
+    type Rep1 UInt = Rep1UInt
+    from1 (UInt i) = M1 (M1 (M1 (UInt i)))
+    to1 (M1 (M1 (M1 (UInt i)))) = UInt i
+
+data D1UInt
+data C1_0UInt
+data S1_0_0UInt
+
+instance Datatype D1UInt where
+    datatypeName _ = "UInt"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+
+instance Constructor C1_0UInt where
+    conName     _ = "UInt"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UInt where
+    selName _ = "uInt#"
+
+-----
+
+type Rep0UWord p = D1 D1UWord (C1 C1_0UWord (S1 S1_0_0UWord UWord))
+type Rep1UWord   = D1 D1UWord (C1 C1_0UWord (S1 S1_0_0UWord UWord))
+
+instance Generic (UWord p) where
+    type Rep (UWord p) = Rep0UWord p
+    from (UWord w) = M1 (M1 (M1 (UWord w)))
+    to (M1 (M1 (M1 (UWord w)))) = UWord w
+
+instance Generic1 UWord where
+    type Rep1 UWord = Rep1UWord
+    from1 (UWord w) = M1 (M1 (M1 (UWord w)))
+    to1 (M1 (M1 (M1 (UWord w)))) = UWord w
+
+data D1UWord
+data C1_0UWord
+data S1_0_0UWord
+
+instance Datatype D1UWord where
+    datatypeName _ = "UWord"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
+
+instance Constructor C1_0UWord where
+    conName     _ = "UWord"
+    conIsRecord _ = True
+
+instance Selector S1_0_0UWord where
+    selName _ = "uWord#"
 
 -----
 
@@ -447,7 +743,7 @@ data C1_1Arity
 instance Datatype D1Arity where
     datatypeName _ = "Arity"
 # if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
 # endif
@@ -483,7 +779,7 @@ data C1_2Associativity
 instance Datatype D1Associativity where
     datatypeName _ = "Associativity"
 # if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
 # endif
@@ -633,7 +929,7 @@ data C1_1Fixity
 instance Datatype D1Fixity where
     datatypeName _ = "Fixity"
 # if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
+    moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
 # endif
@@ -837,20 +1133,6 @@ instance Generic (U1 p) where
     from U1 = M1 (M1 U1)
     to (M1 (M1 U1)) = U1
 
-data D1U1
-data C1_0U1
-
-instance Datatype D1U1 where
-    datatypeName _ = "U1"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0U1 where
-    conName _ = "U1"
-
 -----
 
 type Rep0Par1 p = D1 D1Par1 (C1 C1_0Par1 (S1 S1_0_0Par1 (Rec0 p)))
@@ -859,25 +1141,6 @@ instance Generic (Par1 p) where
     type Rep (Par1 p) = Rep0Par1 p
     from (Par1 p) = M1 (M1 (M1 (K1 p)))
     to (M1 (M1 (M1 (K1 p)))) = Par1 p
-
-data D1Par1
-data C1_0Par1
-data S1_0_0Par1
-
-instance Datatype D1Par1 where
-    datatypeName _ = "Par1"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0Par1 where
-    conName     _ = "Par1"
-    conIsRecord _ = True
-
-instance Selector S1_0_0Par1 where
-    selName _ = "unPar1"
 
 -----
 
@@ -888,25 +1151,6 @@ instance Generic (Rec1 f p) where
     from (Rec1 r) = M1 (M1 (M1 (K1 r)))
     to (M1 (M1 (M1 (K1 r)))) = Rec1 r
 
-data D1Rec1
-data C1_0Rec1
-data S1_0_0Rec1
-
-instance Datatype D1Rec1 where
-    datatypeName _ = "Rec1"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0Rec1 where
-    conName     _ = "Rec1"
-    conIsRecord _ = True
-
-instance Selector S1_0_0Rec1 where
-    selName _ = "unRec1"
-
 -----
 
 type Rep0K1 i c p = D1 D1K1 (C1 C1_0K1 (S1 S1_0_0K1 (Rec0 c)))
@@ -916,25 +1160,6 @@ instance Generic (K1 i c p) where
     from (K1 c) = M1 (M1 (M1 (K1 c)))
     to (M1 (M1 (M1 (K1 c)))) = K1 c
 
-data D1K1
-data C1_0K1
-data S1_0_0K1
-
-instance Datatype D1K1 where
-    datatypeName _ = "K1"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0K1 where
-    conName     _ = "K1"
-    conIsRecord _ = True
-
-instance Selector S1_0_0K1 where
-    selName _ = "unK1"
-
 -----
 
 type Rep0M1 i c f p = D1 D1M1 (C1 C1_0M1 (S1 S1_0_0M1 (Rec0 (f p))))
@@ -943,25 +1168,6 @@ instance Generic (M1 i c f p) where
     type Rep (M1 i c f p) = Rep0M1 i c f p
     from (M1 m) = M1 (M1 (M1 (K1 m)))
     to (M1 (M1 (M1 (K1 m)))) = M1 m
-
-data D1M1
-data C1_0M1
-data S1_0_0M1
-
-instance Datatype D1M1 where
-    datatypeName _ = "M1"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0M1 where
-    conName     _ = "M1"
-    conIsRecord _ = True
-
-instance Selector S1_0_0M1 where
-    selName _ = "unM1"
 
 -----
 
@@ -977,24 +1183,6 @@ instance Generic ((f :+: g) p) where
     to (M1 (L1 (M1 (M1 (K1 l))))) = L1 l
     to (M1 (R1 (M1 (M1 (K1 r))))) = R1 r
 
-data D1ConSum
-data C1_0ConSum
-data C1_1ConSum
-
-instance Datatype D1ConSum where
-    datatypeName _ = ":+:"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0ConSum where
-    conName _ = "L1"
-
-instance Constructor C1_1ConSum where
-    conName _ = "R1"
-
 -----
 
 type Rep0ConProduct f g p =
@@ -1006,21 +1194,6 @@ instance Generic ((f :*: g) p) where
     from (f :*: g) = M1 (M1 (M1 (K1 f) :*: M1 (K1 g)))
     to (M1 (M1 (M1 (K1 f) :*: M1 (K1 g)))) = f :*: g
 
-data D1ConProduct
-data C1_ConProduct
-
-instance Datatype D1ConProduct where
-    datatypeName _ = ":*:"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_ConProduct where
-    conName   _ = ":*:"
-    conFixity _ = Infix RightAssociative 6
-
 -----
 
 type Rep0ConCompose f g p =
@@ -1030,25 +1203,6 @@ instance Generic ((f :.: g) p) where
     type Rep ((f :.: g) p) = Rep0ConCompose f g p
     from (Comp1 c) = M1 (M1 (M1 (K1 c)))
     to (M1 (M1 (M1 (K1 c)))) = Comp1 c
-
-data D1ConCompose
-data C1_0ConCompose
-data S1_0_0ConCompose
-
-instance Datatype D1ConCompose where
-    datatypeName _ = ":.:"
-# if __GLASGOW_HASKELL__ < 701
-    moduleName   _ = "Generics.Deriving.Base"
-# else
-    moduleName   _ = "GHC.Generics"
-# endif
-
-instance Constructor C1_0ConCompose where
-  conName     _ = "Comp1"
-  conIsRecord _ = True
-
-instance Selector S1_0_0ConCompose where
-  selName _ = "unComp1"
 #endif
 
 -----
