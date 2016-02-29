@@ -669,18 +669,48 @@ instance Read (V1 p) where
 
 -- | Unit: used for constructors without arguments
 data U1 p = U1
-  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data, Typeable)
+  deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+instance Functor U1 where
+  fmap _ _ = U1
+
 instance Applicative U1 where
   pure _ = U1
-  U1 <*> U1 = U1
+  _ <*> _ = U1
 
 instance Alternative U1 where
   empty = U1
-  U1 <|> U1 = U1
+  _ <|> _ = U1
 
 instance Monad U1 where
   return _ = U1
-  U1 >>= _ = U1
+  _ >>= _ = U1
+
+instance MonadPlus U1 where
+  mzero = U1
+  mplus _ _ = U1
+
+instance Foldable U1 where
+  foldMap _ _ = mempty
+  {-# INLINE foldMap #-}
+  fold _ = mempty
+  {-# INLINE fold #-}
+  foldr _ z _ = z
+  {-# INLINE foldr #-}
+  foldl _ z _ = z
+  {-# INLINE foldl #-}
+  foldl1 _ _ = error "foldl1: U1"
+  foldr1 _ _ = error "foldr1: U1"
+
+instance Traversable U1 where
+  traverse _ _ = pure U1
+  {-# INLINE traverse #-}
+  sequenceA _ = pure U1
+  {-# INLINE sequenceA #-}
+  mapM _ _ = return U1
+  {-# INLINE mapM #-}
+  sequence _ = return U1
+  {-# INLINE sequence #-}
 
 -- | Used for marking occurrences of the parameter
 newtype Par1 p = Par1 { unPar1 :: p }
