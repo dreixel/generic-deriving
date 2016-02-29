@@ -1,3 +1,8 @@
+# 1.10.4
+* Backported `MonadPlus` and `MonadZip` instances for `U1`, and made the
+  `Functor`, `Foldable`, `Traversable`, `Alternative`, and `Monad` instances
+  for `U1` lazier to correspond with `base-4.9`
+
 # 1.10.3
 * Backported `Enum`, `Bounded`, `Ix`, `Functor`, `Applicative`, `Monad`,
  `MonadFix`, `MonadPlus`, `MonadZip`, `Foldable`, `Traversable`, and
