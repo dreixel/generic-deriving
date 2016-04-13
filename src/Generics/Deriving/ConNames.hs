@@ -13,19 +13,17 @@
 {-# LANGUAGE PolyKinds #-}
 #endif
 
------------------------------------------------------------------------------
--- |
--- Module      :  Generics.Deriving.ConNames
--- Copyright   :  (c) 2012 University of Oxford
--- License     :  BSD3
---
--- Maintainer  :  generics@haskell.org
--- Stability   :  experimental
--- Portability :  non-portable
---
--- Summary: Return the name of all the constructors of a type.
---
------------------------------------------------------------------------------
+{- |
+Module      :  Generics.Deriving.ConNames
+Copyright   :  (c) 2012 University of Oxford
+License     :  BSD3
+
+Maintainer  :  generics@haskell.org
+Stability   :  experimental
+Portability :  non-portable
+
+Summary: Return the name of all the constructors of a type.
+-}
 
 module Generics.Deriving.ConNames (
 

@@ -18,19 +18,18 @@
 {-# LANGUAGE OverlappingInstances #-}
 #endif
 
---------------------------------------------------------------------------------
--- |
--- Module      :  Generics.Deriving.Uniplate
--- Copyright   :  2011-2012 Universiteit Utrecht, University of Oxford
--- License     :  BSD3
---
--- Maintainer  :  generics@haskell.org
--- Stability   :  experimental
--- Portability :  non-portable
---
--- Summary: Functions inspired by the Uniplate generic programming library,
--- mostly implemented by Sean Leather.
---------------------------------------------------------------------------------
+{- |
+Module      :  Generics.Deriving.Uniplate
+Copyright   :  2011-2012 Universiteit Utrecht, University of Oxford
+License     :  BSD3
+
+Maintainer  :  generics@haskell.org
+Stability   :  experimental
+Portability :  non-portable
+
+Summary: Functions inspired by the Uniplate generic programming library,
+mostly implemented by Sean Leather.
+-}
 
 module Generics.Deriving.Uniplate (
     Uniplate(..)

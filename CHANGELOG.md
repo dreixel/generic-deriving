@@ -1,3 +1,6 @@
+# 1.10.4.1
+* Fix Haddock parsing issue on GHC 8.0
+
 # 1.10.4
 * Backported `MonadPlus` and `MonadZip` instances for `U1`, and made the
   `Functor`, `Foldable`, `Traversable`, `Alternative`, and `Monad` instances

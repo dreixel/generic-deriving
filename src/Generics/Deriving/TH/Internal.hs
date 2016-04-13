@@ -1,17 +1,16 @@
 {-# LANGUAGE CPP #-}
 
------------------------------------------------------------------------------
--- |
--- Module      :  Generics.Deriving.TH.Internal
--- Copyright   :  (c) 2008--2009 Universiteit Utrecht
--- License     :  BSD3
---
--- Maintainer  :  generics@haskell.org
--- Stability   :  experimental
--- Portability :  non-portable
---
--- Template Haskell-related utilities.
------------------------------------------------------------------------------
+{- |
+Module      :  Generics.Deriving.TH.Internal
+Copyright   :  (c) 2008--2009 Universiteit Utrecht
+License     :  BSD3
+
+Maintainer  :  generics@haskell.org
+Stability   :  experimental
+Portability :  non-portable
+
+Template Haskell-related utilities.
+-}
 
 module Generics.Deriving.TH.Internal where
 

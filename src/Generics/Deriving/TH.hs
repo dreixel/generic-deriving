@@ -1,46 +1,45 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 
------------------------------------------------------------------------------
--- |
--- Module      :  Generics.Deriving.TH
--- Copyright   :  (c) 2008--2009 Universiteit Utrecht
--- License     :  BSD3
---
--- Maintainer  :  generics@haskell.org
--- Stability   :  experimental
--- Portability :  non-portable
---
--- This module contains Template Haskell code that can be used to
--- automatically generate the boilerplate code for the generic deriving
--- library.
---
--- To use these functions, pass the name of a data type as an argument:
---
--- @
--- &#123;-&#35; LANGUAGE TemplateHaskell &#35;-&#125;
---
--- data Example a = Example Int Char a
--- $('deriveAll0'     ''Example) -- Derives Generic instance
--- $('deriveAll1'     ''Example) -- Derives Generic1 instance
--- $('deriveAll0And1' ''Example) -- Derives Generic and Generic1 instances
--- @
---
--- On GHC 7.4 or later, this code can also be used with data families. To derive
--- for a data family instance, pass the name of one of the instance's constructors:
---
--- @
--- &#123;-&#35; LANGUAGE FlexibleInstances, TemplateHaskell, TypeFamilies &#35;-&#125;
---
--- data family Family a b
--- newtype instance Family Char x = FamilyChar Char
--- data    instance Family Bool x = FamilyTrue | FamilyFalse
---
--- $('deriveAll0' 'FamilyChar) -- instance Generic (Family Char b) where ...
--- $('deriveAll1' 'FamilyTrue) -- instance Generic1 (Family Bool) where ...
--- -- Alternatively, one could type $(deriveAll1 'FamilyFalse)
--- @
------------------------------------------------------------------------------
+{- |
+Module      :  Generics.Deriving.TH
+Copyright   :  (c) 2008--2009 Universiteit Utrecht
+License     :  BSD3
+
+Maintainer  :  generics@haskell.org
+Stability   :  experimental
+Portability :  non-portable
+
+This module contains Template Haskell code that can be used to
+automatically generate the boilerplate code for the generic deriving
+library.
+
+To use these functions, pass the name of a data type as an argument:
+
+@
+&#123;-&#35; LANGUAGE TemplateHaskell &#35;-&#125;
+
+data Example a = Example Int Char a
+$('deriveAll0'     ''Example) -- Derives Generic instance
+$('deriveAll1'     ''Example) -- Derives Generic1 instance
+$('deriveAll0And1' ''Example) -- Derives Generic and Generic1 instances
+@
+
+On GHC 7.4 or later, this code can also be used with data families. To derive
+for a data family instance, pass the name of one of the instance's constructors:
+
+@
+&#123;-&#35; LANGUAGE FlexibleInstances, TemplateHaskell, TypeFamilies &#35;-&#125;
+
+data family Family a b
+newtype instance Family Char x = FamilyChar Char
+data    instance Family Bool x = FamilyTrue | FamilyFalse
+
+$('deriveAll0' 'FamilyChar) -- instance Generic (Family Char b) where ...
+$('deriveAll1' 'FamilyTrue) -- instance Generic1 (Family Bool) where ...
+-- Alternatively, one could type $(deriveAll1 'FamilyFalse)
+@
+-}
 
 -- Adapted from Generics.Regular.TH
 module Generics.Deriving.TH (

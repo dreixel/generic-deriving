@@ -1,16 +1,15 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Generics.Deriving.TH.Post711
--- Copyright   :  (c) 2008--2009 Universiteit Utrecht
--- License     :  BSD3
---
--- Maintainer  :  generics@haskell.org
--- Stability   :  experimental
--- Portability :  non-portable
---
--- Template Haskell machinery for the type-literal-based variant of GHC
--- generics introduced in GHC 7.11.
------------------------------------------------------------------------------
+{- |
+Module      :  Generics.Deriving.TH.Post711
+Copyright   :  (c) 2008--2009 Universiteit Utrecht
+License     :  BSD3
+
+Maintainer  :  generics@haskell.org
+Stability   :  experimental
+Portability :  non-portable
+
+Template Haskell machinery for the type-literal-based variant of GHC
+generics introduced in GHC 7.11.
+-}
 
 module Generics.Deriving.TH.Post711 (
       deriveMeta

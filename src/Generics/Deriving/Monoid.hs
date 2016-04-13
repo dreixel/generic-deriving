@@ -12,16 +12,17 @@
 {-# LANGUAGE PolyKinds #-}
 #endif
 
--- | This module provides two main features:
---
---     1. 'GMonoid', a generic version of the 'Monoid' type class, including instances
---     of the types from "Data.Monoid"
---
---     2. Default generic definitions for the 'Monoid' methods 'mempty' and 'mappend'
---
--- The generic defaults only work for types without alternatives (i.e. they have
--- only one constructor). We cannot in general know how to deal with different
--- constructors.
+{- | This module provides two main features:
+
+    1. 'GMonoid', a generic version of the 'Monoid' type class, including instances
+    of the types from "Data.Monoid"
+
+    2. Default generic definitions for the 'Monoid' methods 'mempty' and 'mappend'
+
+The generic defaults only work for types without alternatives (i.e. they have
+only one constructor). We cannot in general know how to deal with different
+constructors.
+-}
 
 module Generics.Deriving.Monoid (
 
@@ -34,20 +35,21 @@ module Generics.Deriving.Monoid (
   gmappenddefault,
 
   -- ** Monoid
-  -- | These functions can be used in a 'Monoid' instance. For example:
-  --
-  -- @
-  -- -- LANGUAGE DeriveGeneric
-  --
-  -- import Generics.Deriving.Base (Generic)
-  -- import Generics.Deriving.Monoid
-  --
-  -- data T a = C a (Maybe a) deriving Generic
-  --
-  -- instance Monoid a => Monoid (T a) where
-  --   mempty  = memptydefault
-  --   mappend = mappenddefault
-  -- @
+  {- | These functions can be used in a 'Monoid' instance. For example:
+
+  @
+  -- LANGUAGE DeriveGeneric
+
+  import Generics.Deriving.Base (Generic)
+  import Generics.Deriving.Monoid
+
+  data T a = C a (Maybe a) deriving Generic
+
+  instance Monoid a => Monoid (T a) where
+    mempty  = memptydefault
+    mappend = mappenddefault
+  @
+  -}
   memptydefault,
   mappenddefault,
 
