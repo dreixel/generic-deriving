@@ -34,6 +34,9 @@ module Generics.Deriving.Monoid (
   gmemptydefault,
   gmappenddefault,
 
+  -- * Internal auxiliary class for GMonoid
+  GMonoid'(..),
+
   -- ** Monoid
   {- | These functions can be used in a 'Monoid' instance. For example:
 
@@ -52,6 +55,9 @@ module Generics.Deriving.Monoid (
   -}
   memptydefault,
   mappenddefault,
+
+  -- * Internal auxiliary class for Monoid
+  Monoid'(..),
 
   -- * The Monoid module
   -- | This is exported for convenient access to the various wrapper types.

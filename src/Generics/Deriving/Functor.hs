@@ -14,11 +14,14 @@
 #endif
 
 module Generics.Deriving.Functor (
-  -- * GFunctor class
+  -- * Generic Functor class
     GFunctor(..)
 
   -- * Default method
   , gmapdefault
+
+  -- * Internal Functor class
+  , GFunctor'(..)
 
   ) where
 

@@ -14,11 +14,14 @@
 #endif
 
 module Generics.Deriving.Traversable (
-  -- * GTraversable class
+  -- * Generic Traversable class
     GTraversable(..)
 
   -- * Default method
   , gtraversedefault
+
+  -- * Internal Traversable class
+  , GTraversable'(..)
 
   ) where
 

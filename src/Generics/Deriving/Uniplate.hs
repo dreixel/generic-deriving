@@ -32,6 +32,7 @@ mostly implemented by Sean Leather.
 -}
 
 module Generics.Deriving.Uniplate (
+  -- * Generic Uniplate class
     Uniplate(..)
 
   -- * Derived functions
@@ -51,6 +52,8 @@ module Generics.Deriving.Uniplate (
   , transformdefault
   , transformMdefault
 
+  -- * Internal Uniplate class
+  , Uniplate'(..)
   ) where
 
 

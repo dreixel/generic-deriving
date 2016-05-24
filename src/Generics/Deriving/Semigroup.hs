@@ -19,6 +19,9 @@ module Generics.Deriving.Semigroup (
   -- * Default definition
   , gsappenddefault
 
+  -- * Internal semigroup class
+  , GSemigroup'(..)
+
   ) where
 
 import Control.Applicative

@@ -22,6 +22,9 @@ module Generics.Deriving.Show (
   -- * Default definition
   , gshowsPrecdefault
 
+  -- * Internal show class
+  , GShow'(..)
+
   ) where
 
 import Control.Applicative (Const, ZipList)

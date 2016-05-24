@@ -19,11 +19,14 @@
 #include "HsBaseConfig.h"
 
 module Generics.Deriving.Eq (
-  -- * Generic show class
+  -- * Generic Eq class
     GEq(..)
 
   -- * Default definition
   , geqdefault
+
+  -- * Internal Eq class
+  , GEq'(..)
 
   ) where
 

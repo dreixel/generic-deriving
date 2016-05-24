@@ -24,6 +24,9 @@ module Generics.Deriving.Enum (
   -- * Default definitions for GEnum
   , genumDefault, toEnumDefault, fromEnumDefault
 
+  -- * Internal enum class
+  , Enum'(..)
+
   -- * Generic Ix class
   , GIx(..)
 

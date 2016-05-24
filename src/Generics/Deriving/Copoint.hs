@@ -14,10 +14,13 @@
 
 module Generics.Deriving.Copoint (
   -- * GCopoint class
-    GCopoint(..),
+    GCopoint(..)
 
   -- * Default method
-  gcopointdefault
+  , gcopointdefault
+
+  -- * Internal class
+  , GCopoint'(..)
 
   ) where
 

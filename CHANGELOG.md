@@ -1,3 +1,6 @@
+# next
+* Export internal typeclass names
+
 # 1.10.4.1
 * Fix Haddock parsing issue on GHC 8.0
 

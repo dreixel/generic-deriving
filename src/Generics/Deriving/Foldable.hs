@@ -14,7 +14,7 @@
 #endif
 
 module Generics.Deriving.Foldable (
-  -- * Foldable class
+  -- * Generic Foldable class
     GFoldable(..)
 
   -- * Default method
@@ -37,6 +37,9 @@ module Generics.Deriving.Foldable (
   , gelem
   , gnotElem
   , gfind
+
+  -- * Internal Foldable class
+  , GFoldable'(..)
   ) where
 
 import           Control.Applicative (Const, ZipList)
