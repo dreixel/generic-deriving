@@ -449,7 +449,7 @@ makeFrom1 = makeFunCommon mkFrom Generic1
 makeTo1 :: Name -> Q Exp
 makeTo1 = makeFunCommon mkTo Generic1
 
-makeFunCommon :: (GenericClass -> Int -> Int -> Name -> [Con] -> [Q Match])
+makeFunCommon :: (GenericClass -> Int -> Int -> Name -> [Con] -> Q Match)
               -> GenericClass -> Name -> Q Exp
 makeFunCommon maker gClass n = do
   i <- reifyDataInfo n
@@ -597,64 +597,74 @@ boxT ty = case unboxedRepNames ty of
     Nothing                -> conT rec0TypeName `appT` return ty
 
 mkCaseExp :: GenericClass -> Name -> [Con]
-          -> (GenericClass -> Int -> Int -> Name -> [Con] -> [Q Match])
+          -> (GenericClass -> Int -> Int -> Name -> [Con] -> Q Match)
           -> Q Exp
 mkCaseExp gClass dt cs matchmaker = do
   val <- newName "val"
-  lam1E (varP val) $ caseE (varE val) $ matchmaker gClass 1 0 dt cs
+  lam1E (varP val) $ caseE (varE val) [matchmaker gClass 1 0 dt cs]
 
-mkFrom :: GenericClass -> Int -> Int -> Name -> [Con] -> [Q Match]
-mkFrom _      _ _ dt [] = [errorFrom dt]
-mkFrom gClass m i _  cs = zipWith (fromCon gClass wrapE (length cs)) [0..] cs
+mkFrom :: GenericClass -> Int -> Int -> Name -> [Con] -> Q Match
+mkFrom gClass m i dt cs = do
+    y <- newName "y"
+    match (varP y)
+          (normalB $ conE m1DataName `appE` caseE (varE y) cases)
+          []
   where
+    cases = case cs of
+              [] -> [errorFrom dt]
+              _  -> zipWith (fromCon gClass wrapE (length cs)) [0..] cs
     wrapE e = lrE m i e
 
 errorFrom :: Name -> Q Match
 errorFrom dt =
   match
     wildP
-    (normalB $ appE (conE m1DataName) $ varE errorValName `appE` stringE
+    (normalB $ varE errorValName `appE` stringE
       ("No generic representation for empty datatype " ++ nameBase dt))
     []
 
 errorTo :: Name -> Q Match
 errorTo dt =
   match
-    (conP m1DataName [wildP])
+    wildP
     (normalB $ varE errorValName `appE` stringE
       ("No values for empty datatype " ++ nameBase dt))
     []
 
-mkTo :: GenericClass -> Int -> Int -> Name -> [Con] -> [Q Match]
-mkTo _      _ _ dt [] = [errorTo dt]
-mkTo gClass m i _  cs = zipWith (toCon gClass wrapP (length cs)) [0..] cs
+mkTo :: GenericClass -> Int -> Int -> Name -> [Con] -> Q Match
+mkTo gClass m i dt cs = do
+    y <- newName "y"
+    match (conP m1DataName [varP y])
+          (normalB $ caseE (varE y) cases)
+          []
   where
+    cases = case cs of
+              [] -> [errorTo dt]
+              _  -> zipWith (toCon gClass wrapP (length cs)) [0..] cs
     wrapP p = lrP m i p
 
 fromCon :: GenericClass -> (Q Exp -> Q Exp) -> Int -> Int -> Con -> Q Match
 fromCon _ wrap m i (NormalC cn []) =
   match
     (conP cn [])
-    (normalB $ appE (conE m1DataName)
-             $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
+    (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
 fromCon gClass wrap m i (NormalC cn _) = do
   (ts, gk) <- fmap shrink $ reifyConTys gClass cn
   fNames   <- newNameList "f" $ length ts
   match
     (conP cn (map varP fNames))
-    (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
+    (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
       foldr1 prodE (zipWith (fromField gk) fNames ts)) []
 fromCon _ wrap m i (RecC cn []) =
   match
     (conP cn [])
-    (normalB $ appE (conE m1DataName)
-             $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
+    (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
 fromCon gClass wrap m i (RecC cn _) = do
   (ts, gk) <- fmap shrink $ reifyConTys gClass cn
   fNames   <- newNameList "f" $ length ts
   match
     (conP cn (map varP fNames))
-    (normalB $ appE (conE m1DataName) $ wrap $ lrE m i $ conE m1DataName `appE`
+    (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
       foldr1 prodE (zipWith (fromField gk) fNames ts)) []
 fromCon gClass wrap m i (InfixC t1 cn t2) =
   fromCon gClass wrap m i (NormalC cn [t1,t2])
@@ -705,27 +715,27 @@ boxRepName = maybe k1DataName snd3 . unboxedRepNames
 toCon :: GenericClass -> (Q Pat -> Q Pat) -> Int -> Int -> Con -> Q Match
 toCon _ wrap m i (NormalC cn []) =
     match
-      (wrap $ conP m1DataName [lrP m i $ conP m1DataName [conP u1DataName []]])
+      (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
       (normalB $ conE cn) []
 toCon gClass wrap m i (NormalC cn _) = do
     (ts, gk) <- fmap shrink $ reifyConTys gClass cn
     fNames   <- newNameList "f" $ length ts
     match
-      (wrap $ conP m1DataName [lrP m i $ conP m1DataName
-        [foldr1 prod (zipWith (toField gk) fNames ts)]])
+      (wrap $ lrP m i $ conP m1DataName
+        [foldr1 prod (zipWith (toField gk) fNames ts)])
       (normalB $ foldl appE (conE cn) (zipWith (\nr -> expandSyn >=> toConUnwC gk nr)
                                       fNames ts)) []
   where prod x y = conP productDataName [x,y]
 toCon _ wrap m i (RecC cn []) =
     match
-      (wrap $ conP m1DataName [lrP m i $ conP m1DataName [conP u1DataName []]])
+      (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
       (normalB $ conE cn) []
 toCon gClass wrap m i (RecC cn _) = do
     (ts, gk) <- fmap shrink $ reifyConTys gClass cn
     fNames   <- newNameList "f" $ length ts
     match
-      (wrap $ conP m1DataName [lrP m i $ conP m1DataName
-        [foldr1 prod (zipWith (toField gk) fNames ts)]])
+      (wrap $ lrP m i $ conP m1DataName
+        [foldr1 prod (zipWith (toField gk) fNames ts)])
       (normalB $ foldl appE (conE cn) (zipWith (\nr -> expandSyn >=> toConUnwC gk nr)
                                                fNames ts)) []
   where prod x y = conP productDataName [x,y]

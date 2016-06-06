@@ -145,10 +145,12 @@ type Rep0ExitCode = D1 D1ExitCode (C1 C1_0ExitCode U1
 
 instance Generic ExitCode where
     type Rep ExitCode = Rep0ExitCode
-    from ExitSuccess     = M1 (L1 (M1 U1))
-    from (ExitFailure g) = M1 (R1 (M1 (M1 (K1 g))))
-    to (M1 (L1 (M1 U1)))          = ExitSuccess
-    to (M1 (R1 (M1 (M1 (K1 g))))) = ExitFailure g
+    from x = M1 (case x of
+        ExitSuccess   -> L1 (M1 U1)
+        ExitFailure g -> R1 (M1 (M1 (K1 g))))
+    to (M1 x) = case x of
+        L1 (M1 U1)          -> ExitSuccess
+        R1 (M1 (M1 (K1 g))) -> ExitFailure g
 
 data D1ExitCode
 data C1_0ExitCode
@@ -200,10 +202,12 @@ type Rep1ConSum f g = D1 D1ConSum (C1 C1_0ConSum (S1 NoSelector (Rec1 f))
 
 instance Generic1 (f :+: g) where
     type Rep1 (f :+: g) = Rep1ConSum f g
-    from1 (L1 l) = M1 (L1 (M1 (M1 (Rec1 l))))
-    from1 (R1 r) = M1 (R1 (M1 (M1 (Rec1 r))))
-    to1 (M1 (L1 (M1 (M1 l)))) = L1 (unRec1 l)
-    to1 (M1 (R1 (M1 (M1 r)))) = R1 (unRec1 r)
+    from1 x = M1 (case x of
+        L1 l -> L1 (M1 (M1 (Rec1 l)))
+        R1 r -> R1 (M1 (M1 (Rec1 r))))
+    to1 (M1 x) = case x of
+        L1 (M1 (M1 l)) -> L1 (unRec1 l)
+        R1 (M1 (M1 r)) -> R1 (unRec1 r)
 
 data D1ConSum
 data C1_0ConSum
@@ -730,11 +734,13 @@ type Rep0Arity = D1 D1Arity (C1 C1_0Arity U1
 instance Generic Arity where
     type Rep Arity = Rep0Arity
 
-    from NoArity   = M1 (L1 (M1 U1))
-    from (Arity a) = M1 (R1 (M1 (M1 (K1 a))))
+    from x = M1 (case x of
+        NoArity -> L1 (M1 U1)
+        Arity a -> R1 (M1 (M1 (K1 a))))
 
-    to (M1 (L1 (M1 U1)))          = NoArity
-    to (M1 (R1 (M1 (M1 (K1 a))))) = Arity a
+    to (M1 x) = case x of
+        L1 (M1 U1)          -> NoArity
+        R1 (M1 (M1 (K1 a))) -> Arity a
 
 data D1Arity
 data C1_0Arity
@@ -763,13 +769,15 @@ type Rep0Associativity = D1 D1Associativity (C1 C1_0Associativity U1
 instance Generic Associativity where
     type Rep Associativity = Rep0Associativity
 
-    from LeftAssociative  = M1 (L1 (M1 U1))
-    from RightAssociative = M1 (R1 (L1 (M1 U1)))
-    from NotAssociative   = M1 (R1 (R1 (M1 U1)))
+    from x = M1 (case x of
+        LeftAssociative  -> L1 (M1 U1)
+        RightAssociative -> R1 (L1 (M1 U1))
+        NotAssociative   -> R1 (R1 (M1 U1)))
 
-    to (M1 (L1 (M1 U1)))      = LeftAssociative
-    to (M1 (R1 (L1 (M1 U1)))) = RightAssociative
-    to (M1 (R1 (R1 (M1 U1)))) = NotAssociative
+    to (M1 x) = case x of
+        L1 (M1 U1)      -> LeftAssociative
+        R1 (L1 (M1 U1)) -> RightAssociative
+        R1 (R1 (M1 U1)) -> NotAssociative
 
 data D1Associativity
 data C1_0Associativity
@@ -916,11 +924,13 @@ type Rep0Fixity = D1 D1Fixity (C1 C1_0Fixity U1
 instance Generic Fixity where
     type Rep Fixity = Rep0Fixity
 
-    from Prefix      = M1 (L1 (M1 U1))
-    from (Infix a i) = M1 (R1 (M1 (M1 (K1 a) :*: M1 (K1 i))))
+    from x = M1 (case x of
+        Prefix    -> L1 (M1 U1)
+        Infix a i -> R1 (M1 (M1 (K1 a) :*: M1 (K1 i))))
 
-    to (M1 (L1 (M1 U1)))                        = Prefix
-    to (M1 (R1 (M1 (M1 (K1 a) :*: M1 (K1 i))))) = Infix a i
+    to (M1 x) = case x of
+        L1 (M1 U1)                        -> Prefix
+        R1 (M1 (M1 (K1 a) :*: M1 (K1 i))) -> Infix a i
 
 data D1Fixity
 data C1_0Fixity
@@ -1177,11 +1187,13 @@ type Rep0ConSum f g p = D1 D1ConSum (C1 C1_0ConSum (S1 NoSelector (Rec0 (f p)))
 instance Generic ((f :+: g) p) where
     type Rep ((f :+: g) p) = Rep0ConSum f g p
 
-    from (L1 l) = M1 (L1 (M1 (M1 (K1 l))))
-    from (R1 r) = M1 (R1 (M1 (M1 (K1 r))))
+    from x = M1 (case x of
+        L1 l -> L1 (M1 (M1 (K1 l)))
+        R1 r -> R1 (M1 (M1 (K1 r))))
 
-    to (M1 (L1 (M1 (M1 (K1 l))))) = L1 l
-    to (M1 (R1 (M1 (M1 (K1 r))))) = R1 r
+    to (M1 x) = case x of
+        L1 (M1 (M1 (K1 l))) -> L1 l
+        R1 (M1 (M1 (K1 r))) -> R1 r
 
 -----
 
@@ -1215,11 +1227,13 @@ type Rep1List = D1 D1List (C1 C1_0List U1 :+:
 instance Generic1 [] where
     type Rep1 [] = Rep1List
 
-    from1 []    = M1 (L1 (M1 U1))
-    from1 (h:t) = M1 (R1 (M1 (M1 (Par1 h) :*: M1 (Rec1 t))))
+    from1 x = M1 (case x of
+        []  -> L1 (M1 U1)
+        h:t -> R1 (M1 (M1 (Par1 h) :*: M1 (Rec1 t))))
 
-    to1 (M1 (L1 (M1 U1)))                            = []
-    to1 (M1 (R1 (M1 (M1 (Par1 h) :*: M1 (Rec1 t))))) = h : t
+    to1 (M1 x) = case x of
+        L1 (M1 U1)                            -> []
+        R1 (M1 (M1 (Par1 h) :*: M1 (Rec1 t))) -> h : t
 
 data D1List
 data C1_0List
@@ -1244,11 +1258,13 @@ type Rep1Either a = D1 D1Either (C1 C1_0Either (S1 NoSelector (Rec0 a))
 instance Generic1 (Either a) where
     type Rep1 (Either a) = Rep1Either a
 
-    from1 (Left l) = M1 (L1 (M1 (M1 (K1 l))))
-    from1 (Right r) = M1 (R1 (M1 (M1 (Par1 r))))
+    from1 x = M1 (case x of
+        Left  l -> L1 (M1 (M1 (K1 l)))
+        Right r -> R1 (M1 (M1 (Par1 r))))
 
-    to1 (M1 (L1 (M1 (M1 (K1 l))))) = Left l
-    to1 (M1 (R1 (M1 (M1 (Par1 r))))) = Right r
+    to1 (M1 x) = case x of
+        L1 (M1 (M1 (K1 l)))   -> Left l
+        R1 (M1 (M1 (Par1 r))) -> Right r
 
 data D1Either
 data C1_0Either
@@ -1272,11 +1288,13 @@ type Rep1Maybe = D1 D1Maybe (C1 C1_0Maybe U1
 instance Generic1 Maybe where
     type Rep1 Maybe = Rep1Maybe
 
-    from1 Nothing  = M1 (L1 (M1 U1))
-    from1 (Just j) = M1 (R1 (M1 (M1 (Par1 j))))
+    from1 x = M1 (case x of
+        Nothing -> L1 (M1 U1)
+        Just j  -> R1 (M1 (M1 (Par1 j))))
 
-    to1 (M1 (L1 (M1 U1)))            = Nothing
-    to1 (M1 (R1 (M1 (M1 (Par1 j))))) = Just j
+    to1 (M1 x) = case x of
+        L1 (M1 U1)            -> Nothing
+        R1 (M1 (M1 (Par1 j))) -> Just j
 
 data D1Maybe
 data C1_0Maybe
@@ -1461,11 +1479,13 @@ type Rep0Bool = D1 D1Bool (C1 C1_0Bool U1 :+: C1 C1_1Bool U1)
 instance Generic Bool where
     type Rep Bool = Rep0Bool
 
-    from False = M1 (L1 (M1 U1))
-    from True = M1 (R1 (M1 U1))
+    from x = M1 (case x of
+        False -> L1 (M1 U1)
+        True  -> R1 (M1 U1))
 
-    to (M1 (L1 (M1 U1))) = False
-    to (M1 (R1 (M1 U1))) = True
+    to (M1 x) = case x of
+        L1 (M1 U1) -> False
+        R1 (M1 U1) -> True
 
 data D1Bool
 data C1_0Bool
@@ -1527,11 +1547,13 @@ type Rep0Either a b = D1 D1Either (C1 C1_0Either (S1 NoSelector (Rec0 a))
 instance Generic (Either a b) where
     type Rep (Either a b) = Rep0Either a b
 
-    from (Left l)  = M1 (L1 (M1 (M1 (K1 l))))
-    from (Right r) = M1 (R1 (M1 (M1 (K1 r))))
+    from x = M1 (case x of
+        Left  l -> L1 (M1 (M1 (K1 l)))
+        Right r -> R1 (M1 (M1 (K1 r))))
 
-    to (M1 (L1 (M1 (M1 (K1 l))))) = Left l
-    to (M1 (R1 (M1 (M1 (K1 r))))) = Right r
+    to (M1 x) = case x of
+        L1 (M1 (M1 (K1 l))) -> Left l
+        R1 (M1 (M1 (K1 r))) -> Right r
 
 -----
 
@@ -1580,11 +1602,13 @@ type Rep0List a =
 instance Generic [a] where
     type Rep [a] = Rep0List a
 
-    from []    = M1 (L1 (M1 U1))
-    from (h:t) = M1 (R1 (M1 (M1 (K1 h) :*: M1 (K1 t))))
+    from x = M1 (case x of
+        []  -> L1 (M1 U1)
+        h:t -> R1 (M1 (M1 (K1 h) :*: M1 (K1 t))))
 
-    to (M1 (L1 (M1 U1)))                         = []
-    to (M1 (R1 (M1 (M1 (K1 h) :*: M1 (K1 t))))) = h : t
+    to (M1 x) = case x of
+        L1 (M1 U1)                        -> []
+        R1 (M1 (M1 (K1 h) :*: M1 (K1 t))) -> h : t
 
 -----
 
@@ -1594,11 +1618,13 @@ type Rep0Maybe a = D1 D1Maybe (C1 C1_0Maybe U1
 instance Generic (Maybe a) where
     type Rep (Maybe a) = Rep0Maybe a
 
-    from Nothing  = M1 (L1 (M1 U1))
-    from (Just j) = M1 (R1 (M1 (M1 (K1 j))))
+    from x = M1 (case x of
+        Nothing -> L1 (M1 U1)
+        Just j  -> R1 (M1 (M1 (K1 j))))
 
-    to (M1 (L1 (M1 U1)))          = Nothing
-    to (M1 (R1 (M1 (M1 (K1 j))))) = Just j
+    to (M1 x) = case x of
+        L1 (M1 U1)          -> Nothing
+        R1 (M1 (M1 (K1 j))) -> Just j
 
 -----
 
@@ -1608,13 +1634,15 @@ type Rep0Ordering = D1 D1Ordering (C1 C1_0Ordering U1
 instance Generic Ordering where
     type Rep Ordering = Rep0Ordering
 
-    from LT = M1 (L1 (M1 U1))
-    from EQ = M1 (R1 (L1 (M1 U1)))
-    from GT = M1 (R1 (R1 (M1 U1)))
+    from x = M1 (case x of
+        LT -> L1 (M1 U1)
+        EQ -> R1 (L1 (M1 U1))
+        GT -> R1 (R1 (M1 U1)))
 
-    to (M1 (L1 (M1 U1))) = LT
-    to (M1 (R1 (L1 (M1 U1)))) = EQ
-    to (M1 (R1 (R1 (M1 U1)))) = GT
+    to (M1 x) = case x of
+        L1 (M1 U1)      -> LT
+        R1 (L1 (M1 U1)) -> EQ
+        R1 (R1 (M1 U1)) -> GT
 
 data D1Ordering
 data C1_0Ordering

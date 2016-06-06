@@ -1,4 +1,6 @@
 # next
+* Apply an optimization to generated `to(1)`/`from(1)` instances that factors out
+  common occurrences of `M1`. See also ???
 * Export internal typeclass names
 * Fix Haddock issues with GHC 7.8
 
