@@ -1,6 +1,7 @@
-# next
+# 1.10.5
 * Apply an optimization to generated `to(1)`/`from(1)` instances that factors out
-  common occurrences of `M1`. See also ???
+  common occurrences of `M1`. See
+  http://git.haskell.org/ghc.git/commit/9649fc0ae45e006c2ed54cc5ea2414158949fadb
 * Export internal typeclass names
 * Fix Haddock issues with GHC 7.8
 
