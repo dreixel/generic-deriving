@@ -90,10 +90,10 @@ import           Data.List (nub)
 import qualified Data.Map as Map (fromList)
 
 import           Generics.Deriving.TH.Internal
-#if __GLASGOW_HASKELL__ >= 711
-import           Generics.Deriving.TH.Post711
+#if MIN_VERSION_base(4,9,0)
+import           Generics.Deriving.TH.Post4'9
 #else
-import           Generics.Deriving.TH.Pre711
+import           Generics.Deriving.TH.Pre4'9
 #endif
 
 import           Language.Haskell.TH.Lib
@@ -265,7 +265,7 @@ deriveInstCommon genericName repName gClass fromName toName n = do
   origTy      <- buildTypeInstance gClass name allTvbs dv
   repTySynApp <- makeRepTySynApp gClass dv name cons origTy
   let tyIns = TySynInstD repName
-#if __GLASGOW_HASKELL__ >= 707
+#if MIN_VERSION_template_haskell(2,9,0)
                          (TySynEqn [origTy] repTySynApp)
 #else
                          [origTy] repTySynApp

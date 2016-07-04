@@ -18,7 +18,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 #endif
 
-#if __GLASGOW_HASKELL__ >= 711
+#if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE DataKinds #-}
 #endif
 

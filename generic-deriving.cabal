@@ -30,7 +30,7 @@ tested-with:            GHC == 7.0.4
                       , GHC == 7.4.2
                       , GHC == 7.6.3
                       , GHC == 7.8.4
-                      , GHC == 7.10.2
+                      , GHC == 7.10.3
                       , GHC == 8.0.1
 extra-source-files:     examples/Examples.hs
                       , CHANGELOG.md
@@ -39,6 +39,11 @@ extra-source-files:     examples/Examples.hs
 source-repository head
   type: git
   location: https://github.com/dreixel/generic-deriving
+
+flag base-4-9
+  description:          Use base-4.9 or later. This version of base uses a
+                        DataKinds-based encoding of GHC generics metadata.
+  default:              True
 
 library
   hs-source-dirs:       src
@@ -62,15 +67,15 @@ library
   other-modules:        Generics.Deriving.Base.Internal
                         Generics.Deriving.TH.Internal
                         Paths_generic_deriving
-  if impl(ghc >= 7.11)
-    other-modules:      Generics.Deriving.TH.Post711
+  if flag(base-4-9)
+    build-depends:      base >= 4.9 && < 5
+    other-modules:      Generics.Deriving.TH.Post4'9
   else
-    other-modules:      Generics.Deriving.TH.Pre711
+    build-depends:      base >= 4.3 && < 4.9
+    other-modules:      Generics.Deriving.TH.Pre4'9
 
-  build-depends:        base < 5
-                      , containers       >= 0.1 && < 0.6
+  build-depends:        containers       >= 0.1 && < 0.6
+                      , ghc-prim                   < 1
                       , template-haskell >= 2.4 && < 2.12
-  if impl(ghc > 7.0)
-    build-depends:      ghc-prim < 1
 
   ghc-options:          -Wall

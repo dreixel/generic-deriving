@@ -595,7 +595,7 @@ module Generics.Deriving.Base.Internal (
 -- /TODO:/ Also clear up confusion about 'Rec0' and 'Rec1' not really indicating recursion.
 --
 #endif
-#if __GLASGOW_HASKELL__ < 701
+#if !(MIN_VERSION_base(4,4,0))
   -- * Generic representation types
     V1, U1(..), Par1(..), Rec1(..), K1(..), M1(..)
   , (:+:)(..), (:*:)(..), (:.:)(..)
@@ -614,14 +614,14 @@ module Generics.Deriving.Base.Internal (
 #else
   module GHC.Generics,
 #endif
-#if __GLASGOW_HASKELL__ < 711
+#if !(MIN_VERSION_base(4,9,0))
   -- ** Unboxed representation types
     URec(..), UAddr, UChar, UDouble, UFloat, UInt, UWord
 #endif
   ) where
 
 
-#if __GLASGOW_HASKELL__ >= 701
+#if MIN_VERSION_base(4,4,0)
 import GHC.Generics
 #else
 import Control.Applicative ( Alternative(..) )
@@ -633,7 +633,7 @@ import Text.ParserCombinators.ReadPrec (pfail)
 import Text.Read ( Read(..), parens, readListDefault, readListPrecDefault )
 #endif
 
-#if __GLASGOW_HASKELL__ < 709
+#if !(MIN_VERSION_base(4,8,0))
 import Control.Applicative ( Applicative(..) )
 import Data.Foldable ( Foldable(..) )
 import Data.Monoid ( Monoid(..) )
@@ -641,13 +641,13 @@ import Data.Traversable ( Traversable(..) )
 import Data.Word ( Word )
 #endif
 
-#if __GLASGOW_HASKELL__ < 711
+#if !(MIN_VERSION_base(4,9,0))
 import Data.Typeable
 import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
 import GHC.Ptr ( Ptr )
 #endif
 
-#if __GLASGOW_HASKELL__ < 701
+#if !(MIN_VERSION_base(4,4,0))
 --------------------------------------------------------------------------------
 -- Representation types
 --------------------------------------------------------------------------------
@@ -932,16 +932,16 @@ class Generic1 f where
 
 #endif
 
-#if __GLASGOW_HASKELL__ < 711
+#if !(MIN_VERSION_base(4,9,0))
 -- | Constants of kind @#@
 data family URec (a :: *) (p :: *)
 
-# if __GLASGOW_HASKELL__ >= 707
+# if MIN_VERSION_base(4,7,0)
 deriving instance Typeable URec
 # else
 instance Typeable2 URec where
   typeOf2 _ =
-#  if __GLASGOW_HASKELL__ >= 701
+#  if MIN_VERSION_base(4,4,0)
       mkTyConApp (mkTyCon3 "generic-deriving"
                            "Generics.Deriving.Base.Internal"
                            "URec") []

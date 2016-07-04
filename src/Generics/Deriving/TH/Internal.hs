@@ -696,52 +696,52 @@ gdPackageKey = CURRENT_PACKAGE_KEY
 gdPackageKey = "generic-deriving-" ++ showVersion version
 #endif
 
-mkGD7'1_d :: String -> Name
-#if __GLASGOW_HASKELL__ >= 705
-mkGD7'1_d = mkNameG_d "base" "GHC.Generics"
-#elif __GLASGOW_HASKELL__ >= 701
-mkGD7'1_d = mkNameG_d "ghc-prim" "GHC.Generics"
+mkGD4'4_d :: String -> Name
+#if MIN_VERSION_base(4,6,0)
+mkGD4'4_d = mkNameG_d "base" "GHC.Generics"
+#elif MIN_VERSION_base(4,4,0)
+mkGD4'4_d = mkNameG_d "ghc-prim" "GHC.Generics"
 #else
-mkGD7'1_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
+mkGD4'4_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
-mkGD7'11_d :: String -> Name
-#if __GLASGOW_HASKELL__ >= 711
-mkGD7'11_d = mkNameG_d "base" "GHC.Generics"
+mkGD4'9_d :: String -> Name
+#if MIN_VERSION_base(4,9,0)
+mkGD4'9_d = mkNameG_d "base" "GHC.Generics"
 #else
-mkGD7'11_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
+mkGD4'9_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
-mkGD7'1_tc :: String -> Name
-#if __GLASGOW_HASKELL__ >= 705
-mkGD7'1_tc = mkNameG_tc "base" "GHC.Generics"
-#elif __GLASGOW_HASKELL__ >= 701
-mkGD7'1_tc = mkNameG_tc "ghc-prim" "GHC.Generics"
+mkGD4'4_tc :: String -> Name
+#if MIN_VERSION_base(4,6,0)
+mkGD4'4_tc = mkNameG_tc "base" "GHC.Generics"
+#elif MIN_VERSION_base(4,4,0)
+mkGD4'4_tc = mkNameG_tc "ghc-prim" "GHC.Generics"
 #else
-mkGD7'1_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
+mkGD4'4_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
-mkGD7'11_tc :: String -> Name
-#if __GLASGOW_HASKELL__ >= 711
-mkGD7'11_tc = mkNameG_tc "base" "GHC.Generics"
+mkGD4'9_tc :: String -> Name
+#if MIN_VERSION_base(4,9,0)
+mkGD4'9_tc = mkNameG_tc "base" "GHC.Generics"
 #else
-mkGD7'11_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
+mkGD4'9_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
-mkGD7'1_v :: String -> Name
-#if __GLASGOW_HASKELL__ >= 705
-mkGD7'1_v = mkNameG_v "base" "GHC.Generics"
-#elif __GLASGOW_HASKELL__ >= 701
-mkGD7'1_v = mkNameG_v "ghc-prim" "GHC.Generics"
+mkGD4'4_v :: String -> Name
+#if MIN_VERSION_base(4,6,0)
+mkGD4'4_v = mkNameG_v "base" "GHC.Generics"
+#elif MIN_VERSION_base(4,4,0)
+mkGD4'4_v = mkNameG_v "ghc-prim" "GHC.Generics"
 #else
-mkGD7'1_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
+mkGD4'4_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
-mkGD7'11_v :: String -> Name
-#if __GLASGOW_HASKELL__ >= 711
-mkGD7'11_v = mkNameG_v "base" "GHC.Generics"
+mkGD4'9_v :: String -> Name
+#if MIN_VERSION_base(4,9,0)
+mkGD4'9_v = mkNameG_v "base" "GHC.Generics"
 #else
-mkGD7'11_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
+mkGD4'9_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
 #endif
 
 mkBaseName_d :: String -> String -> Name
@@ -754,207 +754,205 @@ mkGHCPrimName_tc :: String -> String -> Name
 mkGHCPrimName_tc = mkNameG_tc "ghc-prim"
 
 comp1DataName :: Name
-comp1DataName = mkGD7'1_d "Comp1"
+comp1DataName = mkGD4'4_d "Comp1"
 
 infixDataName :: Name
-infixDataName = mkGD7'1_d "Infix"
+infixDataName = mkGD4'4_d "Infix"
 
 k1DataName :: Name
-k1DataName = mkGD7'1_d "K1"
+k1DataName = mkGD4'4_d "K1"
 
 l1DataName :: Name
-l1DataName = mkGD7'1_d "L1"
+l1DataName = mkGD4'4_d "L1"
 
 leftAssociativeDataName :: Name
-leftAssociativeDataName = mkGD7'1_d "LeftAssociative"
+leftAssociativeDataName = mkGD4'4_d "LeftAssociative"
 
 m1DataName :: Name
-m1DataName = mkGD7'1_d "M1"
+m1DataName = mkGD4'4_d "M1"
 
 notAssociativeDataName :: Name
-notAssociativeDataName = mkGD7'1_d "NotAssociative"
+notAssociativeDataName = mkGD4'4_d "NotAssociative"
 
 par1DataName :: Name
-par1DataName = mkGD7'1_d "Par1"
+par1DataName = mkGD4'4_d "Par1"
 
 prefixDataName :: Name
-prefixDataName = mkGD7'1_d "Prefix"
+prefixDataName = mkGD4'4_d "Prefix"
 
 productDataName :: Name
-productDataName = mkGD7'1_d ":*:"
+productDataName = mkGD4'4_d ":*:"
 
 r1DataName :: Name
-r1DataName = mkGD7'1_d "R1"
+r1DataName = mkGD4'4_d "R1"
 
 rec1DataName :: Name
-rec1DataName = mkGD7'1_d "Rec1"
+rec1DataName = mkGD4'4_d "Rec1"
 
 rightAssociativeDataName :: Name
-rightAssociativeDataName = mkGD7'1_d "RightAssociative"
+rightAssociativeDataName = mkGD4'4_d "RightAssociative"
 
 u1DataName :: Name
-u1DataName = mkGD7'1_d "U1"
+u1DataName = mkGD4'4_d "U1"
 
 uAddrDataName :: Name
-uAddrDataName = mkGD7'11_d "UAddr"
+uAddrDataName = mkGD4'9_d "UAddr"
 
 uCharDataName :: Name
-uCharDataName = mkGD7'11_d "UChar"
+uCharDataName = mkGD4'9_d "UChar"
 
 uDoubleDataName :: Name
-uDoubleDataName = mkGD7'11_d "UDouble"
+uDoubleDataName = mkGD4'9_d "UDouble"
 
 uFloatDataName :: Name
-uFloatDataName = mkGD7'11_d "UFloat"
+uFloatDataName = mkGD4'9_d "UFloat"
 
 uIntDataName :: Name
-uIntDataName = mkGD7'11_d "UInt"
+uIntDataName = mkGD4'9_d "UInt"
 
 uWordDataName :: Name
-uWordDataName = mkGD7'11_d "UWord"
+uWordDataName = mkGD4'9_d "UWord"
 
 c1TypeName :: Name
-c1TypeName = mkGD7'1_tc "C1"
+c1TypeName = mkGD4'4_tc "C1"
 
 composeTypeName :: Name
-composeTypeName = mkGD7'1_tc ":.:"
+composeTypeName = mkGD4'4_tc ":.:"
 
 constructorTypeName :: Name
-constructorTypeName = mkGD7'1_tc "Constructor"
+constructorTypeName = mkGD4'4_tc "Constructor"
 
 d1TypeName :: Name
-d1TypeName = mkGD7'1_tc "D1"
+d1TypeName = mkGD4'4_tc "D1"
 
 genericTypeName :: Name
-genericTypeName = mkGD7'1_tc "Generic"
+genericTypeName = mkGD4'4_tc "Generic"
 
 generic1TypeName :: Name
-generic1TypeName = mkGD7'1_tc "Generic1"
+generic1TypeName = mkGD4'4_tc "Generic1"
 
 datatypeTypeName :: Name
-datatypeTypeName = mkGD7'1_tc "Datatype"
+datatypeTypeName = mkGD4'4_tc "Datatype"
 
 noSelectorTypeName :: Name
-noSelectorTypeName = mkGD7'1_tc "NoSelector"
+noSelectorTypeName = mkGD4'4_tc "NoSelector"
 
 par1TypeName :: Name
-par1TypeName = mkGD7'1_tc "Par1"
+par1TypeName = mkGD4'4_tc "Par1"
 
 productTypeName :: Name
-productTypeName = mkGD7'1_tc ":*:"
+productTypeName = mkGD4'4_tc ":*:"
 
 rec0TypeName :: Name
-rec0TypeName = mkGD7'1_tc "Rec0"
+rec0TypeName = mkGD4'4_tc "Rec0"
 
 rec1TypeName :: Name
-rec1TypeName = mkGD7'1_tc "Rec1"
+rec1TypeName = mkGD4'4_tc "Rec1"
 
 repTypeName :: Name
-repTypeName = mkGD7'1_tc "Rep"
+repTypeName = mkGD4'4_tc "Rep"
 
 rep1TypeName :: Name
-rep1TypeName = mkGD7'1_tc "Rep1"
+rep1TypeName = mkGD4'4_tc "Rep1"
 
 s1TypeName :: Name
-s1TypeName = mkGD7'1_tc "S1"
+s1TypeName = mkGD4'4_tc "S1"
 
 selectorTypeName :: Name
-selectorTypeName = mkGD7'1_tc "Selector"
+selectorTypeName = mkGD4'4_tc "Selector"
 
 sumTypeName :: Name
-sumTypeName = mkGD7'1_tc ":+:"
+sumTypeName = mkGD4'4_tc ":+:"
 
 u1TypeName :: Name
-u1TypeName = mkGD7'1_tc "U1"
+u1TypeName = mkGD4'4_tc "U1"
 
 uAddrTypeName :: Name
-uAddrTypeName = mkGD7'11_tc "UAddr"
+uAddrTypeName = mkGD4'9_tc "UAddr"
 
 uCharTypeName :: Name
-uCharTypeName = mkGD7'11_tc "UChar"
+uCharTypeName = mkGD4'9_tc "UChar"
 
 uDoubleTypeName :: Name
-uDoubleTypeName = mkGD7'11_tc "UDouble"
+uDoubleTypeName = mkGD4'9_tc "UDouble"
 
 uFloatTypeName :: Name
-uFloatTypeName = mkGD7'11_tc "UFloat"
+uFloatTypeName = mkGD4'9_tc "UFloat"
 
 uIntTypeName :: Name
-uIntTypeName = mkGD7'11_tc "UInt"
+uIntTypeName = mkGD4'9_tc "UInt"
 
 uWordTypeName :: Name
-uWordTypeName = mkGD7'11_tc "UWord"
+uWordTypeName = mkGD4'9_tc "UWord"
 
 v1TypeName :: Name
-v1TypeName = mkGD7'1_tc "V1"
+v1TypeName = mkGD4'4_tc "V1"
 
 conFixityValName :: Name
-conFixityValName = mkGD7'1_v "conFixity"
+conFixityValName = mkGD4'4_v "conFixity"
 
 conIsRecordValName :: Name
-conIsRecordValName = mkGD7'1_v "conIsRecord"
+conIsRecordValName = mkGD4'4_v "conIsRecord"
 
 conNameValName :: Name
-conNameValName = mkGD7'1_v "conName"
+conNameValName = mkGD4'4_v "conName"
 
 datatypeNameValName :: Name
-datatypeNameValName = mkGD7'1_v "datatypeName"
+datatypeNameValName = mkGD4'4_v "datatypeName"
 
-#if __GLASGOW_HASKELL__ >= 708
 isNewtypeValName :: Name
-isNewtypeValName = mkGD7'1_v "isNewtype"
-#endif
+isNewtypeValName = mkGD4'4_v "isNewtype"
 
 fromValName :: Name
-fromValName = mkGD7'1_v "from"
+fromValName = mkGD4'4_v "from"
 
 from1ValName :: Name
-from1ValName = mkGD7'1_v "from1"
+from1ValName = mkGD4'4_v "from1"
 
 moduleNameValName :: Name
-moduleNameValName = mkGD7'1_v "moduleName"
+moduleNameValName = mkGD4'4_v "moduleName"
 
 selNameValName :: Name
-selNameValName = mkGD7'1_v "selName"
+selNameValName = mkGD4'4_v "selName"
 
 toValName :: Name
-toValName = mkGD7'1_v "to"
+toValName = mkGD4'4_v "to"
 
 to1ValName :: Name
-to1ValName = mkGD7'1_v "to1"
+to1ValName = mkGD4'4_v "to1"
 
 uAddrHashValName :: Name
-uAddrHashValName = mkGD7'11_v "uAddr#"
+uAddrHashValName = mkGD4'9_v "uAddr#"
 
 uCharHashValName :: Name
-uCharHashValName = mkGD7'11_v "uChar#"
+uCharHashValName = mkGD4'9_v "uChar#"
 
 uDoubleHashValName :: Name
-uDoubleHashValName = mkGD7'11_v "uDouble#"
+uDoubleHashValName = mkGD4'9_v "uDouble#"
 
 uFloatHashValName :: Name
-uFloatHashValName = mkGD7'11_v "uFloat#"
+uFloatHashValName = mkGD4'9_v "uFloat#"
 
 uIntHashValName :: Name
-uIntHashValName = mkGD7'11_v "uInt#"
+uIntHashValName = mkGD4'9_v "uInt#"
 
 uWordHashValName :: Name
-uWordHashValName = mkGD7'11_v "uWord#"
+uWordHashValName = mkGD4'9_v "uWord#"
 
 unComp1ValName :: Name
-unComp1ValName = mkGD7'1_v "unComp1"
+unComp1ValName = mkGD4'4_v "unComp1"
 
 unK1ValName :: Name
-unK1ValName = mkGD7'1_v "unK1"
+unK1ValName = mkGD4'4_v "unK1"
 
 unPar1ValName :: Name
-unPar1ValName = mkGD7'1_v "unPar1"
+unPar1ValName = mkGD4'4_v "unPar1"
 
 unRec1ValName :: Name
-unRec1ValName = mkGD7'1_v "unRec1"
+unRec1ValName = mkGD4'4_v "unRec1"
 
 trueDataName, falseDataName :: Name
-#if __GLASGOW_HASKELL__ >= 701
+#if MIN_VERSION_base(4,4,0)
 trueDataName  = mkGHCPrimName_d "GHC.Types" "True"
 falseDataName = mkGHCPrimName_d "GHC.Types" "False"
 #else
@@ -963,7 +961,7 @@ falseDataName = mkGHCPrimName_d "GHC.Bool"  "False"
 #endif
 
 nothingDataName, justDataName :: Name
-#if __GLASGOW_HASKELL__ >= 709
+#if MIN_VERSION_base(4,8,0)
 nothingDataName = mkBaseName_d "GHC.Base"   "Nothing"
 justDataName    = mkBaseName_d "GHC.Base"   "Just"
 #else
@@ -1004,57 +1002,53 @@ fmapValName = mkNameG_v "base" "GHC.Base" "fmap"
 undefinedValName :: Name
 undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
 
-#if __GLASGOW_HASKELL__ >= 705 && __GLASGOW_HASKELL__ < 711
 starKindName :: Name
 starKindName = mkGHCPrimName_tc "GHC.Prim" "*"
-#endif
 
-#if __GLASGOW_HASKELL__ >= 711
 decidedLazyDataName :: Name
-decidedLazyDataName = mkGD7'11_d "DecidedLazy"
+decidedLazyDataName = mkGD4'9_d "DecidedLazy"
 
 decidedStrictDataName :: Name
-decidedStrictDataName = mkGD7'11_d "DecidedStrict"
+decidedStrictDataName = mkGD4'9_d "DecidedStrict"
 
 decidedUnpackDataName :: Name
-decidedUnpackDataName = mkGD7'11_d "DecidedUnpack"
+decidedUnpackDataName = mkGD4'9_d "DecidedUnpack"
 
 infixIDataName :: Name
-infixIDataName = mkGD7'11_d "InfixI"
+infixIDataName = mkGD4'9_d "InfixI"
 
 metaConsDataName :: Name
-metaConsDataName = mkGD7'11_d "MetaCons"
+metaConsDataName = mkGD4'9_d "MetaCons"
 
 metaDataDataName :: Name
-metaDataDataName = mkGD7'11_d "MetaData"
+metaDataDataName = mkGD4'9_d "MetaData"
 
 metaNoSelDataName :: Name
-metaNoSelDataName = mkGD7'11_d "MetaNoSel"
+metaNoSelDataName = mkGD4'9_d "MetaNoSel"
 
 metaSelDataName :: Name
-metaSelDataName = mkGD7'11_d "MetaSel"
+metaSelDataName = mkGD4'9_d "MetaSel"
 
 noSourceStrictnessDataName :: Name
-noSourceStrictnessDataName = mkGD7'11_d "NoSourceStrictness"
+noSourceStrictnessDataName = mkGD4'9_d "NoSourceStrictness"
 
 noSourceUnpackednessDataName :: Name
-noSourceUnpackednessDataName = mkGD7'11_d "NoSourceUnpackedness"
+noSourceUnpackednessDataName = mkGD4'9_d "NoSourceUnpackedness"
 
 prefixIDataName :: Name
-prefixIDataName = mkGD7'11_d "PrefixI"
+prefixIDataName = mkGD4'9_d "PrefixI"
 
 sourceLazyDataName :: Name
-sourceLazyDataName = mkGD7'11_d "SourceLazy"
+sourceLazyDataName = mkGD4'9_d "SourceLazy"
 
 sourceNoUnpackDataName :: Name
-sourceNoUnpackDataName = mkGD7'11_d "SourceNoUnpack"
+sourceNoUnpackDataName = mkGD4'9_d "SourceNoUnpack"
 
 sourceStrictDataName :: Name
-sourceStrictDataName = mkGD7'11_d "SourceStrict"
+sourceStrictDataName = mkGD4'9_d "SourceStrict"
 
 sourceUnpackDataName :: Name
-sourceUnpackDataName = mkGD7'11_d "SourceUnpack"
+sourceUnpackDataName = mkGD4'9_d "SourceUnpack"
 
 packageNameValName :: Name
-packageNameValName = mkGD7'1_v "packageName"
-#endif
+packageNameValName = mkGD4'4_v "packageName"

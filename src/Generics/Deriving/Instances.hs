@@ -21,7 +21,7 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
-#if __GLASGOW_HASKELL__ < 711
+#if !(MIN_VERSION_base(4,9,0))
     Rep0ExitCode
   , Rep0Version
   , Rep1ConSum
@@ -46,15 +46,15 @@ module Generics.Deriving.Instances (
   , Rep1UInt
   , Rep0UWord
   , Rep1UWord
-# if __GLASGOW_HASKELL__ >= 701
+# if MIN_VERSION_base(4,4,0)
   , Rep0Complex
   , Rep1Complex
 # endif
-# if __GLASGOW_HASKELL__ >= 707
+# if MIN_VERSION_base(4,7,0)
   , Rep1Proxy
 # endif
 #endif
-#if __GLASGOW_HASKELL__ < 708
+#if !(MIN_VERSION_base(4,7,0))
   , Rep0All
   , Rep0Any
   , Rep0Arity
@@ -88,7 +88,7 @@ module Generics.Deriving.Instances (
   , Rep0ConProduct
   , Rep0ConCompose
 #endif
-#if __GLASGOW_HASKELL__ < 705
+#if !(MIN_VERSION_base(4,6,0))
   , Rep1Either
   , Rep1List
   , Rep1Maybe
@@ -99,8 +99,7 @@ module Generics.Deriving.Instances (
   , Rep1Tuple6
   , Rep1Tuple7
 #endif
-#if __GLASGOW_HASKELL__ < 701
-  -- * Representations for base types
+#if !(MIN_VERSION_base(4,4,0))
   , Rep0Bool
   , Rep0Char
   , Rep0Double
@@ -120,26 +119,26 @@ module Generics.Deriving.Instances (
 #endif
   ) where
 
-#if __GLASGOW_HASKELL__ < 708
+#if !(MIN_VERSION_base(4,7,0))
 import Control.Applicative
 import Data.Monoid
 #endif
 
-#if __GLASGOW_HASKELL__ >= 701 && __GLASGOW_HASKELL__ < 711
+#if MIN_VERSION_base(4,4,0) && !(MIN_VERSION_base(4,9,0))
 import Data.Complex (Complex(..))
 #endif
 
-#if __GLASGOW_HASKELL__ >= 707 && __GLASGOW_HASKELL__ < 711
+#if MIN_VERSION_base(4,7,0) && !(MIN_VERSION_base(4,9,0))
 import Data.Proxy (Proxy(..))
 #endif
 
-#if __GLASGOW_HASKELL__ < 711
+#if !(MIN_VERSION_base(4,9,0))
 import Data.Version (Version(..))
 import Generics.Deriving.Base.Internal
 import System.Exit (ExitCode(..))
 #endif
 
-#if __GLASGOW_HASKELL__ < 711
+#if !(MIN_VERSION_base(4,9,0))
 type Rep0ExitCode = D1 D1ExitCode (C1 C1_0ExitCode U1
                                :+: C1 C1_1ExitCode (S1 NoSelector (Rec0 Int)))
 
@@ -215,7 +214,7 @@ data C1_1ConSum
 
 instance Datatype D1ConSum where
     datatypeName _ = ":+:"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -242,7 +241,7 @@ data C1_ConProduct
 
 instance Datatype D1ConProduct where
     datatypeName _ = ":*:"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -268,7 +267,7 @@ data S1_0_0ConCompose
 
 instance Datatype D1ConCompose where
     datatypeName _ = ":.:"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -296,7 +295,7 @@ data S1_0_0K1
 
 instance Datatype D1K1 where
     datatypeName _ = "K1"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -324,7 +323,7 @@ data S1_0_0M1
 
 instance Datatype D1M1 where
     datatypeName _ = "M1"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -352,7 +351,7 @@ data S1_0_0Par1
 
 instance Datatype D1Par1 where
     datatypeName _ = "Par1"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -380,7 +379,7 @@ data S1_0_0Rec1
 
 instance Datatype D1Rec1 where
     datatypeName _ = "Rec1"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -407,7 +406,7 @@ data C1_0U1
 
 instance Datatype D1U1 where
     datatypeName _ = "U1"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -435,7 +434,7 @@ data D1V1
 
 instance Datatype D1V1 where
     datatypeName _ = "V1"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -623,7 +622,7 @@ instance Selector S1_0_0UWord where
 
 -----
 
-# if __GLASGOW_HASKELL__ >= 701
+# if MIN_VERSION_base(4,4,0)
 type Rep0Complex a = D1 D1Complex (C1 C1_0Complex (S1 NoSelector (Rec0 a)
                                                :*: S1 NoSelector (Rec0 a)))
 type Rep1Complex = D1 D1Complex (C1 C1_0Complex (S1 NoSelector Par1
@@ -653,7 +652,7 @@ instance Constructor C1_0Complex where
 
 -----
 
-# if __GLASGOW_HASKELL__ >= 707
+# if MIN_VERSION_base(4,7,0)
 type Rep1Proxy = D1 D1Proxy (C1 C1_0Proxy U1)
 
 instance Generic1 Proxy where
@@ -675,7 +674,7 @@ instance Constructor C1_0Proxy where
 
 -----
 
-#if __GLASGOW_HASKELL__ < 708
+#if !(MIN_VERSION_base(4,7,0))
 --------------------------------------------------------------------------------
 -- Representations for base types
 --------------------------------------------------------------------------------
@@ -748,7 +747,7 @@ data C1_1Arity
 
 instance Datatype D1Arity where
     datatypeName _ = "Arity"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -786,7 +785,7 @@ data C1_2Associativity
 
 instance Datatype D1Associativity where
     datatypeName _ = "Associativity"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -938,7 +937,7 @@ data C1_1Fixity
 
 instance Datatype D1Fixity where
     datatypeName _ = "Fixity"
-# if __GLASGOW_HASKELL__ < 701
+# if !(MIN_VERSION_base(4,4,0))
     moduleName   _ = "Generics.Deriving.Base.Internal"
 # else
     moduleName   _ = "GHC.Generics"
@@ -1219,7 +1218,7 @@ instance Generic ((f :.: g) p) where
 
 -----
 
-#if __GLASGOW_HASKELL__ < 705
+#if !(MIN_VERSION_base(4,6,0))
 type Rep1List = D1 D1List (C1 C1_0List U1 :+:
                            C1 C1_1List (S1 NoSelector Par1
                                     :*: S1 NoSelector (Rec1 [])))
@@ -1473,7 +1472,7 @@ instance Constructor C1_0Tuple7 where
 
 -----
 
-#if __GLASGOW_HASKELL__ < 701
+#if !(MIN_VERSION_base(4,4,0))
 type Rep0Bool = D1 D1Bool (C1 C1_0Bool U1 :+: C1 C1_1Bool U1)
 
 instance Generic Bool where

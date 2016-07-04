@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 {- |
-Module      :  Generics.Deriving.TH.Pre711
+Module      :  Generics.Deriving.TH.Pre4'9
 Copyright   :  (c) 2008--2009 Universiteit Utrecht
 License     :  BSD3
 
@@ -10,10 +10,10 @@ Stability   :  experimental
 Portability :  non-portable
 
 Template Haskell machinery for the proxy datatype variant of GHC generics
-used up until GHC 7.11.
+used up until @base-4.9@.
 -}
 
-module Generics.Deriving.TH.Pre711 (
+module Generics.Deriving.TH.Pre4'9 (
       deriveMeta
     , deriveData
     , deriveConstructors
@@ -115,7 +115,7 @@ mkDataInstance dv n isNewtype =
     [ funD datatypeNameValName [clause [wildP] (normalB (stringE (nameBase n))) []]
     , funD moduleNameValName   [clause [wildP] (normalB (stringE name)) []]
     ]
-#if __GLASGOW_HASKELL__ >= 708
+#if MIN_VERSION_base(4,7,0)
  ++ if isNewtype
        then [funD isNewtypeValName [clause [wildP] (normalB (conE trueDataName)) []]]
        else []

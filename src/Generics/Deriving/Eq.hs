@@ -115,7 +115,7 @@ instance GEq' UInt where
 instance GEq' UWord where
   geq' (UWord w1) (UWord w2)     = isTrue# (eqWord# w1 w2)
 
-#if __GLASGOW_HASKELL__ < 707
+#if !(MIN_VERSION_base(4,7,0))
 isTrue# :: Bool -> Bool
 isTrue# = id
 #endif
