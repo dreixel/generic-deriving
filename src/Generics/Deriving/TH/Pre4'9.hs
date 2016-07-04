@@ -93,11 +93,21 @@ selectInstance n = do
       return $ concat (ds ++ is)
 
 mkDataData :: DataVariety -> Name -> Q Dec
-mkDataData dv n = dataD (cxt []) (genName dv [n]) [] [] []
+mkDataData dv n = dataD (cxt []) (genName dv [n]) []
+#if MIN_VERSION_template_haskell(2,11,0)
+                        Nothing [] (cxt [])
+#else
+                        [] []
+#endif
 
 mkConstrData :: DataVariety -> Name -> Con -> Q Dec
 mkConstrData dv dt (NormalC n _) =
-  dataD (cxt []) (genName dv [dt, n]) [] [] []
+  dataD (cxt []) (genName dv [dt, n]) []
+#if MIN_VERSION_template_haskell(2,11,0)
+        Nothing [] (cxt [])
+#else
+        [] []
+#endif
 mkConstrData dv dt (RecC n f) =
   mkConstrData dv dt (NormalC n (map shrink f))
 mkConstrData dv dt (InfixC t1 n t2) =
@@ -106,7 +116,11 @@ mkConstrData _ _ con = gadtError con
 
 mkSelectData :: DataVariety -> Name -> Con -> Q [Dec]
 mkSelectData dv dt (RecC n fs) = return (map one fs)
-  where one (f, _, _) = DataD [] (genName dv [dt, n, f]) [] [] []
+  where one (f, _, _) = DataD [] (genName dv [dt, n, f]) []
+#if MIN_VERSION_template_haskell(2,11,0)
+                              Nothing
+#endif
+                              [] []
 mkSelectData _ _ _ = return []
 
 mkDataInstance :: DataVariety -> Name -> Bool -> Q Dec
@@ -140,8 +154,13 @@ mkConstrInstance dv dt (RecC    n _) =
       [funD conIsRecordValName [clause [wildP] (normalB (conE trueDataName)) []]]
 mkConstrInstance dv dt (InfixC _ n _) = do
     i <- reify n
+#if MIN_VERSION_template_haskell(2,11,0)
+    fi <- case i of
+                  DataConI{} -> fromMaybe defaultFixity `fmap` reifyFixity n
+#else
     let fi = case i of
                   DataConI _ _ _ f -> f
+#endif
                   _ -> error $ "Not a data constructor name: " ++ show n
     mkConstrInstanceWith dv dt n False True
       [funD conFixityValName [clause [wildP] (normalB (liftFixity fi)) []]]
