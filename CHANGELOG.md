@@ -1,3 +1,7 @@
+# 1.10.6
+* A new `base-4-9` Cabal flag was added to more easily facilitate installing
+  `generic-deriving` with manually installed versions of `template-haskell`.
+
 # 1.10.5
 * Apply an optimization to generated `to(1)`/`from(1)` instances that factors out
   common occurrences of `M1`. See
