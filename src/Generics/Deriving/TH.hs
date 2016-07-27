@@ -91,9 +91,9 @@ import qualified Data.Map as Map (fromList)
 
 import           Generics.Deriving.TH.Internal
 #if MIN_VERSION_base(4,9,0)
-import           Generics.Deriving.TH.Post4'9
+import           Generics.Deriving.TH.Post4_9
 #else
-import           Generics.Deriving.TH.Pre4'9
+import           Generics.Deriving.TH.Pre4_9
 #endif
 
 import           Language.Haskell.TH.Lib

@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 {- |
-Module      :  Generics.Deriving.TH.Pre4'9
+Module      :  Generics.Deriving.TH.Pre4_9
 Copyright   :  (c) 2008--2009 Universiteit Utrecht
 License     :  BSD3
 
@@ -13,7 +13,7 @@ Template Haskell machinery for the proxy datatype variant of GHC generics
 used up until @base-4.9@.
 -}
 
-module Generics.Deriving.TH.Pre4'9 (
+module Generics.Deriving.TH.Pre4_9 (
       deriveMeta
     , deriveData
     , deriveConstructors

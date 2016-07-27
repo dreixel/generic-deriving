@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.10.6
+version:                1.10.7
 synopsis:               Generic programming library for generalised deriving.
 description:
 
@@ -69,10 +69,10 @@ library
                         Paths_generic_deriving
   if flag(base-4-9)
     build-depends:      base >= 4.9 && < 5
-    other-modules:      Generics.Deriving.TH.Post4'9
+    other-modules:      Generics.Deriving.TH.Post4_9
   else
     build-depends:      base >= 4.3 && < 4.9
-    other-modules:      Generics.Deriving.TH.Pre4'9
+    other-modules:      Generics.Deriving.TH.Pre4_9
 
   build-depends:        containers       >= 0.1 && < 0.6
                       , ghc-prim                   < 1

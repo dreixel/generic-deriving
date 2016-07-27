@@ -1,5 +1,5 @@
 {- |
-Module      :  Generics.Deriving.TH.Post4'9
+Module      :  Generics.Deriving.TH.Post4_9
 Copyright   :  (c) 2008--2009 Universiteit Utrecht
 License     :  BSD3
 
@@ -11,7 +11,7 @@ Template Haskell machinery for the type-literal-based variant of GHC
 generics introduced in @base-4.9@.
 -}
 
-module Generics.Deriving.TH.Post4'9 (
+module Generics.Deriving.TH.Post4_9 (
       deriveMeta
     , deriveData
     , deriveConstructors

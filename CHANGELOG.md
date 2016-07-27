@@ -1,3 +1,7 @@
+# 1.10.7
+* Renamed internal modules to avoid using apostrophes (averting this bug:
+  https://github.com/haskell/cabal/issues/3631)
+
 # 1.10.6
 * A new `base-4-9` Cabal flag was added to more easily facilitate installing
   `generic-deriving` with manually installed versions of `template-haskell`.
