@@ -1,3 +1,6 @@
+# next
+* Backport missing `Foldable` and `Traversable` instances for `Rec1`
+
 # 1.10.7
 * Renamed internal modules to avoid using apostrophes (averting this bug:
   https://github.com/haskell/cabal/issues/3631)

@@ -729,7 +729,7 @@ instance MonadFix Par1 where
 
 -- | Recursive calls of kind * -> *
 newtype Rec1 f p = Rec1 { unRec1 :: f p }
-  deriving (Eq, Ord, Read, Functor, Show)
+  deriving (Eq, Ord, Read, Functor, Foldable, Traversable, Show)
 
 instance Applicative f => Applicative (Rec1 f) where
   pure a = Rec1 (pure a)
