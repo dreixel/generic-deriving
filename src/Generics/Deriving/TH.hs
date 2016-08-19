@@ -43,7 +43,7 @@ $('deriveAll1' 'FamilyTrue) -- instance Generic1 (Family Bool) where ...
 
 -- Adapted from Generics.Regular.TH
 module Generics.Deriving.TH (
-
+      -- * @derive@- functions
       deriveMeta
     , deriveData
     , deriveConstructors
@@ -58,27 +58,40 @@ module Generics.Deriving.TH (
     , deriveRep0
     , deriveRep1
     , simplInstance
-     -- * -@WithSigs@ functions
-     -- $withSigs
-    , deriveAll0WithKindSigs
-    , deriveAll1WithKindSigs
-    , deriveAll0And1WithKindSigs
-    , deriveRepresentable0WithKindSigs
-    , deriveRepresentable1WithKindSigs
-    , deriveRep0WithKindSigs
-    , deriveRep1WithKindSigs
+
      -- * @make@- functions
      -- $make
+    , makeRep0Inline
     , makeRep0
     , makeRep0FromType
     , makeFrom
     , makeFrom0
     , makeTo
     , makeTo0
+    , makeRep1Inline
     , makeRep1
     , makeRep1FromType
     , makeFrom1
     , makeTo1
+
+     -- * Options
+     -- $options
+     -- ** Option types
+    , Options(..)
+    , defaultOptions
+    , RepOptions(..)
+    , defaultRepOptions
+    , KindSigOptions
+    , defaultKindSigOptions
+
+    -- ** Functions with optional arguments
+    , deriveAll0Options
+    , deriveAll1Options
+    , deriveAll0And1Options
+    , deriveRepresentable0Options
+    , deriveRepresentable1Options
+    , deriveRep0Options
+    , deriveRep1Options
   ) where
 
 import           Control.Monad ((>=>), unless, when)
@@ -88,6 +101,7 @@ import           Data.Foldable (foldr')
 #endif
 import           Data.List (nub)
 import qualified Data.Map as Map (fromList)
+import           Data.Maybe (catMaybes)
 
 import           Generics.Deriving.TH.Internal
 #if MIN_VERSION_base(4,9,0)
@@ -99,33 +113,16 @@ import           Generics.Deriving.TH.Pre4_9
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH
 
-{- $withSigs
-By default, 'deriveRep0', 'deriveRep1', and functions that invoke it generate
-type synonyms whose type variable binders do not have explicit kind binders for
-polykinded type variables. This is a pretty reasonable default, since puts less
-of a burden on the Template Haskell machinery to get the kinds just right, and
-lets the kind inferencer do more work. However, there are times when you want to
-have explicit kind signatures, such as if you have a datatype that uses
-@-XTypeInType@. For example:
+{- $options
+'Options' gives you a way to further tweak derived 'Generic' and 'Generic1' instances:
 
-@
-data Prox (a :: k) (b :: *) = Prox k
-$('deriveRep0WithKindSigs' ''Prox)
-@
+* 'RepOptions': By default, all derived 'Rep' and 'Rep1' type instances emit the code
+  directly (the 'InlineRep' option). One can also choose to emit a separate type
+  synonym for the 'Rep' type (this is the functionality of 'deriveRep0' and
+  'deriveRep1') and define a 'Rep' instance in terms of that type synonym (the
+  'TypeSynonymRep' option).
 
-will result in something like:
-
-@
-type Rep0Prox (a :: k) (b :: *) = Rec0 k
-@
-
-Whereas if you had used 'deriveRep0', you would have something like:
-
-@
-type Rep0Prox a (b :: *) = Rec0 k
-@
-
-which will fail to compile, since k is out-of-scope!
+* 'KindSigOptions': TODO
 -}
 
 -- | Given the names of a generic class, a type to instantiate, a function in
@@ -140,6 +137,35 @@ simplInstance cl ty fn df = do
     [funD fn [clause [] (normalB (varE df `appE`
       (sigE (varE undefinedValName) (return typ)))) []]]
 
+-- | TODO
+data Options = Options
+  { repOptions     :: RepOptions
+  , kindSigOptions :: KindSigOptions
+  } deriving (Eq, Ord, Read, Show)
+
+-- | TODO
+defaultOptions :: Options
+defaultOptions = Options
+  { repOptions     = defaultRepOptions
+  , kindSigOptions = defaultKindSigOptions
+  }
+
+-- | TODO
+data RepOptions = InlineRep
+                | TypeSynonymRep
+  deriving (Eq, Ord, Read, Show)
+
+-- | TODO
+defaultRepOptions :: RepOptions
+defaultRepOptions = InlineRep
+
+-- | TODO
+type KindSigOptions = Bool
+
+-- | TODO
+defaultKindSigOptions :: KindSigOptions
+defaultKindSigOptions = True
+
 -- | A backwards-compatible synonym for 'deriveAll0'.
 deriveAll :: Name -> Q [Dec]
 deriveAll = deriveAll0
@@ -148,134 +174,138 @@ deriveAll = deriveAll0
 -- generate the 'Data' instance, the 'Constructor' instances, the 'Selector'
 -- instances, and the 'Representable0' instance.
 deriveAll0 :: Name -> Q [Dec]
-deriveAll0 = deriveAllCommon True False False
+deriveAll0 = deriveAll0Options defaultOptions
 
--- | Like 'deriveAll0', except that the type variable binders in the
--- 'Rep' type synonym will have explicit kind signatures.
-deriveAll0WithKindSigs :: Name -> Q [Dec]
-deriveAll0WithKindSigs = deriveAllCommon True False True
+-- | Like 'deriveAll0', but takes an 'Options' argument.
+deriveAll0Options :: Options -> Name -> Q [Dec]
+deriveAll0Options = deriveAllCommon True False
 
 -- | Given the type and the name (as string) for the type to derive,
 -- generate the 'Data' instance, the 'Constructor' instances, the 'Selector'
 -- instances, and the 'Representable1' instance.
 deriveAll1 :: Name -> Q [Dec]
-deriveAll1 = deriveAllCommon False True False
+deriveAll1 = deriveAll1Options defaultOptions
 
--- | Like 'deriveAll1', except that the type variable binders in the
--- 'Rep1' type synonym will have explicit kind signatures.
-deriveAll1WithKindSigs :: Name -> Q [Dec]
-deriveAll1WithKindSigs = deriveAllCommon False True True
+-- | Like 'deriveAll1', but takes an 'Options' argument.
+deriveAll1Options :: Options -> Name -> Q [Dec]
+deriveAll1Options = deriveAllCommon False True
 
 -- | Given the type and the name (as string) for the type to derive,
 -- generate the 'Data' instance, the 'Constructor' instances, the 'Selector'
 -- instances, the 'Representable0' instance, and the 'Representable1' instance.
 deriveAll0And1 :: Name -> Q [Dec]
-deriveAll0And1 = deriveAllCommon True True False
+deriveAll0And1 = deriveAll0And1Options defaultOptions
 
--- | Like 'deriveAll0And1', except that the type variable binders in the
--- 'Rep' and 'Rep1' type synonyms will have explicit kind signatures.
-deriveAll0And1WithKindSigs :: Name -> Q [Dec]
-deriveAll0And1WithKindSigs = deriveAllCommon True True True
+-- | Like 'deriveAll0And1', but takes an 'Options' argument.
+deriveAll0And1Options :: Options -> Name -> Q [Dec]
+deriveAll0And1Options = deriveAllCommon True True
 
-deriveAllCommon :: Bool -> Bool -> Bool -> Name -> Q [Dec]
-deriveAllCommon generic generic1 useKindSigs n = do
+deriveAllCommon :: Bool -> Bool -> Options -> Name -> Q [Dec]
+deriveAllCommon generic generic1 opts n = do
     a <- deriveMeta n
     b <- if generic
-            then deriveRepresentableCommon Generic useKindSigs n
+            then deriveRepresentableCommon Generic opts n
             else return []
     c <- if generic1
-            then deriveRepresentableCommon Generic1 useKindSigs n
+            then deriveRepresentableCommon Generic1 opts n
             else return []
     return (a ++ b ++ c)
 
 -- | Given the type and the name (as string) for the Representable0 type
 -- synonym to derive, generate the 'Representable0' instance.
 deriveRepresentable0 :: Name -> Q [Dec]
-deriveRepresentable0 = deriveRepresentableCommon Generic False
+deriveRepresentable0 = deriveRepresentable0Options defaultOptions
 
--- | Like 'deriveRepresentable0', except that the type variable binders in the
--- 'Rep' type synonym will have explicit kind signatures.
-deriveRepresentable0WithKindSigs :: Name -> Q [Dec]
-deriveRepresentable0WithKindSigs = deriveRepresentableCommon Generic True
+-- | Like 'deriveRepresentable0', but takes an 'Options' argument.
+deriveRepresentable0Options :: Options -> Name -> Q [Dec]
+deriveRepresentable0Options = deriveRepresentableCommon Generic
 
 -- | Given the type and the name (as string) for the Representable1 type
 -- synonym to derive, generate the 'Representable1' instance.
 deriveRepresentable1 :: Name -> Q [Dec]
-deriveRepresentable1 = deriveRepresentableCommon Generic1 False
+deriveRepresentable1 = deriveRepresentable1Options defaultOptions
 
--- | Like 'deriveRepresentable1', except that the type variable binders in the
--- 'Rep1' type synonym will have explicit kind signatures.
-deriveRepresentable1WithKindSigs :: Name -> Q [Dec]
-deriveRepresentable1WithKindSigs = deriveRepresentableCommon Generic1 True
+-- | Like 'deriveRepresentable1', but takes an 'Options' argument.
+deriveRepresentable1Options :: Options -> Name -> Q [Dec]
+deriveRepresentable1Options = deriveRepresentableCommon Generic1
 
-deriveRepresentableCommon :: GenericClass -> Bool -> Name -> Q [Dec]
-deriveRepresentableCommon gClass useKindSigs n = do
-    rep  <- deriveRepCommon gClass useKindSigs n
-    inst <- deriveInst gClass n
+deriveRepresentableCommon :: GenericClass -> Options -> Name -> Q [Dec]
+deriveRepresentableCommon gClass opts n = do
+    rep  <- if repOptions opts == InlineRep
+               then return []
+               else deriveRepCommon gClass (kindSigOptions opts) n
+    inst <- deriveInst gClass opts n
     return (rep ++ inst)
 
 -- | Derive only the 'Rep0' type synonym. Not needed if 'deriveRepresentable0'
 -- is used.
 deriveRep0 :: Name -> Q [Dec]
-deriveRep0 = deriveRepCommon Generic False
+deriveRep0 = deriveRep0Options defaultKindSigOptions
 
--- | Like 'deriveRep0', except that the type variable binders in the 'Rep'
--- type synonym will have explicit kind signatures.
-deriveRep0WithKindSigs :: Name -> Q [Dec]
-deriveRep0WithKindSigs = deriveRepCommon Generic True
+-- | Like 'deriveRep0', but takes an 'KindSigOptions' argument.
+deriveRep0Options :: KindSigOptions -> Name -> Q [Dec]
+deriveRep0Options = deriveRepCommon Generic
 
 -- | Derive only the 'Rep1' type synonym. Not needed if 'deriveRepresentable1'
 -- is used.
 deriveRep1 :: Name -> Q [Dec]
-deriveRep1 = deriveRepCommon Generic1 False
+deriveRep1 = deriveRep1Options defaultKindSigOptions
 
--- | Like 'deriveRep1', except that the type variable binders in the 'Rep1'
--- type synonym will have explicit kind signatures.
-deriveRep1WithKindSigs :: Name -> Q [Dec]
-deriveRep1WithKindSigs = deriveRepCommon Generic1 True
+-- | Like 'deriveRep1', but takes an 'KindSigOptions' argument.
+deriveRep1Options :: KindSigOptions -> Name -> Q [Dec]
+deriveRep1Options = deriveRepCommon Generic1
 
-deriveRepCommon :: GenericClass -> Bool -> Name -> Q [Dec]
+deriveRepCommon :: GenericClass -> KindSigOptions -> Name -> Q [Dec]
 deriveRepCommon gClass useKindSigs n = do
   i <- reifyDataInfo n
   let (name, isNT, declTvbs, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
-  !_ <- buildTypeInstance gClass name declTvbs dv
+  !_ <- buildTypeInstance gClass useKindSigs name declTvbs dv
 
-  tySynTvbs <- grabTyVarBndrsFromCons gClass cons
-  let tySynTvbs' = if useKindSigs
-                      then tySynTvbs
-                      else map (\tvb -> if isKindMonomorphic (tyVarBndrKind tvb)
-                                           then tvb
-                                           else unKindedTV tvb) tySynTvbs
+  tySynVars <- grabTyVarsFromCons gClass cons
+
+  -- The typechecker will, ideally, infer the correct kinds of the TyVarBndrs in a
+  -- type synonym declaration, so we don't need to splice them in explicitly
+  -- (hence the unKindedTV call). There are some cases where you do need explicit
+  -- kind variables, however, so we give users the ability to toggle useKingSigs.
+  -- See Note [TODO: Fillmein]
+  let tySynVars' = if useKindSigs
+                      then tySynVars
+                      else map unSigT tySynVars
   fmap (:[]) $ tySynD (genRepName gClass dv name)
-                      tySynTvbs'
-                      -- The typechecker will infer the kinds of the TyVarBndrs
-                      -- in a type synonym declaration, so we don't need to
-                      -- splice them in explicitly (hence the unKindedTV call).
-                      (repType gClass dv name isNT cons tySynTvbs)
+                      (catMaybes $ map typeToTyVarBndr tySynVars')
+                      (repType gClass dv name isNT cons tySynVars)
 
-deriveInst :: GenericClass -> Name -> Q [Dec]
+deriveInst :: GenericClass -> Options -> Name -> Q [Dec]
 deriveInst Generic  = deriveInstCommon genericTypeName  repTypeName  Generic  fromValName  toValName
 deriveInst Generic1 = deriveInstCommon generic1TypeName rep1TypeName Generic1 from1ValName to1ValName
 
-deriveInstCommon :: Name -> Name -> GenericClass -> Name -> Name -> Name -> Q [Dec]
-deriveInstCommon genericName repName gClass fromName toName n = do
+deriveInstCommon :: Name -> Name -> GenericClass -> Name -> Name -> Options -> Name -> Q [Dec]
+deriveInstCommon genericName repName gClass fromName toName opts n = do
   i <- reifyDataInfo n
-  let (name, _, allTvbs, cons, dv) = either error id i
-  origTy      <- buildTypeInstance gClass name allTvbs dv
-  repTySynApp <- makeRepTySynApp gClass dv name cons origTy
-  let tyIns = TySynInstD repName
+  let (name, isNT, allTvbs, cons, dv) = either error id i
+      useKindSigs = kindSigOptions opts
+  -- See Note [Forcing buildTypeInstance]
+  !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name allTvbs dv
+  tyInsRHS <- if repOptions opts == InlineRep
+                 then makeRepInline   gClass dv name isNT cons origTy
+                 else makeRepTySynApp gClass dv name      cons origTy
+
+  let origSigTy = if useKindSigs
+                     then SigT origTy origKind
+                     else origTy
+      tyIns = TySynInstD repName
 #if MIN_VERSION_template_haskell(2,9,0)
-                         (TySynEqn [origTy] repTySynApp)
+                         (TySynEqn [origSigTy] tyInsRHS)
 #else
-                         [origTy] repTySynApp
+                         [origSigTy] tyInsRHS
 #endif
       mkBody maker = [clause [] (normalB $ mkCaseExp gClass name cons maker) []]
       fcs = mkBody mkFrom
       tcs = mkBody mkTo
 
   fmap (:[]) $
-    instanceD (cxt []) (conT genericName `appT` return origTy)
+    instanceD (cxt []) (conT genericName `appT` return origSigTy)
                          [return tyIns, funD fromName fcs, funD toName tcs]
 
 {- $make
@@ -285,7 +315,7 @@ this module are not sophisticated enough to infer the correct 'Generic' or
 'Generic1' instances. As an example, consider this data type:
 
 @
-data Fix f a = Fix (f (Fix f a))
+newtype Fix f a = Fix (f (Fix f a))
 @
 
 A proper 'Generic1' instance would look like this:
@@ -302,16 +332,16 @@ functions in this module that are prefixed with @make@-. For example:
 $('deriveMeta' ''Fix)
 $('deriveRep1' ''Fix)
 instance Functor f => Generic1 (Fix f) where
-  type Rep1 (Fix f) = $('makeRep1FromType' ''Fix [t| Fix f |])
+  type Rep1 (Fix f) = $('makeRep1Inline' ''Fix [t| Fix f |])
   from1 = $('makeFrom1' ''Fix)
   to1   = $('makeTo1'   ''Fix)
 @
 
 Note that due to the lack of type-level lambdas in Haskell, one must manually
-apply @'makeRep1FromType' ''Fix@ to the type @Fix f@.
+apply @'makeRep1Inline' ''Fix@ to the type @Fix f@.
 
 Be aware that there is a bug on GHC 7.0, 7.2, and 7.4 which might prevent you from
-using 'makeRep0FromType' and 'makeRep1FromType'. In the @Fix@ example above, you
+using 'makeRep0Inline' and 'makeRep1Inline'. In the @Fix@ example above, you
 would experience the following error:
 
 @
@@ -319,10 +349,15 @@ would experience the following error:
     In the Template Haskell quotation [t| Fix f |]
 @
 
-Then a workaround is to use 'makeRep1' instead, which requires you to pass as
-arguments the type variables that occur in the instance, in order from left to
-right, excluding duplicates. (Normally, 'makeRep1FromType' would figure this
-out for you.) Using the above example:
+Then a workaround is to use 'makeRep1' instead, which requires you to:
+
+1. Invoke 'deriveRep1' beforehand
+
+2. Pass as arguments the type variables that occur in the instance, in order
+   from left to right, topologically sorted, excluding duplicates. (Normally,
+   'makeRep1Inline' would figure this out for you.)
+
+Using the above example:
 
 @
 $('deriveMeta' ''Fix)
@@ -351,6 +386,40 @@ instance Functor f => Generic1 (Fix b (f c) (g b)) where
 Note that you don't pass @b@ twice, only once.
 -}
 
+-- | Generates the full 'Rep' type inline. Since this type can be quite
+-- large, it is recommended you only use this to define 'Rep', e.g.,
+--
+-- @
+-- type Rep (Foo (a :: k) b) = $('makeRep0Inline' ''Foo [t| Foo (a :: k) b |])
+-- @
+--
+-- You can then simply refer to @Rep (Foo a b)@ elsewhere.
+--
+-- Note that the type passed as an argument to 'makeRep0Inline' must match the
+-- type argument of 'Rep' exactly, even up to including the explicit kind
+-- signature on @a@. This is due to a limitation of Template Haskell—without
+-- the kind signature, 'makeRep0Inline' has no way of figuring out the kind of
+-- @a@, and the generated type might be completely wrong as a result!
+makeRep0Inline :: Name -> Q Type -> Q Type
+makeRep0Inline n = makeRepCommon Generic InlineRep n . Just
+
+-- | Generates the full 'Rep1' type inline. Since this type can be quite
+-- large, it is recommended you only use this to define 'Rep1', e.g.,
+--
+-- @
+-- type Rep1 (Foo (a :: k)) = $('makeRep0Inline' ''Foo [t| Foo (a :: k) |])
+-- @
+--
+-- You can then simply refer to @Rep1 (Foo a)@ elsewhere.
+--
+-- Note that the type passed as an argument to 'makeRep1Inline' must match the
+-- type argument of 'Rep1' exactly, even up to including the explicit kind
+-- signature on @a@. This is due to a limitation of Template Haskell—without
+-- the kind signature, 'makeRep1Inline' has no way of figuring out the kind of
+-- @a@, and the generated type might be completely wrong as a result!
+makeRep1Inline :: Name -> Q Type -> Q Type
+makeRep1Inline n = makeRepCommon Generic1 InlineRep n . Just
+
 -- | Generates the 'Rep' type synonym constructor (as opposed to 'deriveRep0',
 -- which generates the type synonym declaration). After splicing it into
 -- Haskell source, it expects types as arguments. For example:
@@ -358,51 +427,98 @@ Note that you don't pass @b@ twice, only once.
 -- @
 -- type Rep (Foo a b) = $('makeRep0' ''Foo) a b
 -- @
+--
+-- The use of 'makeRep0' is generally discouraged, as it can sometimes be
+-- difficult to predict the order in which you are expected to pass type
+-- variables. As a result, 'makeRep0Inline' is recommended instead. However,
+-- 'makeRep0Inline' is not usable on GHC 7.0, 7.2, or 7.4 due to a GHC bug,
+-- so 'makeRep0' still exists for GHC 7.0, 7.2, and 7.4 users.
 makeRep0 :: Name -> Q Type
-makeRep0 n = makeRepCommon Generic n Nothing
+makeRep0 n = makeRepCommon Generic TypeSynonymRep n Nothing
 
 -- | Generates the 'Rep1' type synonym constructor (as opposed to 'deriveRep1',
 -- which generates the type synonym declaration). After splicing it into
 -- Haskell source, it expects types as arguments. For example:
 --
 -- @
--- type Rep1 (Foo a b) = $('makeRep1' ''Foo) a b
+-- type Rep1 (Foo a) = $('makeRep1' ''Foo) a
 -- @
+--
+-- The use of 'makeRep1' is generally discouraged, as it can sometimes be
+-- difficult to predict the order in which you are expected to pass type
+-- variables. As a result, 'makeRep1Inline' is recommended instead. However,
+-- 'makeRep1Inline' is not usable on GHC 7.0, 7.2, or 7.4 due to a GHC bug,
+-- so 'makeRep1' still exists for GHC 7.0, 7.2, and 7.4 users.
 makeRep1 :: Name -> Q Type
-makeRep1 n = makeRepCommon Generic1 n Nothing
+makeRep1 n = makeRepCommon Generic1 TypeSynonymRep n Nothing
 
 -- | Generates the 'Rep' type synonym constructor (as opposed to 'deriveRep0',
 -- which generates the type synonym declaration) applied to its type arguments.
 -- Unlike 'makeRep0', this also takes a quoted 'Type' as an argument, e.g.,
 --
 -- @
--- type Rep (Foo a b) = $('makeRep0FromType' ''Foo [t| Foo a b |])
+-- type Rep (Foo (a :: k) b) = $('makeRep0FromType' ''Foo [t| Foo (a :: k) b |])
 -- @
+--
+-- Note that the type passed as an argument to 'makeRep0FromType' must match the
+-- type argument of 'Rep' exactly, even up to including the explicit kind
+-- signature on @a@. This is due to a limitation of Template Haskell—without
+-- the kind signature, 'makeRep0FromType' has no way of figuring out the kind of
+-- @a@, and the generated type might be completely wrong as a result!
+--
+-- The use of 'makeRep0FromType' is generally discouraged, since 'makeRep0Inline'
+-- does exactly the same thing but without having to go through an intermediate
+-- type synonym, and as a result, 'makeRep0Inline' tends to be less buggy.
 makeRep0FromType :: Name -> Q Type -> Q Type
-makeRep0FromType n = makeRepCommon Generic n . Just
+makeRep0FromType n = makeRepCommon Generic TypeSynonymRep n . Just
 
 -- | Generates the 'Rep1' type synonym constructor (as opposed to 'deriveRep1',
 -- which generates the type synonym declaration) applied to its type arguments.
 -- Unlike 'makeRep1', this also takes a quoted 'Type' as an argument, e.g.,
 --
 -- @
--- type Rep1 (Foo a b) = $('makeRep1FromType' ''Foo [t| Foo a b |])
+-- type Rep1 (Foo (a :: k)) = $('makeRep1FromType' ''Foo [t| Foo (a :: k) |])
 -- @
+--
+-- Note that the type passed as an argument to 'makeRep1FromType' must match the
+-- type argument of 'Rep' exactly, even up to including the explicit kind
+-- signature on @a@. This is due to a limitation of Template Haskell—without
+-- the kind signature, 'makeRep1FromType' has no way of figuring out the kind of
+-- @a@, and the generated type might be completely wrong as a result!
+--
+-- The use of 'makeRep1FromType' is generally discouraged, since 'makeRep1Inline'
+-- does exactly the same thing but without having to go through an intermediate
+-- type synonym, and as a result, 'makeRep1Inline' tends to be less buggy.
 makeRep1FromType :: Name -> Q Type -> Q Type
-makeRep1FromType n = makeRepCommon Generic1 n . Just
+makeRep1FromType n = makeRepCommon Generic1 TypeSynonymRep n . Just
 
 makeRepCommon :: GenericClass
+              -> RepOptions
               -> Name
               -> Maybe (Q Type)
               -> Q Type
-makeRepCommon gClass n mbQTy = do
+makeRepCommon gClass repOpts n mbQTy = do
   i <- reifyDataInfo n
-  let (name, _, _, cons, dv) = either error id i
-  case mbQTy of
-       Just qTy -> do
-           ty <- qTy
-           makeRepTySynApp gClass dv name cons ty
-       Nothing -> conT $ genRepName gClass dv name
+  let (name, isNT, declTvbs, cons, dv) = either error id i
+  -- See Note [Forcing buildTypeInstance]
+  !_ <- buildTypeInstance gClass False name declTvbs dv
+
+  case (mbQTy, repOpts) of
+       (Just qTy, TypeSynonymRep) -> qTy >>= makeRepTySynApp gClass dv name cons
+       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass dv name isNT cons
+       (Nothing,  TypeSynonymRep) -> conT $ genRepName gClass dv name
+       (Nothing,  InlineRep)      -> fail "makeRepCommon"
+
+makeRepInline :: GenericClass
+              -> DataVariety
+              -> Name
+              -> Bool
+              -> [Con]
+              -> Type
+              -> Q Type
+makeRepInline gClass dv name isNT cons ty = do
+  let instVars = map tyVarBndrToType $ tyVarsOfType ty
+  repType gClass dv name isNT cons instVars
 
 makeRepTySynApp :: GenericClass
                 -> DataVariety
@@ -415,15 +531,15 @@ makeRepTySynApp gClass dv name cons ty = do
   -- of the LHS of the Rep(1) instance. We call unKindedTV because the kind
   -- inferencer can figure out the kinds perfectly well, so we don't need to
   -- give anything here explicit kind signatures.
-  let instTvbs = nub . map unKindedTV $ visibleTyVarsOfType ty
+  let instTvbs = nub . map unKindedTV $ requiredTyVarsOfType ty
   -- We grab the type variables from the first constructor's type signature.
   -- Or, if there are no constructors, we grab no type variables. The latter
   -- is okay because we use zipWith to ensure that we never pass more type
   -- variables than the generated type synonym can accept.
   -- See Note [Arguments to generated type synonyms]
-  tySynTvbs <- grabTyVarBndrsFromCons gClass cons
+  tySynVars <- grabTyVarsFromCons gClass cons
   return . applyTyToTvbs (genRepName gClass dv name)
-         $ zipWith const instTvbs tySynTvbs
+         $ zipWith const instTvbs tySynVars
 
 -- | A backwards-compatible synonym for 'makeFrom0'.
 makeFrom :: Name -> Q Exp
@@ -455,7 +571,7 @@ makeFunCommon maker gClass n = do
   i <- reifyDataInfo n
   let (name, _, allTvbs, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
-  buildTypeInstance gClass name allTvbs dv
+  buildTypeInstance gClass False name allTvbs dv
     `seq` mkCaseExp gClass name cons maker
 
 genRepName :: GenericClass -> DataVariety -> Name -> Name
@@ -471,12 +587,12 @@ repType :: GenericClass
         -> Name
         -> Bool
         -> [Con]
-        -> [TyVarBndr]
+        -> [Type]
         -> Q Type
-repType gClass dv dt isNT cs tySynTvbs =
+repType gClass dv dt isNT cs tySynVars =
     conT d1TypeName `appT` mkMetaDataType dv dt isNT `appT`
       foldr1' sum' (conT v1TypeName)
-        (map (repCon gClass dv dt tySynTvbs) cs)
+        (map (repCon gClass dv dt tySynVars) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
@@ -484,35 +600,35 @@ repType gClass dv dt isNT cs tySynTvbs =
 repCon :: GenericClass
        -> DataVariety
        -> Name
-       -> [TyVarBndr]
+       -> [Type]
        -> Con
        -> Q Type
-repCon gClass dv dt tySynTvbs (NormalC n bts) = do
+repCon gClass dv dt tySynVars (NormalC n bts) = do
     let bangs = map fst bts
     ssis <- reifySelStrictInfo n bangs
-    repConWith gClass dv dt n tySynTvbs Nothing ssis False False
-repCon gClass dv dt tySynTvbs (RecC n vbts) = do
+    repConWith gClass dv dt n tySynVars Nothing ssis False False
+repCon gClass dv dt tySynVars (RecC n vbts) = do
     let (selNames, bangs, _) = unzip3 vbts
     ssis <- reifySelStrictInfo n bangs
-    repConWith gClass dv dt n tySynTvbs (Just selNames) ssis True False
-repCon gClass dv dt tySynTvbs (InfixC t1 n t2) = do
+    repConWith gClass dv dt n tySynVars (Just selNames) ssis True False
+repCon gClass dv dt tySynVars (InfixC t1 n t2) = do
     let bangs = map fst [t1, t2]
     ssis <- reifySelStrictInfo n bangs
-    repConWith gClass dv dt n tySynTvbs Nothing ssis False True
+    repConWith gClass dv dt n tySynVars Nothing ssis False True
 repCon _ _ _ _ con = gadtError con
 
 repConWith :: GenericClass
            -> DataVariety
            -> Name
            -> Name
-           -> [TyVarBndr]
+           -> [Type]
            -> Maybe [Name]
            -> [SelStrictInfo]
            -> Bool
            -> Bool
            -> Q Type
-repConWith gClass dv dt n tySynTvbs mbSelNames ssis isRecord isInfix = do
-    (conTvbs, ts, gk) <- reifyConTys gClass n
+repConWith gClass dv dt n tySynVars mbSelNames ssis isRecord isInfix = do
+    (conVars, ts, gk) <- reifyConTys gClass n
 
     let structureType :: Q Type
         structureType = case ssis of
@@ -522,8 +638,8 @@ repConWith gClass dv dt n tySynTvbs mbSelNames ssis isRecord isInfix = do
         -- See Note [Substituting types in a constructor type signature]
         typeSubst :: TypeSubst
         typeSubst = Map.fromList $
-          zip (concatMap             tyVarNamesOfTyVarBndr  conTvbs)
-              (concatMap (map VarT . tyVarNamesOfTyVarBndr) tySynTvbs)
+          zip (concatMap             tyVarNamesOfType  conVars)
+              (concatMap (map VarT . tyVarNamesOfType) tySynVars)
 
         f :: [Q Type]
         f = case mbSelNames of
@@ -556,7 +672,12 @@ repField gk dv dt ns typeSubst mbF ssi t =
     -- See Note [Substituting types in constructor type signatures]
     t', t'' :: Type
     t' = case gk of
-              Gen1 _ (Just kvName) -> substNameWithKind kvName starK t
+              Gen1 _ (Just _kvName) ->
+#if __GLASGOW_HASKELL__ >= 801
+                t
+#else
+                substNameWithKind _kvName starK t
+#endif
               _ -> t
     t'' = substType typeSubst t'
 
@@ -805,9 +926,11 @@ unboxedRepNames ty
   | ty == ConT wordHashTypeName   = Just (uWordTypeName,   uWordDataName,   uWordHashValName)
   | otherwise                     = Nothing
 
--- | Deduces the instance type to use for a Generic(1) instance.
+-- | Deduces the instance type (and kind) to use for a Generic(1) instance.
 buildTypeInstance :: GenericClass
                   -- ^ Generic or Generic1
+                  -> KindSigOptions
+                  -- ^ Whether or not to use explicit kind signatures in the instance type
                   -> Name
                   -- ^ The type constructor or data family name
                   -> [TyVarBndr]
@@ -815,17 +938,17 @@ buildTypeInstance :: GenericClass
                   -> DataVariety
                   -- ^ If using a data family instance, provides the types used
                   -- to instantiate the instance
-                  -> Q Type
+                  -> Q (Type, Kind)
 -- Plain data type/newtype case
-buildTypeInstance gClass tyConName tvbs DataPlain =
+buildTypeInstance gClass useKindSigs tyConName tvbs DataPlain =
     let varTys :: [Type]
         varTys = map tyVarBndrToType tvbs
-    in buildTypeInstanceFromTys gClass tyConName varTys False
+    in buildTypeInstanceFromTys gClass useKindSigs tyConName varTys
 -- Data family instance case
 --
 -- The CPP is present to work around a couple of annoying old GHC bugs.
 -- See Note [Polykinded data families in Template Haskell]
-buildTypeInstance gClass parentName tvbs (DataFamily _ instTysAndKinds) = do
+buildTypeInstance gClass useKindSigs parentName tvbs (DataFamily _ instTysAndKinds) = do
 #if !(MIN_VERSION_template_haskell(2,8,0)) || MIN_VERSION_template_haskell(2,10,0)
     let instTys :: [Type]
         instTys = zipWith stealKindForType tvbs instTysAndKinds
@@ -860,11 +983,11 @@ buildTypeInstance gClass parentName tvbs (DataFamily _ instTysAndKinds) = do
     xTypeNames <- newNameList "tExtra" (length tvbs - length givenTys)
 
     let xTys   :: [Type]
+        -- Because these type variables were eta-reduced away, we can only
+        -- determine their kind by using stealKindForType. Therefore, we mark
+        -- them as VarT to ensure they will be given an explicit kind annotation
+        -- (and so the kind inference machinery has the right information).
         xTys = map VarT xTypeNames
-        -- ^ Because these type variables were eta-reduced away, we can only
-        --   determine their kind by using stealKindForType. Therefore, we mark
-        --   them as VarT to ensure they will be given an explicit kind annotation
-        --   (and so the kind inference machinery has the right information).
 
         substNamesWithKinds :: [(Name, Kind)] -> Type -> Type
         substNamesWithKinds nks t = foldr' (uncurry substNameWithKind) t nks
@@ -884,22 +1007,23 @@ buildTypeInstance gClass parentName tvbs (DataFamily _ instTysAndKinds) = do
                   -- grab the correct kind.
                 $ zipWith stealKindForType tvbs (givenTys ++ xTys)
 #endif
-    buildTypeInstanceFromTys gClass parentName instTys True
+    buildTypeInstanceFromTys gClass useKindSigs parentName instTys
 
--- For the given Types, deduces the instance type to use for a Generic(1) instance.
--- Coming up with the instance type isn't as simple as dropping the last types, as
--- you need to be wary of kinds being instantiated with *.
+-- For the given Types, deduces the instance type (and kind) to use for a
+-- Generic(1) instance. Coming up with the instance type isn't as simple as
+-- dropping the last types, as you need to be wary of kinds being instantiated
+-- with *.
 -- See Note [Type inference in derived instances]
 buildTypeInstanceFromTys :: GenericClass
                          -- ^ Generic or Generic1
+                         -> KindSigOptions
+                         -- ^ Whether or not to use explicit kind signatures in the instance type
                          -> Name
                          -- ^ The type constructor or data family name
                          -> [Type]
                          -- ^ The types to instantiate the instance with
-                         -> Bool
-                         -- ^ True if it's a data family, False otherwise
-                         -> Q Type
-buildTypeInstanceFromTys gClass tyConName varTysOrig isDataFamily = do
+                         -> Q (Type, Kind)
+buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
     -- Make sure to expand through type/kind synonyms! Otherwise, the
     -- eta-reduction check might get tripped up over type variables in a
     -- synonym that are actually dropped.
@@ -920,35 +1044,28 @@ buildTypeInstanceFromTys gClass tyConName varTysOrig isDataFamily = do
     when (remainingLength < 0 || any (== NotKindStar) droppedStarKindStati) $
       derivingKindError tyConName
 
-    let droppedKindVarNames :: [Name]
-        droppedKindVarNames = catKindVarNames droppedStarKindStati
-
         -- Substitute kind * for any dropped kind variables
-        varTysExpSubst :: [Type]
+    let varTysExpSubst :: [Type]
+#if __GLASGOW_HASKELL__ >= 801
+        varTysExpSubst = varTysExp
+#else
         varTysExpSubst = map (substNamesWithKindStar droppedKindVarNames) varTysExp
 
-    -- We must take care to avoid allowing Generic1 instances where a visible kind
-    -- binder is instantiated to * (which should only happen in the presence of
-    -- -XTypeInType). See the documentation for instantiationError for an example
-    -- of when this can occur.
-    --
-    -- A quick-and-dirty way to accomplish this is to check if the visible type
-    -- binders of the original type, and of the type post-synonym-expansion, are
-    -- both the same. If not, it's likely that one of the type binders was
-    -- instantiated to a specific type (likely *).
-    when (concatMap visibleTyVarsOfType varTysExp
-            /= concatMap visibleTyVarsOfType varTysExpSubst) $
-      instantiationError tyConName
+        droppedKindVarNames :: [Name]
+        droppedKindVarNames = catKindVarNames droppedStarKindStati
+#endif
 
     let remainingTysExpSubst, droppedTysExpSubst :: [Type]
         (remainingTysExpSubst, droppedTysExpSubst) =
           splitAt remainingLength varTysExpSubst
 
+#if __GLASGOW_HASKELL__ < 801
     -- If any of the dropped types were polykinded, ensure that there are of
     -- kind * after substituting * for the dropped kind variables. If not,
     -- throw an error.
     unless (all hasKindStar droppedTysExpSubst) $
       derivingKindError tyConName
+#endif
 
         -- We now substitute all of the specialized-to-* kind variable names
         -- with *, but in the original types, not the synonym-expanded types. The reason
@@ -966,32 +1083,44 @@ buildTypeInstanceFromTys gClass tyConName varTysOrig isDataFamily = do
         -- Not:
         --
         --   instance C (Fam [Char])
-    let remainingTysOrigSubst :: [Type]
-        remainingTysOrigSubst =
+    let varTysOrigSubst :: [Type]
+        varTysOrigSubst =
+#if __GLASGOW_HASKELL__ >= 801
+          id
+#else
           map (substNamesWithKindStar droppedKindVarNames)
-            $ take remainingLength varTysOrig
+#endif
+            $ varTysOrig
+
+        remainingTysOrigSubst, droppedTysOrigSubst :: [Type]
+        (remainingTysOrigSubst, droppedTysOrigSubst) =
+            splitAt remainingLength varTysOrigSubst
 
         remainingTysOrigSubst' :: [Type]
         -- See Note [Kind signatures in derived instances] for an explanation
-        -- of the isDataFamily check.
+        -- of the useKindSigs check.
         remainingTysOrigSubst' =
-          if isDataFamily
+          if useKindSigs
              then remainingTysOrigSubst
              else map unSigT remainingTysOrigSubst
 
         instanceType :: Type
         instanceType = applyTyToTys (ConT tyConName) remainingTysOrigSubst'
 
+        -- See Note [Eta-reduced kind variables]
+        instanceKind :: Kind
+        instanceKind = makeFunKind (map typeKind droppedTysOrigSubst) starK
+
     -- Ensure the dropped types can be safely eta-reduced. Otherwise,
     -- throw an error.
     unless (canEtaReduce remainingTysExpSubst droppedTysExpSubst) $
       etaReductionError instanceType
-    return instanceType
+    return (instanceType, instanceKind)
 
 -- See Note [Arguments to generated type synonyms]
-grabTyVarBndrsFromCons :: GenericClass -> [Con] -> Q [TyVarBndr]
-grabTyVarBndrsFromCons _      []      = return []
-grabTyVarBndrsFromCons gClass (con:_) =
+grabTyVarsFromCons :: GenericClass -> [Con] -> Q [Type]
+grabTyVarsFromCons _      []      = return []
+grabTyVarsFromCons gClass (con:_) =
     fmap fst3 $ reifyConTys gClass (constructorName con)
 
 {-
@@ -1108,6 +1237,8 @@ Doing the same for data families proves to be much harder for three reasons:
 Note [Kind signatures in derived instances]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+TODO: This needs updating
+
 It is possible to put explicit kind signatures into the derived instances, e.g.,
 
   instance C a => C (Data (f :: * -> *)) where ...
@@ -1137,4 +1268,8 @@ include explicit kind signatures in data family instances. There is a chance tha
 the inferred kind signatures will be incorrect, but if so, we can always fall back
 on the make- functions.
 
+Note [Eta-reduced kind variables]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TODO:
 -}

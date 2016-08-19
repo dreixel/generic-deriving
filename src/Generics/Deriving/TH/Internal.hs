@@ -105,16 +105,17 @@ substNameWithKind n k = substKind (Map.singleton n k)
 substNamesWithKindStar :: [Name] -> Type -> Type
 substNamesWithKindStar ns t = foldr' (flip substNameWithKind starK) t ns
 
-substTyVarBndrKind :: KindSubst -> TyVarBndr -> TyVarBndr
-substTyVarBndrKind _subs (KindedTV n k) = KindedTV n $
-#if MIN_VERSION_template_haskell(2,8,0)
-    substKind _subs k
-#else
-    k
-#endif
-substTyVarBndrKind _ tvb = tvb
+substTyVarBndrType :: TypeSubst -> TyVarBndr -> Type
+substTyVarBndrType subs = substType subs . tyVarBndrToType
 
-substNameWithKindStarInTyVarBndr :: Name -> TyVarBndr -> TyVarBndr
+substTyVarBndrKind :: KindSubst -> TyVarBndr -> Type
+#if MIN_VERSION_template_haskell(2,8,0)
+substTyVarBndrKind = substTyVarBndrType
+#else
+substTyVarBndrKind _ = tyVarBndrToType
+#endif
+
+substNameWithKindStarInTyVarBndr :: Name -> TyVarBndr -> Type
 substNameWithKindStarInTyVarBndr n = substTyVarBndrKind (Map.singleton n starK)
 
 -------------------------------------------------------------------------------
@@ -162,10 +163,6 @@ hasKindStar (SigT _ StarK) = True
 #endif
 hasKindStar _              = False
 
-tyVarNamesOfTyVarBndr :: TyVarBndr -> [Name]
-tyVarNamesOfTyVarBndr (PlainTV n)    = [n]
-tyVarNamesOfTyVarBndr (KindedTV n k) = n:kindVarNamesOfKind k
-
 -- | Gets all of the type/kind variable names mentioned somewhere in a Type.
 tyVarNamesOfType :: Type -> [Name]
 tyVarNamesOfType = go
@@ -179,25 +176,74 @@ tyVarNamesOfType = go
     go (VarT n)     = [n]
     go _            = []
 
--- | Gets all of the kind variable names mentioned somewhere in a Kind.
-kindVarNamesOfKind :: Kind -> [Name]
+-- | Gets all of the type/kind variable binders mentioned in a Type.
+tyVarsOfType :: Type -> [TyVarBndr]
+tyVarsOfType = go
+  where
+    go :: Type -> [TyVarBndr]
+    go (AppT t1 t2) = go t1 ++ go t2
+    go (SigT t _k)  = go t
 #if MIN_VERSION_template_haskell(2,8,0)
-kindVarNamesOfKind = tyVarNamesOfType
-#else
-kindVarNamesOfKind _ = [] -- There are no kind variables
+                           ++ go _k
 #endif
+    go (VarT n)     = [PlainTV n]
+    go _            = []
 
--- | Gets all of the specified type/kind variable names mentioned in a Type. In
--- contrast to 'tyVarNamesOfType', 'visibleTyVarsOfType' does not go into kinds
+-- | Gets all of the required type/kind variable binders mentioned in a Type. In
+-- contrast to 'tyVarsOfType', 'requiredTyVarsOfType' does not go into kinds
 -- of 'SigT's.
-visibleTyVarsOfType :: Type -> [TyVarBndr]
-visibleTyVarsOfType = go
+requiredTyVarsOfType :: Type -> [TyVarBndr]
+requiredTyVarsOfType = go
   where
     go :: Type -> [TyVarBndr]
     go (AppT t1 t2) = go t1 ++ go t2
     go (SigT t _)   = go t
     go (VarT n)     = [PlainTV n]
     go _            = []
+
+-- | Converts a VarT or a SigT into Just the corresponding TyVarBndr.
+-- Converts other Types to Nothing.
+typeToTyVarBndr :: Type -> Maybe TyVarBndr
+typeToTyVarBndr (VarT n)          = Just (PlainTV n)
+typeToTyVarBndr (SigT (VarT n) k) = Just (KindedTV n k)
+typeToTyVarBndr _                 = Nothing
+
+-- | If a Type is a SigT, returns its kind signature. Otherwise, return *.
+typeKind :: Type -> Kind
+typeKind (SigT _ k) = k
+typeKind _          = starK
+
+-- | Turns
+--
+-- @
+-- [a, b] c
+-- @
+--
+-- into
+--
+-- @
+-- a -> b -> c
+-- @
+makeFunType :: [Type] -> Type -> Type
+makeFunType argTys resTy = foldr' (AppT . AppT ArrowT) resTy argTys
+
+-- | Turns
+--
+-- @
+-- [k1, k2] k3
+-- @
+--
+-- into
+--
+-- @
+-- k1 -> k2 -> k3
+-- @
+makeFunKind :: [Kind] -> Kind -> Kind
+#if MIN_VERSION_template_haskell(2,8,0)
+makeFunKind = makeFunType
+#else
+makeFunKind argKinds resKind = foldr' ArrowK resKind argKinds
+#endif
 
 -- | Is the given type a type family constructor (and not a data family constructor)?
 isTyFamily :: Type -> Q Bool
@@ -357,14 +403,6 @@ isTypeMonomorphic = go
     go VarT{}       = False
     go _            = True
 
--- | Returns 'True' is a 'Kind' contains no kind variables.
-isKindMonomorphic :: Kind -> Bool
-#if MIN_VERSION_template_haskell(2,8,0)
-isKindMonomorphic = isTypeMonomorphic
-#else
-isKindMonomorphic _ = True -- There are no kind variables
-#endif
-
 -- | Peel off a kind signature from a Type (if it has one).
 unSigT :: Type -> Type
 unSigT (SigT t _) = t
@@ -456,11 +494,12 @@ data GenericClass = Generic | Generic1 deriving Enum
 data GenericKind = Gen0
                  | Gen1 Name (Maybe Name)
 
--- Determines the universally quantified type variables, the types of a constructor's
+-- Determines the universally quantified type variables (possibly after
+-- substituting * in the case of Generic1), the types of a constructor's
 -- arguments, and the last type parameter name (if there is one).
 reifyConTys :: GenericClass
             -> Name
-            -> Q ([TyVarBndr], [Type], GenericKind)
+            -> Q ([Type], [Type], GenericKind)
 reifyConTys gClass conName = do
     info <- reify conName
     let (tvbs, uncTy) = case info of
@@ -479,43 +518,47 @@ reifyConTys gClass conName = do
     --
     -- which you'd only be able to tell was legal if you expand Constant a b to a!
     resTyExp <- expandSyn resTy
-    let numResTyVars = length . nub $ visibleTyVarsOfType resTyExp
-        -- ^ We need to grab a number of type variables from the constructor's
+    let numResTyVars = length . nub $ requiredTyVarsOfType resTyExp
+        -- We need to grab a number of types from the constructor's
         -- type signature to re-use for the Rep(1) type synonym's type variable
         -- binders. As it turns out, that number is equal to the number of distinct
         -- type variables which appear in the result type.
         --
-        -- We assume that the visible type variables all come last in the list
+        -- We assume that the required types all come last in the list
         -- of forall'd type variables. I suppose nothing guarantees this, but
         -- this seems to always be the case via experimentation. Fingers crossed.
-        -- TODO: This doesn't work with -XTypeInType and data families
-        visibleTvbs = drop (length tvbs - numResTyVars) tvbs
-    let (visibleTvbs', gk) = case gClass of
-           Generic  -> (visibleTvbs, Gen0)
+        requiredTvbs = drop (length tvbs - numResTyVars) tvbs
+    let (requiredTyVars', gk) = case gClass of
+           Generic  -> (map tyVarBndrToType requiredTvbs, Gen0)
            Generic1 ->
              -- If deriving Generic1 and the last type variable is polykinded,
              -- make sure to substitute that kind with * in the other type
              -- variable binders' kind signatures
-             let headVisibleTvbs :: [TyVarBndr]
-                 lastVisibleTvb :: TyVarBndr
-                 (headVisibleTvbs, [lastVisibleTvb]) =
-                   splitAt (length visibleTvbs - 1) visibleTvbs
+             let headRequiredTvbs :: [TyVarBndr]
+                 lastRequiredTvb :: TyVarBndr
+                 (headRequiredTvbs, [lastRequiredTvb]) =
+                   splitAt (length requiredTvbs - 1) requiredTvbs
 
                  mbLastArgKindName :: Maybe Name
                  mbLastArgKindName = starKindStatusToName
                                    . canRealizeKindStar
-                                   $ tyVarBndrToType lastVisibleTvb
+                                   $ tyVarBndrToType lastRequiredTvb
 
-                 visibleTvbsSubst :: [TyVarBndr]
-                 visibleTvbsSubst =
+                 requiredTyVars :: [Type]
+                 requiredTyVars =
                    case mbLastArgKindName of
-                        Nothing   -> headVisibleTvbs
-                        Just lakn -> map (substNameWithKindStarInTyVarBndr lakn)
-                                         headVisibleTvbs
-             in ( visibleTvbsSubst
-                , Gen1 (tyVarBndrName lastVisibleTvb) mbLastArgKindName
+                        Nothing   -> map tyVarBndrToType headRequiredTvbs
+                        Just _lakn ->
+#if __GLASGOW_HASKELL__ >= 801
+                          map tyVarBndrToType headRequiredTvbs
+#else
+                          map (substNameWithKindStarInTyVarBndr _lakn)
+                              headRequiredTvbs
+#endif
+             in ( requiredTyVars
+                , Gen1 (tyVarBndrName lastRequiredTvb) mbLastArgKindName
                 )
-    return (visibleTvbs', argTys, gk)
+    return (requiredTyVars', argTys, gk)
 
 -- | Indicates whether Generic(1) is being derived for a plain data type (DataPlain)
 -- or a data family instance (DataFamily). DataFamily bundles the Name of the data
@@ -576,21 +619,6 @@ gadtError con = error $
 -- when deriving Generic(1)
 rankNError :: a
 rankNError = error "Cannot have polymorphic arguments"
-
--- | Cannot have a Generic(1) instance where the instance head's type is instantiated
--- to be a more "saturated" type than the original data declaration. That means
--- something like this would be rejected:
---
--- @
--- {-# LANGUAGE TypeInType #-}
--- data Hm k (a :: k) deriving Generic1
--- @
---
--- Since having a Generic1 instance would force k to be instantiated with *,
--- resulting in an instance Generic1 (Hm *) instead of instance Generic1 (Hm k).
-instantiationError :: Name -> a
-instantiationError tyConName = error $
-    nameBase tyConName ++ " must not be instantiated"
 
 -- | Boilerplate for top level splices.
 --

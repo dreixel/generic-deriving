@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.10.7
+version:                1.11
 synopsis:               Generic programming library for generalised deriving.
 description:
 
@@ -12,7 +12,7 @@ description:
   .
   The current implementation integrates with the new GHC Generics. See
   <http://www.haskell.org/haskellwiki/GHC.Generics> for more information.
-  Template Haskell code is provided for supporting GHC before version 7.2.
+  Template Haskell code is provided for supporting older GHCs.
 
 homepage:               https://github.com/dreixel/generic-deriving
 bug-reports:            https://github.com/dreixel/generic-deriving/issues

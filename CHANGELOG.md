@@ -1,4 +1,41 @@
-# next
+# 1.11
+* The behavior of function in `Generics.Deriving.TH` has changed with respect
+  to when type synonyms are generated for `Rep(1)` definitions. In particular:
+
+  * By default, `deriveRepresentable(1)` will no longer define its `Rep(1)`
+    type family instance in terms of the type synonym that has to be generated
+    with `deriveRep(1)`. Similarly, `deriveAll(1)` and `deriveAll0And1` will no
+    longer generate a type synonym. Instead, they will generate `Generic(1)`
+    instances that directly define the `Rep(1)` instance inline. If you wish
+    to revert to the old behavior, you will need to use the variants of those
+    functions suffixed with `-Options`.
+  * New functions `makeRep0Inline` and `makeRep1Inline` have been added which,
+    for most purposes, should replace uses of `makeRep0`/`makeRep0FromType`
+    and `makeRep1`/`makeRep1FromType` (but see the next bullet point for a
+    caveat).
+  * The use of `deriveRep(1)`, `makeRep0`/`makeRep0FromType`, and
+    `makeRep1`/`makeRep1FromType` are now discouraged, but those functions are
+    still available. The reason is that on GHC 7.0/7.2/7.4, it is impossible to use
+    `makeRep0Inline`/`makeRep1Inline` due to a GHC bug. Therefore, you must use
+    `makeRep0`/`makeRep1` and `deriveRep(1)` on GHC 7.0/7.2/7.4 out of necessity.
+
+  These changes make dealing with `Generic` instances that involve `PolyKinds`
+  and `TypeInType` much easier.
+* All functions suffixed in `-WithKindSigs` in `Generics.Deriving.TH` have been
+  removed in favor of a more sensible `-Options` suffixing scheme. The ability to
+  toggle whether explicit kind signatures are used on type variable binders has
+  been folded into `KindSigOptions`, which is an explicit argument to
+  `deriveRep0Options`/`deriveRep1Options` and also a field in the more general
+  'Options' data type.
+* Furthermore, the behavior of derived instances' kind signatures has changed.
+  By default, the TH code will now _always_ use explicit kind signatures
+  whenever possible, regardless of whether you're working with plain data types
+  or data family instances. This makes working with `TypeInType` less
+  surprising, but at the cost of making it slightly more awkward to work with
+  derived `Generic1` instances that constrain kinds to `*` by means of `(:.:)`.
+* Fix a bug in which `makeRep` (and similarly named functions) would not check
+  whether the argument type can actually have a well kinded `Generic(1)`
+  instance.
 * Backport missing `Foldable` and `Traversable` instances for `Rec1`
 
 # 1.10.7
