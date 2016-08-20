@@ -122,7 +122,17 @@ import           Language.Haskell.TH
   'deriveRep1') and define a 'Rep' instance in terms of that type synonym (the
   'TypeSynonymRep' option).
 
-* 'KindSigOptions': TODO
+* 'KindSigOptions': By default, all derived instances will use explicit kind
+  signatures (when the 'KindSigOptions' is 'True'). You might wish to set the
+  'KindSigOptions' to 'False' if you want a 'Generic'/'Generic1' instance at
+  a particular kind that GHC will infer correctly, but the functions in this
+  module won't guess correctly. For example, the following example will only
+  compile with 'KindSigOptions' set to 'False':
+
+  @
+  newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
+  $('deriveAll1Options' False ''Compose)
+  @
 -}
 
 -- | Given the names of a generic class, a type to instantiate, a function in
@@ -137,32 +147,36 @@ simplInstance cl ty fn df = do
     [funD fn [clause [] (normalB (varE df `appE`
       (sigE (varE undefinedValName) (return typ)))) []]]
 
--- | TODO
+-- | Additional options for configuring derived 'Generic'/'Generic1' instances
+-- using Template Haskell.
 data Options = Options
   { repOptions     :: RepOptions
   , kindSigOptions :: KindSigOptions
   } deriving (Eq, Ord, Read, Show)
 
--- | TODO
+-- | Sensible default 'Options' ('defaultRepOptions' and 'defaultKindSigOptions').
 defaultOptions :: Options
 defaultOptions = Options
   { repOptions     = defaultRepOptions
   , kindSigOptions = defaultKindSigOptions
   }
 
--- | TODO
+-- | Configures whether 'Rep'/'Rep1' type instances should be defined inline in a
+-- derived 'Generic'/'Generic1' instance ('InlineRep') or defined in terms of a
+-- type synonym ('TypeSynonymRep').
 data RepOptions = InlineRep
                 | TypeSynonymRep
   deriving (Eq, Ord, Read, Show)
 
--- | TODO
+-- | 'InlineRep', a sensible default 'RepOptions'.
 defaultRepOptions :: RepOptions
 defaultRepOptions = InlineRep
 
--- | TODO
+-- | 'True' if explicit kind signatures should be used in derived
+-- 'Generic'/'Generic1' instances, 'False' otherwise.
 type KindSigOptions = Bool
 
--- | TODO
+-- | 'True', a sensible default 'KindSigOptions'.
 defaultKindSigOptions :: KindSigOptions
 defaultKindSigOptions = True
 
@@ -261,14 +275,9 @@ deriveRepCommon gClass useKindSigs n = do
   let (name, isNT, declTvbs, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
   !_ <- buildTypeInstance gClass useKindSigs name declTvbs dv
-
   tySynVars <- grabTyVarsFromCons gClass cons
 
-  -- The typechecker will, ideally, infer the correct kinds of the TyVarBndrs in a
-  -- type synonym declaration, so we don't need to splice them in explicitly
-  -- (hence the unKindedTV call). There are some cases where you do need explicit
-  -- kind variables, however, so we give users the ability to toggle useKingSigs.
-  -- See Note [TODO: Fillmein]
+  -- See Note [Kind signatures in derived instances]
   let tySynVars' = if useKindSigs
                       then tySynVars
                       else map unSigT tySynVars
@@ -673,6 +682,7 @@ repField gk dv dt ns typeSubst mbF ssi t =
     t', t'' :: Type
     t' = case gk of
               Gen1 _ (Just _kvName) ->
+-- See Note [Generic1 is polykinded on GHC 8.2]
 #if __GLASGOW_HASKELL__ >= 801
                 t
 #else
@@ -1046,6 +1056,7 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
 
         -- Substitute kind * for any dropped kind variables
     let varTysExpSubst :: [Type]
+-- See Note [Generic1 is polykinded on GHC 8.2]
 #if __GLASGOW_HASKELL__ >= 801
         varTysExpSubst = varTysExp
 #else
@@ -1059,6 +1070,7 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
         (remainingTysExpSubst, droppedTysExpSubst) =
           splitAt remainingLength varTysExpSubst
 
+-- See Note [Generic1 is polykinded on GHC 8.2]
 #if __GLASGOW_HASKELL__ < 801
     -- If any of the dropped types were polykinded, ensure that there are of
     -- kind * after substituting * for the dropped kind variables. If not,
@@ -1085,6 +1097,7 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
         --   instance C (Fam [Char])
     let varTysOrigSubst :: [Type]
         varTysOrigSubst =
+-- See Note [Generic1 is polykinded on GHC 8.2]
 #if __GLASGOW_HASKELL__ >= 801
           id
 #else
@@ -1107,7 +1120,7 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
         instanceType :: Type
         instanceType = applyTyToTys (ConT tyConName) remainingTysOrigSubst'
 
-        -- See Note [Eta-reduced kind variables]
+        -- See Note [Kind signatures in derived instances]
         instanceKind :: Kind
         instanceKind = makeFunKind (map typeKind droppedTysOrigSubst) starK
 
@@ -1159,12 +1172,13 @@ distinct type variables in order from left-to-right, and then map them to their
 corresponding type variables from the data declaration.
 
 There is another obscure case where we need to do a type subtitution. With
--XTypeInType enabled, you might have something like this:
+-XTypeInType enabled on GHC 8.0, you might have something like this:
 
   data Proxy (a :: k) (b :: k) = Proxy k deriving Generic1
 
 Then k gets specialized to *, which means that k should NOT show up in the RHS of
 a Rep1 type instance! To avoid this, make sure to substitute k with *.
+See also Note [Generic1 is polykinded on GHC 8.2].
 
 Note [Arguments to generated type synonyms]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1237,39 +1251,77 @@ Doing the same for data families proves to be much harder for three reasons:
 Note [Kind signatures in derived instances]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TODO: This needs updating
-
-It is possible to put explicit kind signatures into the derived instances, e.g.,
-
-  instance C a => C (Data (f :: * -> *)) where ...
-
-But it is preferable to avoid this if possible. If we come up with an incorrect
-kind signature (which is entirely possible, since our type inferencer is pretty
-unsophisticated - see Note [Type inference in derived instances]), then GHC will
-flat-out reject the instance, which is quite unfortunate.
-
-Plain old datatypes have the advantage that you can avoid using any kind signatures
-at all in their instances. This is because a datatype declaration uses all type
-variables, so the types that we use in a derived instance uniquely determine their
-kinds. As long as we plug in the right types, the kind inferencer can do the rest
-of the work. For this reason, we use unSigT to remove all kind signatures before
-splicing in the instance context and head.
-
-Data family instances are trickier, since a data family can have two instances that
-are distinguished by kind alone, e.g.,
+We generally include explicit type signatures in derived instances. One reason for
+doing so is that in the case of certain data family instances, not including kind
+signatures can result in ambiguity. For example, consider the following two data
+family instances that are distinguished by their kinds:
 
   data family Fam (a :: k)
   data instance Fam (a :: * -> *)
   data instance Fam (a :: *)
 
-If we dropped the kind signatures for C (Fam a), then GHC will have no way of
-knowing which instance we are talking about. To avoid this scenario, we always
-include explicit kind signatures in data family instances. There is a chance that
-the inferred kind signatures will be incorrect, but if so, we can always fall back
-on the make- functions.
+If we dropped the kind signature for a in a derived instance for Fam a, then GHC
+would have no way of knowing which instance we are talking about.
 
-Note [Eta-reduced kind variables]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Another motivation for explicit kind signatures is the -XTypeInType extension.
+With -XTypeInType, dropping kind signatures can completely change the meaning
+of some data types. For example, there is a substantial difference between these
+two data types:
 
-TODO:
+  data T k (a :: k) = T k
+  data T k a        = T k
+
+In addition to using explicit kind signatures on type variables, we also put
+explicit return kinds in the instance head, so generated instances will look
+something like this:
+
+  data S (a :: k) = S k
+  instance Generic1 (S :: k -> *) where
+    type Rep1 (S :: k -> *) = ... (Rec0 k)
+
+Why do we do this? Imagine what the instance would be without the explicit return kind:
+
+  instance Generic1 S where
+    type Rep1 S = ... (Rec0 k)
+
+This is an error, since the variable k is now out-of-scope!
+
+Although explicit kind signatures are the right thing to do in most cases, there
+are sadly some degenerate cases where this isn't true. Consider this example:
+
+  newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
+
+The Rep1 type instance in a Generic1 instance for Compose would involve the type
+(f :.: Rec1 g), which forces (f :: * -> *). But this library doesn't have very
+sophisticated kind inference machinery (other than what is mentioned in
+Note [Substituting types in constructor type signatures]), so at the moment we
+have no way of actually unifying k1 with *. So the naïve generated Generic1
+instance would be:
+
+  instance Generic1 (Compose (f :: k2 -> *) (g :: k1 -> k2)) where
+    type Rep1 (Compose f g) = ... (f :.: Rec1 g)
+
+This is wrong, since f's kind is overly generalized. To get around this issue,
+there are variants of the TH functions that allow you to configure the KindSigOptions.
+If KindSigOptions is set to False, then generated instances will not include
+explicit kind signatures, leaving it up to GHC's kind inference machinery to
+figure out the correct kinds.
+
+Note [Generic1 is polykinded on GHC 8.2]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prior to GHC 8.2, Generic1 :: (* -> *) -> Constraint. This means that if a Generic1
+instance is defined for a polykinded data type like so:
+
+  data Proxy k (a :: k) = Proxy
+
+Then k is unified with *, and this has an effect on the generated Generic1 instance:
+
+  instance Generic1 (Proxy *) where ...
+
+We must take great care to ensure that all occurrences of k are substituted with *,
+or else the generated instance will be ill kinded.
+
+On GHC 8.2 and later, Generic1 :: (k -> *) -> Constraint. This means we don't have
+to do this kind unification anymore! Hooray!
 -}

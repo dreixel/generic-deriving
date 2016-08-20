@@ -33,6 +33,9 @@
   or data family instances. This makes working with `TypeInType` less
   surprising, but at the cost of making it slightly more awkward to work with
   derived `Generic1` instances that constrain kinds to `*` by means of `(:.:)`.
+* Since `Generic1` is polykinded on GHC 8.2 and later, the functions in
+  `Generics.Deriving.TH` will no longer unify the kind of the last type
+  parameter to be `*`.
 * Fix a bug in which `makeRep` (and similarly named functions) would not check
   whether the argument type can actually have a well kinded `Generic(1)`
   instance.
