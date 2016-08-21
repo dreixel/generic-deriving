@@ -729,7 +729,16 @@ instance MonadFix Par1 where
 
 -- | Recursive calls of kind * -> *
 newtype Rec1 f p = Rec1 { unRec1 :: f p }
-  deriving (Eq, Ord, Read, Functor, Foldable, Traversable, Show)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data)
+
+instance Typeable1 f => Typeable1 (Rec1 f) where
+  typeOf1 t = mkTyConApp rec1TyCon [typeOf1 (f t)]
+    where
+      f :: Rec1 f a -> f a
+      f = undefined
+
+rec1TyCon :: TyCon
+rec1TyCon = mkTyCon "Generics.Deriving.Base.Internal.Rec1"
 
 instance Applicative f => Applicative (Rec1 f) where
   pure a = Rec1 (pure a)
@@ -763,7 +772,22 @@ instance Traversable (K1 i c) where
 
 -- | Meta-information (constructor names, etc.)
 newtype M1 i c f p = M1 { unM1 :: f p }
-  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data)
+
+instance (Typeable i, Typeable c, Typeable1 f) => Typeable1 (M1 i c f) where
+  typeOf1 t = mkTyConApp m1TyCon [typeOf (i t), typeOf (c t), typeOf1 (f t)]
+    where
+      i :: M1 i c f p -> i
+      i = undefined
+
+      c :: M1 i c f p -> c
+      c = undefined
+
+      f :: M1 i c f p -> f p
+      f = undefined
+
+m1TyCon :: TyCon
+m1TyCon = mkTyCon "Generics.Deriving.Base.Internal.M1"
 
 instance Applicative f => Applicative (M1 i c f) where
   pure a = M1 (pure a)
@@ -787,12 +811,36 @@ instance MonadFix f => MonadFix (M1 i c f) where
 -- | Sums: encode choice between constructors
 infixr 5 :+:
 data (:+:) f g p = L1 (f p) | R1 (g p)
-  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data)
+
+instance (Typeable1 f, Typeable1 g) => Typeable1 (f :+: g) where
+  typeOf1 t = mkTyConApp conSumTyCon [typeOf1 (f t), typeOf1 (g t)]
+    where
+      f :: (f :+: g) p -> f p
+      f = undefined
+
+      g :: (f :+: g) p -> g p
+      g = undefined
+
+conSumTyCon :: TyCon
+conSumTyCon = mkTyCon "Generics.Deriving.Base.Internal.:+:"
 
 -- | Products: encode multiple arguments to constructors
 infixr 6 :*:
 data (:*:) f g p = f p :*: g p
-  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data)
+
+instance (Typeable1 f, Typeable1 g) => Typeable1 (f :*: g) where
+  typeOf1 t = mkTyConApp conProductTyCon [typeOf1 (f t), typeOf1 (g t)]
+    where
+      f :: (f :*: g) p -> f p
+      f = undefined
+
+      g :: (f :*: g) p -> g p
+      g = undefined
+
+conProductTyCon :: TyCon
+conProductTyCon = mkTyCon "Generics.Deriving.Base.Internal.:*:"
 
 instance (Applicative f, Applicative g) => Applicative (f :*: g) where
   pure a = pure a :*: pure a
@@ -822,7 +870,19 @@ instance (MonadPlus f, MonadPlus g) => MonadPlus (f :*: g) where
 -- | Composition of functors
 infixr 7 :.:
 newtype (:.:) f g p = Comp1 { unComp1 :: f (g p) }
-  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Read, Show, Functor, Foldable, Traversable, Data)
+
+instance (Typeable1 f, Typeable1 g) => Typeable1 (f :.: g) where
+  typeOf1 t = mkTyConApp conComposeTyCon [typeOf1 (f t), typeOf1 (g t)]
+    where
+      f :: (f :.: g) p -> f p
+      f = undefined
+
+      g :: (f :.: g) p -> g p
+      g = undefined
+
+conComposeTyCon :: TyCon
+conComposeTyCon = mkTyCon "Generics.Deriving.Base.Internal.:.:"
 
 instance (Applicative f, Applicative g) => Applicative (f :.: g) where
   pure x = Comp1 (pure (pure x))

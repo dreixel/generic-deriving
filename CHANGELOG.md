@@ -1,3 +1,7 @@
+# next
+* Backport missing `Data` and `Typeable` instances for `Rec1`, `M1`, `(:*:)`,
+  `(:+:)`, and `(:.:)`
+
 # 1.11
 * The behavior of function in `Generics.Deriving.TH` has changed with respect
   to when type synonyms are generated for `Rep(1)` definitions. In particular:
