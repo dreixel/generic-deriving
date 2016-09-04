@@ -1,4 +1,5 @@
 # next
+* Convert examples to test suite
 * Backport missing `Data` and `Typeable` instances for `Rec1`, `M1`, `(:*:)`,
   `(:+:)`, and `(:.:)`
 
