@@ -84,6 +84,7 @@ test-suite spec
   type:                 exitcode-stdio-1.0
   main-is:              Spec.hs
   other-modules:        ExampleSpec
+                        TypeInTypeSpec
   build-depends:        base             >= 4.3  && < 5
                       , generic-deriving == 1.11
                       , hspec            >= 2    && < 3
