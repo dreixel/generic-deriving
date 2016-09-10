@@ -14,6 +14,7 @@
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -353,10 +354,15 @@ data PlainHash a = Hash a Addr# Char# Double# Float# Int# Word#
 data Lexeme = Lexeme
 
 #if MIN_VERSION_template_haskell(2,7,0)
-data family MyType3 a b (c :: * -> *) d e
--- newtype instance MyType3 (f x) (f x) f x y = MyType3Newtype y
-data    instance MyType3 Bool  ()    f x y = MyType3True | MyType3False
-data    instance MyType3 Int   ()    f x y = MyType3Hash y Addr# Char# Double# Float# Int# Word#
+data family MyType3
+# if __GLASGOW_HASKELL__ >= 705
+  (a :: v) (b :: w) (c :: x)      (d :: y) (e :: z)
+# else
+  (a :: *) (b :: *) (c :: * -> *) (d :: *) (e :: *)
+# endif
+newtype instance MyType3 (f p) (f p) f p q = MyType3Newtype q
+data    instance MyType3 Bool  ()    f p q = MyType3True | MyType3False
+data    instance MyType3 Int   ()    f p q = MyType3Hash q Addr# Char# Double# Float# Int# Word#
 #endif
 
 -------------------------------------------------------------------------------
@@ -375,7 +381,7 @@ $(deriveRep1           ''GRose)
 instance Functor f => Generic1 (GRose f) where
   type Rep1 (GRose f) = $(makeRep1 ''GRose) f
   from1 = $(makeFrom1 ''GRose)
-  to1 = $(makeTo1 ''GRose)
+  to1   = $(makeTo1 ''GRose)
 
 $(deriveAll0And1 ''Either)
 
@@ -394,7 +400,7 @@ $(deriveAll0     ''ExampleSpec.Lexeme)
 $(deriveAll0     ''Text.Read.Lex.Lexeme)
 
 #if MIN_VERSION_template_haskell(2,7,0)
--- $(deriveAll0And1 'MyType3Newtype)
+$(deriveAll0And1 'MyType3Newtype)
 $(deriveAll0And1 'MyType3False)
 $(deriveAll0And1 'MyType3Hash)
 #endif

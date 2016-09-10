@@ -289,7 +289,14 @@ deriveInst :: GenericClass -> Options -> Name -> Q [Dec]
 deriveInst Generic  = deriveInstCommon genericTypeName  repTypeName  Generic  fromValName  toValName
 deriveInst Generic1 = deriveInstCommon generic1TypeName rep1TypeName Generic1 from1ValName to1ValName
 
-deriveInstCommon :: Name -> Name -> GenericClass -> Name -> Name -> Options -> Name -> Q [Dec]
+deriveInstCommon :: Name
+                 -> Name
+                 -> GenericClass
+                 -> Name
+                 -> Name
+                 -> Options
+                 -> Name
+                 -> Q [Dec]
 deriveInstCommon genericName repName gClass fromName toName opts n = do
   i <- reifyDataInfo n
   let (name, isNT, allTvbs, cons, dv) = either error id i
@@ -526,7 +533,7 @@ makeRepInline :: GenericClass
               -> Type
               -> Q Type
 makeRepInline gClass dv name isNT cons ty = do
-  let instVars = map tyVarBndrToType $ tyVarsOfType ty
+  let instVars = map tyVarBndrToType $ requiredTyVarsOfType ty
   repType gClass dv name isNT cons instVars
 
 makeRepTySynApp :: GenericClass
@@ -540,7 +547,7 @@ makeRepTySynApp gClass dv name cons ty = do
   -- of the LHS of the Rep(1) instance. We call unKindedTV because the kind
   -- inferencer can figure out the kinds perfectly well, so we don't need to
   -- give anything here explicit kind signatures.
-  let instTvbs = nub . map unKindedTV $ requiredTyVarsOfType ty
+  let instTvbs = map unKindedTV $ requiredTyVarsOfType ty
   -- We grab the type variables from the first constructor's type signature.
   -- Or, if there are no constructors, we grab no type variables. The latter
   -- is okay because we use zipWith to ensure that we never pass more type
@@ -647,8 +654,8 @@ repConWith gClass dv dt n tySynVars mbSelNames ssis isRecord isInfix = do
         -- See Note [Substituting types in a constructor type signature]
         typeSubst :: TypeSubst
         typeSubst = Map.fromList $
-          zip (concatMap             tyVarNamesOfType  conVars)
-              (concatMap (map VarT . tyVarNamesOfType) tySynVars)
+          zip (nub $ concatMap             tyVarNamesOfType  conVars)
+              (nub $ concatMap (map VarT . tyVarNamesOfType) tySynVars)
 
         f :: [Q Type]
         f = case mbSelNames of

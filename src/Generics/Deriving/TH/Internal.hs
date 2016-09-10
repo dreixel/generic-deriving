@@ -176,30 +176,17 @@ tyVarNamesOfType = go
     go (VarT n)     = [n]
     go _            = []
 
--- | Gets all of the type/kind variable binders mentioned in a Type.
-tyVarsOfType :: Type -> [TyVarBndr]
-tyVarsOfType = go
-  where
-    go :: Type -> [TyVarBndr]
-    go (AppT t1 t2) = go t1 ++ go t2
-    go (SigT t _k)  = go t
-#if MIN_VERSION_template_haskell(2,8,0)
-                           ++ go _k
-#endif
-    go (VarT n)     = [PlainTV n]
-    go _            = []
-
--- | Gets all of the required type/kind variable binders mentioned in a Type. In
--- contrast to 'tyVarsOfType', 'requiredTyVarsOfType' does not go into kinds
--- of 'SigT's.
+-- | Gets all of the required type/kind variable binders mentioned in a Type.
+-- This does not add separate items for kind variable binders (in contrast with
+-- the behavior of 'tyVarNamesOfType').
 requiredTyVarsOfType :: Type -> [TyVarBndr]
 requiredTyVarsOfType = go
   where
     go :: Type -> [TyVarBndr]
-    go (AppT t1 t2) = go t1 ++ go t2
-    go (SigT t _)   = go t
-    go (VarT n)     = [PlainTV n]
-    go _            = []
+    go (AppT t1 t2)      = go t1 ++ go t2
+    go (SigT (VarT n) k) = [KindedTV n k]
+    go (VarT n)          = [PlainTV n]
+    go _                 = []
 
 -- | Converts a VarT or a SigT into Just the corresponding TyVarBndr.
 -- Converts other Types to Nothing.
