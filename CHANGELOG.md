@@ -1,4 +1,4 @@
-# next [YYYY.MM.DD]
+# 1.11.1 [2016.09.10]
 * Fix Template Haskell regression involving data families
 * Convert examples to test suite
 * Backport missing `Data` and `Typeable` instances for `Rec1`, `M1`, `(:*:)`,
