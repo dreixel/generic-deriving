@@ -400,8 +400,8 @@ $(deriveAll0     ''ExampleSpec.Lexeme)
 $(deriveAll0     ''Text.Read.Lex.Lexeme)
 
 #if MIN_VERSION_template_haskell(2,7,0)
--- Don't try deriving the Generic(1) instances for (MyType3 (f p) (f p) f p q) with
--- deriveAll0And1, because they won't compile on GHC 7.4 due to an old bug :(
+# if __GLASGOW_HASKELL__ < 705
+-- We can't use deriveAll0And1 on GHC 7.4 due to an old bug :(
 $(deriveMeta 'MyType3Newtype)
 $(deriveRep0 'MyType3Newtype)
 $(deriveRep1 'MyType3Newtype)
@@ -413,6 +413,9 @@ instance Generic1 (MyType3 (f p) (f p) f p) where
     type Rep1 (MyType3 (f p) (f p) f p) = $(makeRep1 'MyType3Newtype) f p
     from1 = $(makeFrom1 'MyType3Newtype)
     to1   = $(makeTo1 'MyType3Newtype)
+# else
+$(deriveAll0And1 'MyType3Newtype)
+# endif
 $(deriveAll0And1 'MyType3False)
 $(deriveAll0And1 'MyType3Hash)
 #endif
