@@ -537,6 +537,46 @@ instance GEnum m => GEnum (WrappedMonoid m) where
 instance GEnum a => GEnum (ZipList a) where
   genum = genumDefault
 
+#if MIN_VERSION_base(4,10,0)
+instance GEnum CBool where
+  genum = coerce (genum :: [HTYPE_BOOL])
+
+# if defined(HTYPE_BLKSIZE_T)
+instance GEnum CBlkSize where
+  genum = coerce (genum :: [HTYPE_BLKSIZE_T])
+# endif
+
+# if defined(HTYPE_BLKCNT_T)
+instance GEnum CBlkCnt where
+  genum = coerce (genum :: [HTYPE_BLKCNT_T])
+# endif
+
+# if defined(HTYPE_CLOCKID_T)
+instance GEnum CClockId where
+  genum = coerce (genum :: [HTYPE_CLOCKID_T])
+# endif
+
+# if defined(HTYPE_FSBLKCNT_T)
+instance GEnum CFsBlkCnt where
+  genum = coerce (genum :: [HTYPE_FSBLKCNT_T])
+# endif
+
+# if defined(HTYPE_FSFILCNT_T)
+instance GEnum CFsFilCnt where
+  genum = coerce (genum :: [HTYPE_FSFILCNT_T])
+# endif
+
+# if defined(HTYPE_ID_T)
+instance GEnum CId where
+  genum = coerce (genum :: [HTYPE_ID_T])
+# endif
+
+# if defined(HTYPE_KEY_T)
+instance GEnum CKey where
+  genum = coerce (genum :: [HTYPE_KEY_T])
+# endif
+#endif
+
 --------------------------------------------------------------------------------
 -- Generic Ix
 --------------------------------------------------------------------------------
@@ -1051,4 +1091,60 @@ instance (GEq m, GEnum m, GIx m) => GIx (WrappedMonoid m) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault
+#endif
+
+#if MIN_VERSION_base(4,10,0)
+instance GIx CBool where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+
+# if defined(HTYPE_BLKSIZE_T)
+instance GIx CBlkSize where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
+
+# if defined(HTYPE_BLKCNT_T)
+instance GIx CBlkCnt where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
+
+# if defined(HTYPE_CLOCKID_T)
+instance GIx CClockId where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
+
+# if defined(HTYPE_FSBLKCNT_T)
+instance GIx CFsBlkCnt where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
+
+# if defined(HTYPE_FSFILCNT_T)
+instance GIx CFsFilCnt where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
+
+# if defined(HTYPE_ID_T)
+instance GIx CId where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
+
+# if defined(HTYPE_KEY_T)
+instance GIx CKey where
+  range   = rangeEnum
+  index   = indexIntegral
+  inRange = inRangeOrd
+# endif
 #endif

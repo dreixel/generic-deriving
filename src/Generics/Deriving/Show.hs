@@ -615,3 +615,48 @@ instance GShow m => GShow (WrappedMonoid m) where
 
 instance GShow a => GShow (ZipList a) where
   gshowsPrec = gshowsPrecdefault
+
+#if MIN_VERSION_base(4,10,0)
+instance GShow CBool where
+  gshowsPrec = showsPrec
+
+# if defined(HTYPE_BLKSIZE_T)
+instance GShow CBlkSize where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_BLKCNT_T)
+instance GShow CBlkCnt where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_CLOCKID_T)
+instance GShow CClockId where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_FSBLKCNT_T)
+instance GShow CFsBlkCnt where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_FSFILCNT_T)
+instance GShow CFsFilCnt where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_ID_T)
+instance GShow CId where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_KEY_T)
+instance GShow CKey where
+  gshowsPrec = showsPrec
+# endif
+
+# if defined(HTYPE_TIMER_T)
+instance GShow CTimer where
+  gshowsPrec = showsPrec
+# endif
+#endif
