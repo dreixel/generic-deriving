@@ -75,7 +75,7 @@ library
 
   build-depends:        containers       >= 0.1 && < 0.6
                       , ghc-prim                   < 1
-                      , template-haskell >= 2.4 && < 2.12
+                      , template-haskell >= 2.4 && < 2.13
 
   default-language:     Haskell2010
   ghc-options:          -Wall
@@ -88,7 +88,7 @@ test-suite spec
   build-depends:        base             >= 4.3  && < 5
                       , generic-deriving
                       , hspec            >= 2    && < 3
-                      , template-haskell >= 2.4  && < 2.12
+                      , template-haskell >= 2.4  && < 2.13
   hs-source-dirs:       tests
   default-language:     Haskell2010
   ghc-options:          -Wall -threaded -rtsopts
