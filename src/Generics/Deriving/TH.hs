@@ -689,8 +689,8 @@ repField gk dv dt ns typeSubst mbF ssi t =
     t', t'' :: Type
     t' = case gk of
               Gen1 _ (Just _kvName) ->
--- See Note [Generic1 is polykinded on GHC 8.2]
-#if __GLASGOW_HASKELL__ >= 801
+-- See Note [Generic1 is polykinded in base-4.10]
+#if MIN_VERSION_base(4,10,0)
                 t
 #else
                 substNameWithKind _kvName starK t
@@ -1063,8 +1063,8 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
 
         -- Substitute kind * for any dropped kind variables
     let varTysExpSubst :: [Type]
--- See Note [Generic1 is polykinded on GHC 8.2]
-#if __GLASGOW_HASKELL__ >= 801
+-- See Note [Generic1 is polykinded in base-4.10]
+#if MIN_VERSION_base(4,10,0)
         varTysExpSubst = varTysExp
 #else
         varTysExpSubst = map (substNamesWithKindStar droppedKindVarNames) varTysExp
@@ -1077,8 +1077,8 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
         (remainingTysExpSubst, droppedTysExpSubst) =
           splitAt remainingLength varTysExpSubst
 
--- See Note [Generic1 is polykinded on GHC 8.2]
-#if __GLASGOW_HASKELL__ < 801
+-- See Note [Generic1 is polykinded in base-4.10]
+#if !(MIN_VERSION_base(4,10,0))
     -- If any of the dropped types were polykinded, ensure that there are of
     -- kind * after substituting * for the dropped kind variables. If not,
     -- throw an error.
@@ -1104,8 +1104,8 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
         --   instance C (Fam [Char])
     let varTysOrigSubst :: [Type]
         varTysOrigSubst =
--- See Note [Generic1 is polykinded on GHC 8.2]
-#if __GLASGOW_HASKELL__ >= 801
+-- See Note [Generic1 is polykinded in base-4.10]
+#if MIN_VERSION_base(4,10,0)
           id
 #else
           map (substNamesWithKindStar droppedKindVarNames)
@@ -1185,7 +1185,7 @@ There is another obscure case where we need to do a type subtitution. With
 
 Then k gets specialized to *, which means that k should NOT show up in the RHS of
 a Rep1 type instance! To avoid this, make sure to substitute k with *.
-See also Note [Generic1 is polykinded on GHC 8.2].
+See also Note [Generic1 is polykinded in base-4.10].
 
 Note [Arguments to generated type synonyms]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1314,10 +1314,10 @@ If KindSigOptions is set to False, then generated instances will not include
 explicit kind signatures, leaving it up to GHC's kind inference machinery to
 figure out the correct kinds.
 
-Note [Generic1 is polykinded on GHC 8.2]
+Note [Generic1 is polykinded in base-4.10]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Prior to GHC 8.2, Generic1 :: (* -> *) -> Constraint. This means that if a Generic1
+Prior to base-4.10, Generic1 :: (* -> *) -> Constraint. This means that if a Generic1
 instance is defined for a polykinded data type like so:
 
   data Proxy k (a :: k) = Proxy
@@ -1329,6 +1329,6 @@ Then k is unified with *, and this has an effect on the generated Generic1 insta
 We must take great care to ensure that all occurrences of k are substituted with *,
 or else the generated instance will be ill kinded.
 
-On GHC 8.2 and later, Generic1 :: (k -> *) -> Constraint. This means we don't have
-to do this kind unification anymore! Hooray!
+In base-4.10 and later, Generic1 :: (k -> *) -> Constraint. This means we don't have
+to do any of this kind unification trickery anymore! Hooray!
 -}

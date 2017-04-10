@@ -536,8 +536,8 @@ reifyConTys gClass conName = do
                    case mbLastArgKindName of
                         Nothing   -> map tyVarBndrToType headRequiredTvbs
                         Just _lakn ->
--- See Note [Generic1 is polykinded on GHC 8.2] in Generics.Deriving.TH
-#if __GLASGOW_HASKELL__ >= 801
+-- See Note [Generic1 is polykinded in base-4.10] in Generics.Deriving.TH
+#if MIN_VERSION_base(4,10,0)
                           map tyVarBndrToType headRequiredTvbs
 #else
                           map (substNameWithKindStarInTyVarBndr _lakn)
