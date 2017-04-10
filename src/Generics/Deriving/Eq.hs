@@ -576,3 +576,48 @@ instance GEq m => GEq (WrappedMonoid m) where
 
 instance GEq a => GEq (ZipList a) where
   geq = geqdefault
+
+#if MIN_VERSION_base(4,10,0)
+instance GEq CBool where
+  geq = (==)
+
+# if defined(HTYPE_BLKSIZE_T)
+instance GEq CBlkSize where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_BLKCNT_T)
+instance GEq CBlkCnt where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_CLOCKID_T)
+instance GEq CClockId where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_FSBLKCNT_T)
+instance GEq CFsBlkCnt where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_FSFILCNT_T)
+instance GEq CFsFilCnt where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_ID_T)
+instance GEq CId where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_KEY_T)
+instance GEq CKey where
+  geq = (==)
+# endif
+
+# if defined(HTYPE_TIMER_T)
+instance GEq CTimer where
+  geq = (==)
+# endif
+#endif

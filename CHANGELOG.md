@@ -1,3 +1,9 @@
+# next [????.??.??]
+* Add `GEq`, `GShow`, `GEnum`, and `GIx` instances for the new data types
+  in `Foreign.C.Types` (`CBool`) and `System.Posix.Types` (`CBlkSize`,
+  `CBlkCnt`, `CClockId`, `CFsBlkCnt`, `CFsFilCnt`, `CId`, `CKey`, and `CTimer`)
+  introduced in `base-4.10.0.0`
+
 # 1.11.1 [2016.09.10]
 * Fix Template Haskell regression involving data families
 * Convert examples to test suite
