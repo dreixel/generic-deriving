@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.11.2 [2017.04.10]
 * Add `GEq`, `GShow`, `GEnum`, and `GIx` instances for the new data types
   in `Foreign.C.Types` (`CBool`) and `System.Posix.Types` (`CBlkSize`,
   `CBlkCnt`, `CClockId`, `CFsBlkCnt`, `CFsFilCnt`, `CId`, `CKey`, and `CTimer`)
