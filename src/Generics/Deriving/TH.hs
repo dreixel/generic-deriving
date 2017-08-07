@@ -83,6 +83,8 @@ module Generics.Deriving.TH (
     , defaultRepOptions
     , KindSigOptions
     , defaultKindSigOptions
+    , EmptyCaseOptions
+    , defaultEmptyCaseOptions
 
     -- ** Functions with optional arguments
     , deriveAll0Options
@@ -92,6 +94,11 @@ module Generics.Deriving.TH (
     , deriveRepresentable1Options
     , deriveRep0Options
     , deriveRep1Options
+
+    , makeFrom0Options
+    , makeTo0Options
+    , makeFrom1Options
+    , makeTo1Options
   ) where
 
 import           Control.Monad ((>=>), unless, when)
@@ -133,6 +140,40 @@ import           Language.Haskell.TH
   newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
   $('deriveAll1Options' False ''Compose)
   @
+
+* 'EmptyCaseOptions': By default, all derived instances for empty data types
+  (i.e., data types with no constructors) use 'error' in @from(1)@/@to(1)@.
+  For instance, @data Empty@ would have this derived 'Generic' instance:
+
+  @
+  instance Generic Empty where
+    type Rep Empty = D1 ('MetaData ...) V1
+    from _ = M1 (error "No generic representation for empty datatype Empty")
+    to (M1 _) = error "No generic representation for empty datatype Empty"
+  @
+
+  This matches the behavior of GHC up until 8.4, when derived @Generic(1)@
+  instances began to use the @EmptyCase@ extension. In GHC 8.4, the derived
+  'Generic' instance for @Empty@ would instead be:
+
+  @
+  instance Generic Empty where
+    type Rep Empty = D1 ('MetaData ...) V1
+    from x = M1 (case x of {})
+    to (M1 x) = case x of {}
+  @
+
+  This is a slightly better encoding since, for example, any divergent
+  computations passed to 'from' will actually diverge (as opposed to before,
+  where the result would always be a call to 'error'). On the other hand, using
+  this encoding in @generic-deriving@ has one large drawback: it requires
+  enabling @EmptyCase@, an extension which was only introduced in GHC 7.8
+  (and only received reliable pattern-match coverage checking in 8.2).
+
+  The 'EmptyCaseOptions' field controls whether code should be emitted that
+  uses @EmptyCase@ (i.e., 'EmptyCaseOptions' set to 'True') or not ('False').
+  The default value is 'False'. Note that even if set to 'True', this option
+  has no effect on GHCs before 7.8, as @EmptyCase@ did not exist then.
 -}
 
 -- | Given the names of a generic class, a type to instantiate, a function in
@@ -150,15 +191,17 @@ simplInstance cl ty fn df = do
 -- | Additional options for configuring derived 'Generic'/'Generic1' instances
 -- using Template Haskell.
 data Options = Options
-  { repOptions     :: RepOptions
-  , kindSigOptions :: KindSigOptions
+  { repOptions       :: RepOptions
+  , kindSigOptions   :: KindSigOptions
+  , emptyCaseOptions :: EmptyCaseOptions
   } deriving (Eq, Ord, Read, Show)
 
--- | Sensible default 'Options' ('defaultRepOptions' and 'defaultKindSigOptions').
+-- | Sensible default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options
-  { repOptions     = defaultRepOptions
-  , kindSigOptions = defaultKindSigOptions
+  { repOptions       = defaultRepOptions
+  , kindSigOptions   = defaultKindSigOptions
+  , emptyCaseOptions = defaultEmptyCaseOptions
   }
 
 -- | Configures whether 'Rep'/'Rep1' type instances should be defined inline in a
@@ -179,6 +222,15 @@ type KindSigOptions = Bool
 -- | 'True', a sensible default 'KindSigOptions'.
 defaultKindSigOptions :: KindSigOptions
 defaultKindSigOptions = True
+
+-- | 'True' if generated code for empty data types should use the @EmptyCase@
+-- extension, 'False' otherwise. This has no effect on GHCs before 7.8, since
+-- @EmptyCase@ is only available in 7.8 or later.
+type EmptyCaseOptions = Bool
+
+-- | Sensible default 'EmptyCaseOptions'.
+defaultEmptyCaseOptions :: EmptyCaseOptions
+defaultEmptyCaseOptions = False
 
 -- | A backwards-compatible synonym for 'deriveAll0'.
 deriveAll :: Name -> Q [Dec]
@@ -316,7 +368,8 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
 #else
                          [origSigTy] tyInsRHS
 #endif
-      mkBody maker = [clause [] (normalB $ mkCaseExp gClass name cons maker) []]
+      ecOptions = emptyCaseOptions opts
+      mkBody maker = [clause [] (normalB $ mkCaseExp gClass ecOptions name cons maker) []]
       fcs = mkBody mkFrom
       tcs = mkBody mkTo
 
@@ -563,7 +616,11 @@ makeFrom = makeFrom0
 
 -- | Generates a lambda expression which behaves like 'from'.
 makeFrom0 :: Name -> Q Exp
-makeFrom0 = makeFunCommon mkFrom Generic
+makeFrom0 = makeFrom0Options defaultEmptyCaseOptions
+
+-- | Like 'makeFrom0Options', but takes an 'EmptyCaseOptions' argument.
+makeFrom0Options :: EmptyCaseOptions -> Name -> Q Exp
+makeFrom0Options = makeFunCommon mkFrom Generic
 
 -- | A backwards-compatible synonym for 'makeTo0'.
 makeTo :: Name -> Q Exp
@@ -571,24 +628,36 @@ makeTo = makeTo0
 
 -- | Generates a lambda expression which behaves like 'to'.
 makeTo0 :: Name -> Q Exp
-makeTo0 = makeFunCommon mkTo Generic
+makeTo0 = makeTo0Options defaultEmptyCaseOptions
+
+-- | Like 'makeTo0Options', but takes an 'EmptyCaseOptions' argument.
+makeTo0Options :: EmptyCaseOptions -> Name -> Q Exp
+makeTo0Options = makeFunCommon mkTo Generic
 
 -- | Generates a lambda expression which behaves like 'from1'.
 makeFrom1 :: Name -> Q Exp
-makeFrom1 = makeFunCommon mkFrom Generic1
+makeFrom1 = makeFrom1Options defaultEmptyCaseOptions
+
+-- | Like 'makeFrom1Options', but takes an 'EmptyCaseOptions' argument.
+makeFrom1Options :: EmptyCaseOptions -> Name -> Q Exp
+makeFrom1Options = makeFunCommon mkFrom Generic1
 
 -- | Generates a lambda expression which behaves like 'to1'.
 makeTo1 :: Name -> Q Exp
-makeTo1 = makeFunCommon mkTo Generic1
+makeTo1 = makeTo1Options defaultEmptyCaseOptions
 
-makeFunCommon :: (GenericClass -> Int -> Int -> Name -> [Con] -> Q Match)
-              -> GenericClass -> Name -> Q Exp
-makeFunCommon maker gClass n = do
+-- | Like 'makeTo1Options', but takes an 'EmptyCaseOptions' argument.
+makeTo1Options :: EmptyCaseOptions -> Name -> Q Exp
+makeTo1Options = makeFunCommon mkTo Generic1
+
+makeFunCommon :: (GenericClass -> EmptyCaseOptions ->  Int -> Int -> Name -> [Con] -> Q Match)
+              -> GenericClass -> EmptyCaseOptions -> Name -> Q Exp
+makeFunCommon maker gClass ecOptions n = do
   i <- reifyDataInfo n
   let (name, _, allTvbs, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
   buildTypeInstance gClass False name allTvbs dv
-    `seq` mkCaseExp gClass name cons maker
+    `seq` mkCaseExp gClass ecOptions name cons maker
 
 genRepName :: GenericClass -> DataVariety -> Name -> Name
 genRepName gClass dv n = mkName
@@ -734,52 +803,65 @@ boxT ty = case unboxedRepNames ty of
     Just (boxTyName, _, _) -> conT boxTyName
     Nothing                -> conT rec0TypeName `appT` return ty
 
-mkCaseExp :: GenericClass -> Name -> [Con]
-          -> (GenericClass -> Int -> Int -> Name -> [Con] -> Q Match)
+mkCaseExp :: GenericClass -> EmptyCaseOptions -> Name -> [Con]
+          -> (GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match)
           -> Q Exp
-mkCaseExp gClass dt cs matchmaker = do
+mkCaseExp gClass ecOptions dt cs matchmaker = do
   val <- newName "val"
-  lam1E (varP val) $ caseE (varE val) [matchmaker gClass 1 0 dt cs]
+  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 0 dt cs]
 
-mkFrom :: GenericClass -> Int -> Int -> Name -> [Con] -> Q Match
-mkFrom gClass m i dt cs = do
+mkFrom :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match
+mkFrom gClass ecOptions m i dt cs = do
     y <- newName "y"
     match (varP y)
           (normalB $ conE m1DataName `appE` caseE (varE y) cases)
           []
   where
     cases = case cs of
-              [] -> [errorFrom dt]
+              [] -> errorFrom ecOptions dt
               _  -> zipWith (fromCon gClass wrapE (length cs)) [0..] cs
     wrapE e = lrE m i e
 
-errorFrom :: Name -> Q Match
-errorFrom dt =
-  match
-    wildP
-    (normalB $ varE errorValName `appE` stringE
-      ("No generic representation for empty datatype " ++ nameBase dt))
-    []
+errorFrom :: EmptyCaseOptions -> Name -> [Q Match]
+errorFrom useEmptyCase dt
+  | useEmptyCase && ghc7'8OrLater
+  = []
+  | otherwise
+  = [match
+       wildP
+       (normalB $ varE errorValName `appE` stringE
+         ("No generic representation for empty datatype " ++ nameBase dt))
+       []]
 
-errorTo :: Name -> Q Match
-errorTo dt =
-  match
-    wildP
-    (normalB $ varE errorValName `appE` stringE
-      ("No values for empty datatype " ++ nameBase dt))
-    []
-
-mkTo :: GenericClass -> Int -> Int -> Name -> [Con] -> Q Match
-mkTo gClass m i dt cs = do
+mkTo :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match
+mkTo gClass ecOptions m i dt cs = do
     y <- newName "y"
     match (conP m1DataName [varP y])
           (normalB $ caseE (varE y) cases)
           []
   where
     cases = case cs of
-              [] -> [errorTo dt]
+              [] -> errorTo ecOptions dt
               _  -> zipWith (toCon gClass wrapP (length cs)) [0..] cs
     wrapP p = lrP m i p
+
+errorTo :: EmptyCaseOptions -> Name -> [Q Match]
+errorTo useEmptyCase dt
+  | useEmptyCase && ghc7'8OrLater
+  = []
+  | otherwise
+  = [match
+       wildP
+       (normalB $ varE errorValName `appE` stringE
+         ("No values for empty datatype " ++ nameBase dt))
+       []]
+
+ghc7'8OrLater :: Bool
+#if __GLASGOW_HASKELL__ >= 708
+ghc7'8OrLater = True
+#else
+ghc7'8OrLater = False
+#endif
 
 fromCon :: GenericClass -> (Q Exp -> Q Exp) -> Int -> Int -> Con -> Q Match
 fromCon _ wrap m i (NormalC cn []) =

@@ -1,3 +1,12 @@
+# next [????.??.??]
+* Introduce an `EmptyCaseOptions` field to `Options` in `Generics.Deriving.TH`,
+  which controls whether generated `from(1)`/`to(1)` implementations for empty
+  data types should use the `EmptyCase` extension or not (as is the case in
+  GHC 8.4).
+* Add `mkFrom0Options`, `mkFrom1Options`, `mkTo0Options`, and `mkTo1Options`
+  functions to `Generics.Deriving.TH`, which take `EmptyCaseOptions` as
+  arguments.
+
 # 1.11.2 [2017.04.10]
 * Add `GEq`, `GShow`, `GEnum`, and `GIx` instances for the new data types
   in `Foreign.C.Types` (`CBool`) and `System.Posix.Types` (`CBlkSize`,
