@@ -57,7 +57,6 @@ module Generics.Deriving.TH (
     , deriveRepresentable1
     , deriveRep0
     , deriveRep1
-    , simplInstance
 
      -- * @make@- functions
      -- $make
@@ -175,18 +174,6 @@ import           Language.Haskell.TH
   The default value is 'False'. Note that even if set to 'True', this option
   has no effect on GHCs before 7.8, as @EmptyCase@ did not exist then.
 -}
-
--- | Given the names of a generic class, a type to instantiate, a function in
--- the class and the default implementation, generates the code for a basic
--- generic instance.
-simplInstance :: Name -> Name -> Name -> Name -> Q [Dec]
-simplInstance cl ty fn df = do
-  x <- newName "x"
-  let typ = ForallT [PlainTV x] []
-        ((foldl (\a -> AppT a . VarT . tyVarBndrName) (ConT (genRepName Generic DataPlain ty)) []) `AppT` (VarT x))
-  fmap (: []) $ instanceD (cxt []) (conT cl `appT` conT ty)
-    [funD fn [clause [] (normalB (varE df `appE`
-      (sigE (varE undefinedValName) (return typ)))) []]]
 
 -- | Additional options for configuring derived 'Generic'/'Generic1' instances
 -- using Template Haskell.

@@ -6,6 +6,7 @@
 * Add `mkFrom0Options`, `mkFrom1Options`, `mkTo0Options`, and `mkTo1Options`
   functions to `Generics.Deriving.TH`, which take `EmptyCaseOptions` as
   arguments.
+* Remove the bitrotting `simplInstance` function from `Generics.Deriving.TH`
 
 # 1.11.2 [2017.04.10]
 * Add `GEq`, `GShow`, `GEnum`, and `GIx` instances for the new data types
