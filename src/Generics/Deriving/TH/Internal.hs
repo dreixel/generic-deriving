@@ -769,6 +769,9 @@ mkGHCPrimName_d = mkNameG_d "ghc-prim"
 mkGHCPrimName_tc :: String -> String -> Name
 mkGHCPrimName_tc = mkNameG_tc "ghc-prim"
 
+mkGHCPrimName_v :: String -> String -> Name
+mkGHCPrimName_v = mkNameG_v "ghc-prim"
+
 comp1DataName :: Name
 comp1DataName = mkGD4'4_d "Comp1"
 
@@ -930,6 +933,9 @@ moduleNameValName = mkGD4'4_v "moduleName"
 
 selNameValName :: Name
 selNameValName = mkGD4'4_v "selName"
+
+seqValName :: Name
+seqValName = mkGHCPrimName_v "GHC.Prim" "seq"
 
 toValName :: Name
 toValName = mkGD4'4_v "to"

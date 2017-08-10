@@ -1,4 +1,6 @@
 # next [????.??.??]
+* `Generics.Deriving.TH` now derives `to(1)` and `from(1)` implementations for
+  empty data types that are strict in the argument.
 * Introduce an `EmptyCaseOptions` field to `Options` in `Generics.Deriving.TH`,
   which controls whether generated `from(1)`/`to(1)` implementations for empty
   data types should use the `EmptyCase` extension or not (as is the case in

@@ -814,11 +814,15 @@ errorFrom useEmptyCase dt
   | useEmptyCase && ghc7'8OrLater
   = []
   | otherwise
-  = [match
-       wildP
-       (normalB $ varE errorValName `appE` stringE
-         ("No generic representation for empty datatype " ++ nameBase dt))
-       []]
+  = [do z <- newName "z"
+        match
+          (varP z)
+          (normalB $
+            appE (varE seqValName) (varE z) `appE`
+            appE (varE errorValName)
+                 (stringE $ "No generic representation for empty datatype "
+                          ++ nameBase dt))
+          []]
 
 mkTo :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match
 mkTo gClass ecOptions m i dt cs = do
@@ -837,11 +841,14 @@ errorTo useEmptyCase dt
   | useEmptyCase && ghc7'8OrLater
   = []
   | otherwise
-  = [match
-       wildP
-       (normalB $ varE errorValName `appE` stringE
-         ("No values for empty datatype " ++ nameBase dt))
-       []]
+  = [do z <- newName "z"
+        match
+          (varP z)
+          (normalB $
+            appE (varE seqValName) (varE z) `appE`
+            appE (varE errorValName)
+                 (stringE $ "No values for empty datatype " ++ nameBase dt))
+          []]
 
 ghc7'8OrLater :: Bool
 #if __GLASGOW_HASKELL__ >= 708
