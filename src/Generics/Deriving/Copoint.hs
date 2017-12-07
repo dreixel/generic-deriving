@@ -50,6 +50,9 @@ import           Data.Semigroup (Arg, First, Last, Max, Min, WrappedMonoid)
 class GCopoint' t where
     gcopoint' :: t a -> Maybe a
 
+instance GCopoint' V1 where
+    gcopoint' _ = Nothing
+
 instance GCopoint' U1 where
     gcopoint' U1 = Nothing
 

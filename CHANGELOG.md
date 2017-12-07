@@ -1,14 +1,20 @@
 # next [????.??.??]
-* `Generics.Deriving.TH` now derives `to(1)` and `from(1)` implementations for
-  empty data types that are strict in the argument.
-* Introduce an `EmptyCaseOptions` field to `Options` in `Generics.Deriving.TH`,
-  which controls whether generated `from(1)`/`to(1)` implementations for empty
-  data types should use the `EmptyCase` extension or not (as is the case in
-  GHC 8.4).
-* Add `mkFrom0Options`, `mkFrom1Options`, `mkTo0Options`, and `mkTo1Options`
-  functions to `Generics.Deriving.TH`, which take `EmptyCaseOptions` as
-  arguments.
-* Remove the bitrotting `simplInstance` function from `Generics.Deriving.TH`
+* Adapt to the `EmptyDataDeriving` proposal (introduced in GHC 8.4):
+  * `Generics.Deriving.TH` now derives `to(1)` and `from(1)` implementations
+    for empty data types that are strict in the argument.
+  * Introduce an `EmptyCaseOptions` field to `Options` in
+    `Generics.Deriving.TH`, which controls whether generated `from(1)`/`to(1)`
+    implementations for empty data types should use the `EmptyCase` extension
+    or not (as is the case in GHC 8.4).
+  * Add `mkFrom0Options`, `mkFrom1Options`, `mkTo0Options`, and `mkTo1Options`
+    functions to `Generics.Deriving.TH`, which take `EmptyCaseOptions` as
+    arguments.
+  * The backported instances for `V1` are now maximally lazy, as per
+    `EmptyDataDeriving`. (Previously, some instances would unnecessarily force
+    their argument, such as the `Eq` and `Ord` instances.)
+  * Add instances for `V1` in `Generics.Deriving.Copoint`, `.Eq`, `.Foldable`,
+    `.Functor`, `.Show`, and `.Traversable`.
+* Remove the bitrotting `simplInstance` function from `Generics.Deriving.TH`.
 
 # 1.11.2 [2017.04.10]
 * Add `GEq`, `GShow`, `GEnum`, and `GIx` instances for the new data types

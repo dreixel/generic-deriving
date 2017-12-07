@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -653,13 +654,39 @@ import GHC.Ptr ( Ptr )
 --------------------------------------------------------------------------------
 
 -- | Void: used for datatypes without constructors
-data V1 p
-  deriving (Functor, Foldable, Traversable, Typeable)
+data V1 p deriving Typeable
 
-deriving instance           Eq   (V1 p)
-deriving instance Data p => Data (V1 p)
-deriving instance           Ord  (V1 p)
-deriving instance           Show (V1 p)
+-- Implement these instances by hand to get the desired, maximally lazy behavior.
+instance Functor V1 where
+  fmap _ !_ = error "Void fmap"
+
+instance Foldable V1 where
+  foldr _ _ z = z
+  foldMap _ _ = mempty
+
+instance Traversable V1 where
+  traverse _ x = pure (case x of !_ -> error "Void traverse")
+
+instance Eq (V1 p) where
+  _ == _ = True
+
+instance Data p => Data (V1 p) where
+  gfoldl _ _ !_ = error "Void gfoldl"
+  gunfold _ _ c = case constrIndex c of
+                    _ -> error "Void gunfold"
+  toConstr !_ = error "Void toConstr"
+  dataTypeOf _ = v1DataType
+  dataCast1 f = gcast1 f
+
+v1DataType :: Data.Data.DataType
+v1DataType = mkDataType "V1" []
+
+instance Ord (V1 p) where
+  compare _ _ = EQ
+
+instance Show (V1 p) where
+  showsPrec _ !_ = error "Void showsPrec"
+
 -- Implement Read instance manually to get around an old GHC bug
 -- (Trac #7931)
 instance Read (V1 p) where

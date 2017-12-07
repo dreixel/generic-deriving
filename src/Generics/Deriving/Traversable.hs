@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -11,6 +12,10 @@
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 708
+{-# LANGUAGE EmptyCase #-}
 #endif
 
 module Generics.Deriving.Traversable (
@@ -63,6 +68,14 @@ import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
 
 class GTraversable' t where
   gtraverse' :: Applicative f => (a -> f b) -> t a -> f (t b)
+
+instance GTraversable' V1 where
+  gtraverse' _ x = pure $ case x of
+#if __GLASGOW_HASKELL__ >= 708
+                            {}
+#else
+                            !_ -> error "Void gtraverse")
+#endif
 
 instance GTraversable' U1 where
   gtraverse' _ U1 = pure U1

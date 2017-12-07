@@ -80,6 +80,9 @@ import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
 class GFoldable' t where
   gfoldMap' :: Monoid m => (a -> m) -> t a -> m
 
+instance GFoldable' V1 where
+  gfoldMap' _ _ = mempty
+
 instance GFoldable' U1 where
   gfoldMap' _ U1 = mempty
 

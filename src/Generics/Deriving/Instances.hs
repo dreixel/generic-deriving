@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -422,13 +423,13 @@ type Rep1V1   = D1 D1V1 V1
 
 instance Generic (V1 p) where
     type Rep (V1 p) = Rep0V1 p
-    from _ = M1 (error "No generic representation for empty datatype V1")
-    to (M1 _) = error "No values for empty datatype V1"
+    from x = M1 (case x of !_ -> error "No generic representation for empty datatype V1")
+    to (M1 !_) = error "No values for empty datatype V1"
 
 instance Generic1 V1 where
     type Rep1 V1 = Rep1V1
-    from1 _ = M1 (error "No generic representation for empty datatype V1")
-    to1 (M1 _) = error "No values for empty datatype V1"
+    from1 x = M1 (case x of !_ -> error "No generic representation for empty datatype V1")
+    to1 (M1 !_) = error "No values for empty datatype V1"
 
 data D1V1
 

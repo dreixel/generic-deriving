@@ -82,6 +82,9 @@ import           Data.Semigroup (Arg(..), Max, Min, Option, WrappedMonoid)
 class GEq' f where
   geq' :: f a -> f a -> Bool
 
+instance GEq' V1 where
+  geq' _ _ = True
+
 instance GEq' U1 where
   geq' _ _ = True
 
