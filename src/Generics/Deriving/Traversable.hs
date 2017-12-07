@@ -74,7 +74,7 @@ instance GTraversable' V1 where
 #if __GLASGOW_HASKELL__ >= 708
                             {}
 #else
-                            !_ -> error "Void gtraverse")
+                            !_ -> error "Void gtraverse"
 #endif
 
 instance GTraversable' U1 where

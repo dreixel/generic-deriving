@@ -70,7 +70,7 @@ instance GFunctor' V1 where
 #if __GLASGOW_HASKELL__ >= 708
                 {}
 #else
-                !_ = error "Void gmap"
+                !_ -> error "Void gmap"
 #endif
 
 instance GFunctor' U1 where

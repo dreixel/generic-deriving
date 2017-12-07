@@ -628,7 +628,7 @@ import GHC.Generics
 import Control.Applicative ( Alternative(..) )
 import Control.Monad ( MonadPlus(..) )
 import Control.Monad.Fix ( MonadFix(..), fix )
-import Data.Data ( Data )
+import Data.Data ( Data(..), DataType, constrIndex, mkDataType )
 import Data.Ix ( Ix )
 import Text.ParserCombinators.ReadPrec (pfail)
 import Text.Read ( Read(..), parens, readListDefault, readListPrecDefault )
@@ -661,7 +661,7 @@ instance Functor V1 where
   fmap _ !_ = error "Void fmap"
 
 instance Foldable V1 where
-  foldr _ _ z = z
+  foldr _ z _ = z
   foldMap _ _ = mempty
 
 instance Traversable V1 where
@@ -678,7 +678,7 @@ instance Data p => Data (V1 p) where
   dataTypeOf _ = v1DataType
   dataCast1 f = gcast1 f
 
-v1DataType :: Data.Data.DataType
+v1DataType :: DataType
 v1DataType = mkDataType "V1" []
 
 instance Ord (V1 p) where
