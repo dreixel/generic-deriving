@@ -342,11 +342,6 @@ data (:/:) f a = MyType1Nil
                | MyType1Cons2 (f :/: a) Int a (f a)
                | (f :/: a) :/: MyType2
 
-infixr 5 :!@!:
-data GADTSyntax a b where
-  GADTPrefix :: d -> c -> GADTSyntax c d
-  (:!@!:)    :: e -> f -> GADTSyntax e f
-
 data MyType2 = MyType2 Float ([] :/: Int)
 data PlainHash a = Hash a Addr# Char# Double# Float# Int# Word#
 
@@ -393,7 +388,6 @@ $(deriveAll0And1 ''Weird)
 
 $(deriveAll0And1 ''Empty)
 $(deriveAll0And1 ''(:/:))
-$(deriveAll0And1 ''GADTSyntax)
 $(deriveAll0     ''MyType2)
 $(deriveAll0And1 ''PlainHash)
 $(deriveAll0     ''ExampleSpec.Lexeme)
