@@ -1,3 +1,6 @@
+# next [????.??.??]
+* Remove a test that won't work on GHC 8.4
+
 # 1.12 [2017.12.07]
 * Adapt to the `EmptyDataDeriving` proposal (introduced in GHC 8.4):
   * `Generics.Deriving.TH` now derives `to(1)` and `from(1)` implementations
