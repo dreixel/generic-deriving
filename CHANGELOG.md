@@ -1,5 +1,5 @@
-# next [????.??.??]
-* Remove a test that won't work on GHC 8.4
+# 1.12.1 [2018.01.11]
+* Remove a test that won't work on GHC 8.4.
 
 # 1.12 [2017.12.07]
 * Adapt to the `EmptyDataDeriving` proposal (introduced in GHC 8.4):
