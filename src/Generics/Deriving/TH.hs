@@ -102,12 +102,7 @@ module Generics.Deriving.TH (
 
 import           Control.Monad ((>=>), unless, when)
 
-#if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
-import           Data.Foldable (foldr')
-#endif
-import           Data.List (nub)
-import qualified Data.Map as Map (fromList)
-import           Data.Maybe (catMaybes)
+import qualified Data.Map as Map (empty, fromList)
 
 import           Generics.Deriving.TH.Internal
 #if MIN_VERSION_base(4,9,0)
@@ -116,6 +111,7 @@ import           Generics.Deriving.TH.Post4_9
 import           Generics.Deriving.TH.Pre4_9
 #endif
 
+import           Language.Haskell.TH.Datatype
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH
 
@@ -311,18 +307,18 @@ deriveRep1Options = deriveRepCommon Generic1
 deriveRepCommon :: GenericClass -> KindSigOptions -> Name -> Q [Dec]
 deriveRepCommon gClass useKindSigs n = do
   i <- reifyDataInfo n
-  let (name, isNT, declTvbs, cons, dv) = either error id i
+  let (name, instTys, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
-  !_ <- buildTypeInstance gClass useKindSigs name declTvbs dv
-  tySynVars <- grabTyVarsFromCons gClass cons
+  !_ <- buildTypeInstance gClass useKindSigs name instTys
 
   -- See Note [Kind signatures in derived instances]
-  let tySynVars' = if useKindSigs
+  let (tySynVars, gk) = genericKind gClass instTys
+      tySynVars' = if useKindSigs
                       then tySynVars
-                      else map unSigT tySynVars
+                      else map unKindedTV tySynVars
   fmap (:[]) $ tySynD (genRepName gClass dv name)
-                      (catMaybes $ map typeToTyVarBndr tySynVars')
-                      (repType gClass dv name isNT cons tySynVars)
+                      tySynVars'
+                      (repType gk dv name Map.empty cons)
 
 deriveInst :: GenericClass -> Options -> Name -> Q [Dec]
 deriveInst Generic  = deriveInstCommon genericTypeName  repTypeName  Generic  fromValName  toValName
@@ -338,13 +334,13 @@ deriveInstCommon :: Name
                  -> Q [Dec]
 deriveInstCommon genericName repName gClass fromName toName opts n = do
   i <- reifyDataInfo n
-  let (name, isNT, allTvbs, cons, dv) = either error id i
+  let (name, instTys, cons, dv) = either error id i
       useKindSigs = kindSigOptions opts
   -- See Note [Forcing buildTypeInstance]
-  !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name allTvbs dv
+  !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name instTys
   tyInsRHS <- if repOptions opts == InlineRep
-                 then makeRepInline   gClass dv name isNT cons origTy
-                 else makeRepTySynApp gClass dv name      cons origTy
+                 then makeRepInline   gClass dv name instTys cons origTy
+                 else makeRepTySynApp gClass dv name              origTy
 
   let origSigTy = if useKindSigs
                      then SigT origTy origKind
@@ -356,7 +352,8 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
                          [origSigTy] tyInsRHS
 #endif
       ecOptions = emptyCaseOptions opts
-      mkBody maker = [clause [] (normalB $ mkCaseExp gClass ecOptions name cons maker) []]
+      mkBody maker = [clause [] (normalB $
+        mkCaseExp gClass ecOptions name instTys cons maker) []]
       fcs = mkBody mkFrom
       tcs = mkBody mkTo
 
@@ -555,47 +552,43 @@ makeRepCommon :: GenericClass
               -> Q Type
 makeRepCommon gClass repOpts n mbQTy = do
   i <- reifyDataInfo n
-  let (name, isNT, declTvbs, cons, dv) = either error id i
+  let (name, instTys, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
-  !_ <- buildTypeInstance gClass False name declTvbs dv
+  !_ <- buildTypeInstance gClass False name instTys
 
   case (mbQTy, repOpts) of
-       (Just qTy, TypeSynonymRep) -> qTy >>= makeRepTySynApp gClass dv name cons
-       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass dv name isNT cons
+       (Just qTy, TypeSynonymRep) -> qTy >>= makeRepTySynApp gClass dv name
+       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass dv name instTys cons
        (Nothing,  TypeSynonymRep) -> conT $ genRepName gClass dv name
        (Nothing,  InlineRep)      -> fail "makeRepCommon"
 
 makeRepInline :: GenericClass
-              -> DataVariety
+              -> DatatypeVariant_
               -> Name
-              -> Bool
-              -> [Con]
+              -> [Type]
+              -> [ConstructorInfo]
               -> Type
               -> Q Type
-makeRepInline gClass dv name isNT cons ty = do
-  let instVars = map tyVarBndrToType $ requiredTyVarsOfType ty
-  repType gClass dv name isNT cons instVars
+makeRepInline gClass dv name instTys cons ty = do
+  let instVars = requiredTyVarsOfTypes [ty]
+      (tySynVars, gk)  = genericKind gClass instTys
 
-makeRepTySynApp :: GenericClass
-                -> DataVariety
-                -> Name
-                -> [Con]
-                -> Type
-                -> Q Type
-makeRepTySynApp gClass dv name cons ty = do
+      typeSubst :: TypeSubst
+      typeSubst = Map.fromList $
+        zip (map tvName tySynVars)
+            (map (VarT . tvName) instVars)
+
+  repType gk dv name typeSubst cons
+
+makeRepTySynApp :: GenericClass -> DatatypeVariant_ -> Name
+                -> Type -> Q Type
+makeRepTySynApp gClass dv name ty =
   -- Here, we figure out the distinct type variables (in order from left-to-right)
   -- of the LHS of the Rep(1) instance. We call unKindedTV because the kind
   -- inferencer can figure out the kinds perfectly well, so we don't need to
   -- give anything here explicit kind signatures.
-  let instTvbs = map unKindedTV $ requiredTyVarsOfType ty
-  -- We grab the type variables from the first constructor's type signature.
-  -- Or, if there are no constructors, we grab no type variables. The latter
-  -- is okay because we use zipWith to ensure that we never pass more type
-  -- variables than the generated type synonym can accept.
-  -- See Note [Arguments to generated type synonyms]
-  tySynVars <- grabTyVarsFromCons gClass cons
-  return . applyTyToTvbs (genRepName gClass dv name)
-         $ zipWith const instTvbs tySynVars
+  let instTvbs = map unKindedTV $ requiredTyVarsOfTypes [ty]
+  in return $ applyTyToTvbs (genRepName gClass dv name) instTvbs
 
 -- | A backwards-compatible synonym for 'makeFrom0'.
 makeFrom :: Name -> Q Exp
@@ -637,81 +630,87 @@ makeTo1 = makeTo1Options defaultEmptyCaseOptions
 makeTo1Options :: EmptyCaseOptions -> Name -> Q Exp
 makeTo1Options = makeFunCommon mkTo Generic1
 
-makeFunCommon :: (GenericClass -> EmptyCaseOptions ->  Int -> Int -> Name -> [Con] -> Q Match)
-              -> GenericClass -> EmptyCaseOptions -> Name -> Q Exp
+makeFunCommon
+  :: (GenericClass -> EmptyCaseOptions ->  Int -> Int -> Name -> [Type]
+                   -> [ConstructorInfo] -> Q Match)
+  -> GenericClass -> EmptyCaseOptions -> Name -> Q Exp
 makeFunCommon maker gClass ecOptions n = do
   i <- reifyDataInfo n
-  let (name, _, allTvbs, cons, dv) = either error id i
+  let (name, instTys, cons, _) = either error id i
   -- See Note [Forcing buildTypeInstance]
-  buildTypeInstance gClass False name allTvbs dv
-    `seq` mkCaseExp gClass ecOptions name cons maker
+  buildTypeInstance gClass False name instTys
+    `seq` mkCaseExp gClass ecOptions name instTys cons maker
 
-genRepName :: GenericClass -> DataVariety -> Name -> Name
-genRepName gClass dv n = mkName
-                      . showsDataVariety dv
-                      . (("Rep" ++ show (fromEnum gClass)) ++)
-                      . ((showNameQual n ++ "_") ++)
-                      . sanitizeName
-                      $ nameBase n
+genRepName :: GenericClass -> DatatypeVariant_
+           -> Name -> Name
+genRepName gClass dv n
+  = mkName
+  . showsDatatypeVariant dv
+  . (("Rep" ++ show (fromEnum gClass)) ++)
+  . ((showNameQual n ++ "_") ++)
+  . sanitizeName
+  $ nameBase n
 
-repType :: GenericClass
-        -> DataVariety
+repType :: GenericKind
+        -> DatatypeVariant_
         -> Name
-        -> Bool
-        -> [Con]
-        -> [Type]
+        -> TypeSubst
+        -> [ConstructorInfo]
         -> Q Type
-repType gClass dv dt isNT cs tySynVars =
-    conT d1TypeName `appT` mkMetaDataType dv dt isNT `appT`
+repType gk dv dt typeSubst cs =
+    conT d1TypeName `appT` mkMetaDataType dv dt `appT`
       foldr1' sum' (conT v1TypeName)
-        (map (repCon gClass dv dt tySynVars) cs)
+        (map (repCon gk dv dt typeSubst) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
 
-repCon :: GenericClass
-       -> DataVariety
+repCon :: GenericKind
+       -> DatatypeVariant_
        -> Name
-       -> [Type]
-       -> Con
+       -> TypeSubst
+       -> ConstructorInfo
        -> Q Type
-repCon gClass dv dt tySynVars (NormalC n bts) = do
-    let bangs = map fst bts
-    ssis <- reifySelStrictInfo n bangs
-    repConWith gClass dv dt n tySynVars Nothing ssis False False
-repCon gClass dv dt tySynVars (RecC n vbts) = do
-    let (selNames, bangs, _) = unzip3 vbts
-    ssis <- reifySelStrictInfo n bangs
-    repConWith gClass dv dt n tySynVars (Just selNames) ssis True False
-repCon gClass dv dt tySynVars (InfixC t1 n t2) = do
-    let bangs = map fst [t1, t2]
-    ssis <- reifySelStrictInfo n bangs
-    repConWith gClass dv dt n tySynVars Nothing ssis False True
-repCon _ _ _ _ con = gadtError con
+repCon gk dv dt typeSubst
+  (ConstructorInfo { constructorName       = n
+                   , constructorVars       = vars
+                   , constructorContext    = ctxt
+                   , constructorStrictness = bangs
+                   , constructorFields     = ts
+                   , constructorVariant    = cv
+                   }) = do
+  checkExistentialContext n vars ctxt
+  let mbSelNames = case cv of
+                     NormalConstructor          -> Nothing
+                     InfixConstructor           -> Nothing
+                     RecordConstructor selNames -> Just selNames
+      isRecord   = case cv of
+                     NormalConstructor   -> False
+                     InfixConstructor    -> False
+                     RecordConstructor _ -> True
+      isInfix    = case cv of
+                     NormalConstructor   -> False
+                     InfixConstructor    -> True
+                     RecordConstructor _ -> False
+  ssis <- reifySelStrictInfo n bangs
+  repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
 
-repConWith :: GenericClass
-           -> DataVariety
+repConWith :: GenericKind
+           -> DatatypeVariant_
            -> Name
            -> Name
-           -> [Type]
+           -> TypeSubst
            -> Maybe [Name]
            -> [SelStrictInfo]
+           -> [Type]
            -> Bool
            -> Bool
            -> Q Type
-repConWith gClass dv dt n tySynVars mbSelNames ssis isRecord isInfix = do
-    (conVars, ts, gk) <- reifyConTys gClass n
-
+repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
     let structureType :: Q Type
         structureType = case ssis of
                              [] -> conT u1TypeName
                              _  -> foldr1 prodT f
-
-        -- See Note [Substituting types in a constructor type signature]
-        typeSubst :: TypeSubst
-        typeSubst = Map.fromList $
-          zip (nub $ concatMap             tyVarNamesOfType  conVars)
-              (nub $ concatMap (map VarT . tyVarNamesOfType) tySynVars)
 
         f :: [Q Type]
         f = case mbSelNames of
@@ -728,7 +727,7 @@ prodT :: Q Type -> Q Type -> Q Type
 prodT a b = conT productTypeName `appT` a `appT` b
 
 repField :: GenericKind
-         -> DataVariety
+         -> DatatypeVariant_
          -> Name
          -> Name
          -> TypeSubst
@@ -739,20 +738,19 @@ repField :: GenericKind
 repField gk dv dt ns typeSubst mbF ssi t =
            conT s1TypeName
     `appT` mkMetaSelType dv dt ns mbF ssi
-    `appT` (repFieldArg gk =<< expandSyn t'')
+    `appT` (repFieldArg gk =<< resolveTypeSynonyms t'')
   where
-    -- See Note [Substituting types in constructor type signatures]
+    -- See Note [Generic1 is polykinded in base-4.10]
     t', t'' :: Type
     t' = case gk of
               Gen1 _ (Just _kvName) ->
--- See Note [Generic1 is polykinded in base-4.10]
 #if MIN_VERSION_base(4,10,0)
                 t
 #else
                 substNameWithKind _kvName starK t
 #endif
               _ -> t
-    t'' = substType typeSubst t'
+    t'' = applySubstitution typeSubst t'
 
 repFieldArg :: GenericKind -> Type -> Q Type
 repFieldArg _ ForallT{} = rankNError
@@ -790,15 +788,18 @@ boxT ty = case unboxedRepNames ty of
     Just (boxTyName, _, _) -> conT boxTyName
     Nothing                -> conT rec0TypeName `appT` return ty
 
-mkCaseExp :: GenericClass -> EmptyCaseOptions -> Name -> [Con]
-          -> (GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match)
-          -> Q Exp
-mkCaseExp gClass ecOptions dt cs matchmaker = do
+mkCaseExp
+  :: GenericClass -> EmptyCaseOptions -> Name -> [Type] -> [ConstructorInfo]
+  -> (GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+                   -> [ConstructorInfo] -> Q Match)
+  -> Q Exp
+mkCaseExp gClass ecOptions dt instTys cs matchmaker = do
   val <- newName "val"
-  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 0 dt cs]
+  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 0 dt instTys cs]
 
-mkFrom :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match
-mkFrom gClass ecOptions m i dt cs = do
+mkFrom :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+       -> [ConstructorInfo] -> Q Match
+mkFrom gClass ecOptions m i dt instTys cs = do
     y <- newName "y"
     match (varP y)
           (normalB $ conE m1DataName `appE` caseE (varE y) cases)
@@ -806,8 +807,9 @@ mkFrom gClass ecOptions m i dt cs = do
   where
     cases = case cs of
               [] -> errorFrom ecOptions dt
-              _  -> zipWith (fromCon gClass wrapE (length cs)) [0..] cs
+              _  -> zipWith (fromCon gk wrapE (length cs)) [0..] cs
     wrapE e = lrE m i e
+    (_, gk) = genericKind gClass instTys
 
 errorFrom :: EmptyCaseOptions -> Name -> [Q Match]
 errorFrom useEmptyCase dt
@@ -824,8 +826,9 @@ errorFrom useEmptyCase dt
                           ++ nameBase dt))
           []]
 
-mkTo :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Con] -> Q Match
-mkTo gClass ecOptions m i dt cs = do
+mkTo :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+     -> [ConstructorInfo] -> Q Match
+mkTo gClass ecOptions m i dt instTys cs = do
     y <- newName "y"
     match (conP m1DataName [varP y])
           (normalB $ caseE (varE y) cases)
@@ -833,8 +836,9 @@ mkTo gClass ecOptions m i dt cs = do
   where
     cases = case cs of
               [] -> errorTo ecOptions dt
-              _  -> zipWith (toCon gClass wrapP (length cs)) [0..] cs
+              _  -> zipWith (toCon gk wrapP (length cs)) [0..] cs
     wrapP p = lrP m i p
+    (_, gk) = genericKind gClass instTys
 
 errorTo :: EmptyCaseOptions -> Name -> [Q Match]
 errorTo useEmptyCase dt
@@ -857,38 +861,30 @@ ghc7'8OrLater = True
 ghc7'8OrLater = False
 #endif
 
-fromCon :: GenericClass -> (Q Exp -> Q Exp) -> Int -> Int -> Con -> Q Match
-fromCon _ wrap m i (NormalC cn []) =
-  match
-    (conP cn [])
-    (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
-fromCon gClass wrap m i (NormalC cn _) = do
-  (ts, gk) <- fmap shrink $ reifyConTys gClass cn
-  fNames   <- newNameList "f" $ length ts
-  match
-    (conP cn (map varP fNames))
-    (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
-      foldr1 prodE (zipWith (fromField gk) fNames ts)) []
-fromCon _ wrap m i (RecC cn []) =
-  match
-    (conP cn [])
-    (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
-fromCon gClass wrap m i (RecC cn _) = do
-  (ts, gk) <- fmap shrink $ reifyConTys gClass cn
-  fNames   <- newNameList "f" $ length ts
-  match
-    (conP cn (map varP fNames))
-    (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
-      foldr1 prodE (zipWith (fromField gk) fNames ts)) []
-fromCon gClass wrap m i (InfixC t1 cn t2) =
-  fromCon gClass wrap m i (NormalC cn [t1,t2])
-fromCon _ _ _ _ con = gadtError con
+fromCon :: GenericKind -> (Q Exp -> Q Exp) -> Int -> Int
+        -> ConstructorInfo -> Q Match
+fromCon gk wrap m i
+  (ConstructorInfo { constructorName    = cn
+                   , constructorVars    = vars
+                   , constructorContext = ctxt
+                   , constructorFields  = ts
+                   }) = do
+  checkExistentialContext cn vars ctxt
+  case ts of
+    [] -> match (conP cn [])
+                (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
+    _ -> do
+      fNames <- newNameList "f" $ length ts
+      match
+        (conP cn (map varP fNames))
+        (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
+          foldr1 prodE (zipWith (fromField gk) fNames ts)) []
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
 
 fromField :: GenericKind -> Name -> Type -> Q Exp
-fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< expandSyn t)
+fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< resolveTypeSynonyms t)
 
 fromFieldWrap :: GenericKind -> Name -> Type -> Q Exp
 fromFieldWrap _             _  ForallT{}  = rankNError
@@ -926,36 +922,27 @@ wC t name
 boxRepName :: Type -> Name
 boxRepName = maybe k1DataName snd3 . unboxedRepNames
 
-toCon :: GenericClass -> (Q Pat -> Q Pat) -> Int -> Int -> Con -> Q Match
-toCon _ wrap m i (NormalC cn []) =
-    match
-      (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
-      (normalB $ conE cn) []
-toCon gClass wrap m i (NormalC cn _) = do
-    (ts, gk) <- fmap shrink $ reifyConTys gClass cn
-    fNames   <- newNameList "f" $ length ts
-    match
-      (wrap $ lrP m i $ conP m1DataName
-        [foldr1 prod (zipWith (toField gk) fNames ts)])
-      (normalB $ foldl appE (conE cn) (zipWith (\nr -> expandSyn >=> toConUnwC gk nr)
-                                      fNames ts)) []
+toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int
+      -> ConstructorInfo -> Q Match
+toCon gk wrap m i
+  (ConstructorInfo { constructorName    = cn
+                   , constructorVars    = vars
+                   , constructorContext = ctxt
+                   , constructorFields  = ts
+                   }) = do
+  checkExistentialContext cn vars ctxt
+  case ts of
+    [] -> match (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
+                (normalB $ conE cn) []
+    _ -> do
+      fNames <- newNameList "f" $ length ts
+      match
+        (wrap $ lrP m i $ conP m1DataName
+          [foldr1 prod (zipWith (toField gk) fNames ts)])
+        (normalB $ foldl appE (conE cn)
+                         (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
+                         fNames ts)) []
   where prod x y = conP productDataName [x,y]
-toCon _ wrap m i (RecC cn []) =
-    match
-      (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
-      (normalB $ conE cn) []
-toCon gClass wrap m i (RecC cn _) = do
-    (ts, gk) <- fmap shrink $ reifyConTys gClass cn
-    fNames   <- newNameList "f" $ length ts
-    match
-      (wrap $ lrP m i $ conP m1DataName
-        [foldr1 prod (zipWith (toField gk) fNames ts)])
-      (normalB $ foldl appE (conE cn) (zipWith (\nr -> expandSyn >=> toConUnwC gk nr)
-                                               fNames ts)) []
-  where prod x y = conP productDataName [x,y]
-toCon gk wrap m i (InfixC t1 cn t2) =
-  toCon gk wrap m i (NormalC cn [t1,t2])
-toCon _ _ _ _ con = gadtError con
 
 toConUnwC :: GenericKind -> Name -> Type -> Q Exp
 toConUnwC Gen0          nr _ = varE nr
@@ -1019,109 +1006,26 @@ unboxedRepNames ty
   | ty == ConT wordHashTypeName   = Just (uWordTypeName,   uWordDataName,   uWordHashValName)
   | otherwise                     = Nothing
 
--- | Deduces the instance type (and kind) to use for a Generic(1) instance.
+-- For the given Types, deduces the instance type (and kind) to use for a
+-- Generic(1) instance. Coming up with the instance type isn't as simple as
+-- dropping the last types, as you need to be wary of kinds being instantiated
+-- with *.
+-- See Note [Type inference in derived instances]
 buildTypeInstance :: GenericClass
                   -- ^ Generic or Generic1
                   -> KindSigOptions
                   -- ^ Whether or not to use explicit kind signatures in the instance type
                   -> Name
                   -- ^ The type constructor or data family name
-                  -> [TyVarBndr]
-                  -- ^ The type variables from the data type/data family declaration
-                  -> DataVariety
-                  -- ^ If using a data family instance, provides the types used
-                  -- to instantiate the instance
+                  -> [Type]
+                  -- ^ The types to instantiate the instance with
                   -> Q (Type, Kind)
--- Plain data type/newtype case
-buildTypeInstance gClass useKindSigs tyConName tvbs DataPlain =
-    let varTys :: [Type]
-        varTys = map tyVarBndrToType tvbs
-    in buildTypeInstanceFromTys gClass useKindSigs tyConName varTys
--- Data family instance case
---
--- The CPP is present to work around a couple of annoying old GHC bugs.
--- See Note [Polykinded data families in Template Haskell]
-buildTypeInstance gClass useKindSigs parentName tvbs (DataFamily _ instTysAndKinds) = do
-#if !(MIN_VERSION_template_haskell(2,8,0)) || MIN_VERSION_template_haskell(2,10,0)
-    let instTys :: [Type]
-        instTys = zipWith stealKindForType tvbs instTysAndKinds
-#else
-    let kindVarNames :: [Name]
-        kindVarNames = nub $ concatMap (tyVarNamesOfType . tyVarBndrKind) tvbs
-
-        numKindVars :: Int
-        numKindVars = length kindVarNames
-
-        givenKinds, givenKinds' :: [Kind]
-        givenTys                :: [Type]
-        (givenKinds, givenTys) = splitAt numKindVars instTysAndKinds
-        givenKinds' = map sanitizeStars givenKinds
-
-        -- A GHC 7.6-specific bug requires us to replace all occurrences of
-        -- (ConT GHC.Prim.*) with StarT, or else Template Haskell will reject it.
-        -- Luckily, (ConT GHC.Prim.*) only seems to occur in this one spot.
-        sanitizeStars :: Kind -> Kind
-        sanitizeStars = go
-          where
-            go :: Kind -> Kind
-            go (AppT t1 t2)                 = AppT (go t1) (go t2)
-            go (SigT t k)                   = SigT (go t) (go k)
-            go (ConT n) | n == starKindName = StarT
-            go t                            = t
-
-    -- If we run this code with GHC 7.8, we might have to generate extra type
-    -- variables to compensate for any type variables that Template Haskell
-    -- eta-reduced away.
-    -- See Note [Polykinded data families in Template Haskell]
-    xTypeNames <- newNameList "tExtra" (length tvbs - length givenTys)
-
-    let xTys   :: [Type]
-        -- Because these type variables were eta-reduced away, we can only
-        -- determine their kind by using stealKindForType. Therefore, we mark
-        -- them as VarT to ensure they will be given an explicit kind annotation
-        -- (and so the kind inference machinery has the right information).
-        xTys = map VarT xTypeNames
-
-        substNamesWithKinds :: [(Name, Kind)] -> Type -> Type
-        substNamesWithKinds nks t = foldr' (uncurry substNameWithKind) t nks
-
-        -- The types from the data family instance might not have explicit kind
-        -- annotations, which the kind machinery needs to work correctly. To
-        -- compensate, we use stealKindForType to explicitly annotate any
-        -- types without kind annotations.
-        instTys :: [Type]
-        instTys = map (substNamesWithKinds (zip kindVarNames givenKinds'))
-                  -- Note that due to a GHC 7.8-specific bug
-                  -- (see Note [Polykinded data families in Template Haskell]),
-                  -- there may be more kind variable names than there are kinds
-                  -- to substitute. But this is OK! If a kind is eta-reduced, it
-                  -- means that is was not instantiated to something more specific,
-                  -- so we need not substitute it. Using stealKindForType will
-                  -- grab the correct kind.
-                $ zipWith stealKindForType tvbs (givenTys ++ xTys)
-#endif
-    buildTypeInstanceFromTys gClass useKindSigs parentName instTys
-
--- For the given Types, deduces the instance type (and kind) to use for a
--- Generic(1) instance. Coming up with the instance type isn't as simple as
--- dropping the last types, as you need to be wary of kinds being instantiated
--- with *.
--- See Note [Type inference in derived instances]
-buildTypeInstanceFromTys :: GenericClass
-                         -- ^ Generic or Generic1
-                         -> KindSigOptions
-                         -- ^ Whether or not to use explicit kind signatures in the instance type
-                         -> Name
-                         -- ^ The type constructor or data family name
-                         -> [Type]
-                         -- ^ The types to instantiate the instance with
-                         -> Q (Type, Kind)
-buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
+buildTypeInstance gClass useKindSigs tyConName varTysOrig = do
     -- Make sure to expand through type/kind synonyms! Otherwise, the
     -- eta-reduction check might get tripped up over type variables in a
     -- synonym that are actually dropped.
     -- (See GHC Trac #11416 for a scenario where this actually happened.)
-    varTysExp <- mapM expandSyn varTysOrig
+    varTysExp <- mapM resolveTypeSynonyms varTysOrig
 
     let remainingLength :: Int
         remainingLength = length varTysOrig - fromEnum gClass
@@ -1213,12 +1117,6 @@ buildTypeInstanceFromTys gClass useKindSigs tyConName varTysOrig = do
       etaReductionError instanceType
     return (instanceType, instanceKind)
 
--- See Note [Arguments to generated type synonyms]
-grabTyVarsFromCons :: GenericClass -> [Con] -> Q [Type]
-grabTyVarsFromCons _      []      = return []
-grabTyVarsFromCons gClass (con:_) =
-    fmap fst3 $ reifyConTys gClass (constructorName con)
-
 {-
 Note [Forcing buildTypeInstance]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1229,107 +1127,6 @@ for whether or not the provided datatype can actually have Generic(1) implemente
 it, and produces errors if it can't. Otherwise, laziness would cause these checks
 to be skipped entirely, which could result in some indecipherable type errors
 down the road.
-
-Note [Substituting types in constructor type signatures]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-While reifyConTys gives you the type variables of a constructor, they may not be
-the same of the data declaration's type variables. The classic example of this is
-GADTs:
-
-  data GADT a b where
-    GADTCon :: e -> f -> GADT e f
-
-The type variables of GADTCon are completely different from the declaration's, which
-can cause a problem when generating a Rep instance:
-
-  type Rep (GADT a b) = Rec0 e :*: Rec0 f
-
-Naïvely, we would generate something like this, since traversing the constructor
-would give us precisely those arguments. Not good. We need to perform a type
-substitution to ensure that e maps to a, and f maps to b.
-
-This turns out to be surprisingly simple. Whenever you have a constructor type
-signature like (e -> f -> GADT e f), take the result type, collect all of its
-distinct type variables in order from left-to-right, and then map them to their
-corresponding type variables from the data declaration.
-
-There is another obscure case where we need to do a type subtitution. With
--XTypeInType enabled on GHC 8.0, you might have something like this:
-
-  data Proxy (a :: k) (b :: k) = Proxy k deriving Generic1
-
-Then k gets specialized to *, which means that k should NOT show up in the RHS of
-a Rep1 type instance! To avoid this, make sure to substitute k with *.
-See also Note [Generic1 is polykinded in base-4.10].
-
-Note [Arguments to generated type synonyms]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A surprisingly difficult component of generating the type synonyms for Rep/Rep1 is
-coming up with the type synonym variable arguments, since they have to be just the
-right name and kind to work. The type signature of a constructor does a remarkably
-good job of coming up with these type variables for us, so if at least one constructor
-exists, we simply steal the type variables from that constructor's type signature
-for use in the generated type synonym. We also count the number of type variables
-that the first constructor's type signature has in order to determine how many
-type variables we should give it as arguments in the generated
-(type Rep (Foo ...) = <makeRep> ...) code.
-
-This leads one to ask: what if there are no constructors? If that's the case, then
-we're OK, since that means no type variables can possibly appear on the RHS of the
-type synonym! In such a special case, we're perfectly justified in making the type
-synonym not have any type variable arguments, and similarly, we don't apply any
-arguments to it in the generated (type Rep Foo = <makeRep>) code.
-
-Note [Polykinded data families in Template Haskell]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In order to come up with the correct instance context and head for an instance, e.g.,
-
-  instance C a => C (Data a) where ...
-
-We need to know the exact types and kinds used to instantiate the instance. For
-plain old datatypes, this is simple: every type must be a type variable, and
-Template Haskell reliably tells us the type variables and their kinds.
-
-Doing the same for data families proves to be much harder for three reasons:
-
-1. On any version of Template Haskell, it may not tell you what an instantiated
-   type's kind is. For instance, in the following data family instance:
-
-     data family Fam (f :: * -> *) (a :: *)
-     data instance Fam f a
-
-   Then if we use TH's reify function, it would tell us the TyVarBndrs of the
-   data family declaration are:
-
-     [KindedTV f (AppT (AppT ArrowT StarT) StarT),KindedTV a StarT]
-
-   and the instantiated types of the data family instance are:
-
-     [VarT f1,VarT a1]
-
-   We can't just pass [VarT f1,VarT a1] to buildTypeInstanceFromTys, since we
-   have no way of knowing their kinds. Luckily, the TyVarBndrs tell us what the
-   kind is in case an instantiated type isn't a SigT, so we use the stealKindForType
-   function to ensure all of the instantiated types are SigTs before passing them
-   to buildTypeInstanceFromTys.
-2. On GHC 7.6 and 7.8, a bug is present in which Template Haskell lists all of
-   the specified kinds of a data family instance efore any of the instantiated
-   types. Fortunately, this is easy to deal with: you simply count the number of
-   distinct kind variables in the data family declaration, take that many elements
-   from the front of the  Types list of the data family instance, substitute the
-   kind variables with their respective instantiated kinds (which you took earlier),
-   and proceed as normal.
-3. On GHC 7.8, an even uglier bug is present (GHC Trac #9692) in which Template
-   Haskell might not even list all of the Types of a data family instance, since
-   they are eta-reduced away! And yes, kinds can be eta-reduced too.
-
-   The simplest workaround is to count how many instantiated types are missing from
-   the list and generate extra type variables to use in their place. Luckily, we
-   needn't worry much if its kind was eta-reduced away, since using stealKindForType
-   will get it back.
 
 Note [Kind signatures in derived instances]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1377,7 +1174,7 @@ are sadly some degenerate cases where this isn't true. Consider this example:
 The Rep1 type instance in a Generic1 instance for Compose would involve the type
 (f :.: Rec1 g), which forces (f :: * -> *). But this library doesn't have very
 sophisticated kind inference machinery (other than what is mentioned in
-Note [Substituting types in constructor type signatures]), so at the moment we
+Note [Generic1 is polykinded in base-4.10]), so at the moment we
 have no way of actually unifying k1 with *. So the naïve generated Generic1
 instance would be:
 

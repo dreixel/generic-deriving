@@ -14,6 +14,8 @@ Template Haskell-related utilities.
 
 module Generics.Deriving.TH.Internal where
 
+import           Control.Monad (unless)
+
 import           Data.Char (isAlphaNum, ord)
 import           Data.Foldable (foldr')
 import           Data.List
@@ -23,9 +25,15 @@ import           Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
+import           Language.Haskell.TH.Datatype
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH.Ppr (pprint)
 import           Language.Haskell.TH.Syntax
+
+#if !(MIN_VERSION_base(4,8,0))
+import           Data.Foldable (Foldable(foldMap))
+import           Data.Monoid (Monoid(..))
+#endif
 
 #ifndef CURRENT_PACKAGE_KEY
 import           Data.Version (showVersion)
@@ -36,87 +44,20 @@ import           Paths_generic_deriving (version)
 -- Expanding type synonyms
 -------------------------------------------------------------------------------
 
--- | Expands all type synonyms in a type. Written by Dan Rosén in the
--- @genifunctors@ package (licensed under BSD3).
-expandSyn :: Type -> Q Type
-expandSyn (ForallT tvs ctx t) = fmap (ForallT tvs ctx) $ expandSyn t
-expandSyn t@AppT{}            = expandSynApp t []
-expandSyn t@ConT{}            = expandSynApp t []
-expandSyn (SigT t k)          = do t' <- expandSyn t
-                                   k' <- expandSynKind k
-                                   return (SigT t' k')
-expandSyn t                   = return t
-
-expandSynKind :: Kind -> Q Kind
-#if MIN_VERSION_template_haskell(2,8,0)
-expandSynKind = expandSyn
-#else
-expandSynKind = return -- There are no kind synonyms to deal with
-#endif
-
-expandSynApp :: Type -> [Type] -> Q Type
-expandSynApp (AppT t1 t2) ts = do
-    t2' <- expandSyn t2
-    expandSynApp t1 (t2':ts)
-expandSynApp (ConT n) ts | nameBase n == "[]" = return $ foldl' AppT ListT ts
-expandSynApp t@(ConT n) ts = do
-    info <- reify n
-    case info of
-        TyConI (TySynD _ tvs rhs) ->
-            let (ts', ts'') = splitAt (length tvs) ts
-                subs = mkSubst tvs ts'
-                rhs' = substType subs rhs
-             in expandSynApp rhs' ts''
-        _ -> return $ foldl' AppT t ts
-expandSynApp t ts = do
-    t' <- expandSyn t
-    return $ foldl' AppT t' ts
-
 type TypeSubst = Map Name Type
-type KindSubst = Map Name Kind
 
-mkSubst :: [TyVarBndr] -> [Type] -> TypeSubst
-mkSubst vs ts =
-   let vs' = map tyVarBndrName vs
-   in Map.fromList $ zip vs' ts
-
-substType :: TypeSubst -> Type -> Type
-substType subs (ForallT v c t) = ForallT v c $ substType subs t
-substType subs t@(VarT n)      = Map.findWithDefault t n subs
-substType subs (AppT t1 t2)    = AppT (substType subs t1) (substType subs t2)
-substType subs (SigT t k)      = SigT (substType subs t)
+applySubstitutionKind :: Map Name Kind -> Type -> Type
 #if MIN_VERSION_template_haskell(2,8,0)
-                                      (substType subs k)
+applySubstitutionKind = applySubstitution
 #else
-                                      k
-#endif
-substType _ t                  = t
-
-substKind :: KindSubst -> Type -> Type
-#if MIN_VERSION_template_haskell(2,8,0)
-substKind = substType
-#else
-substKind _ = id -- There are no kind variables!
+applySubstitutionKind _ t = t
 #endif
 
 substNameWithKind :: Name -> Kind -> Type -> Type
-substNameWithKind n k = substKind (Map.singleton n k)
+substNameWithKind n k = applySubstitutionKind (Map.singleton n k)
 
 substNamesWithKindStar :: [Name] -> Type -> Type
 substNamesWithKindStar ns t = foldr' (flip substNameWithKind starK) t ns
-
-substTyVarBndrType :: TypeSubst -> TyVarBndr -> Type
-substTyVarBndrType subs = substType subs . tyVarBndrToType
-
-substTyVarBndrKind :: KindSubst -> TyVarBndr -> Type
-#if MIN_VERSION_template_haskell(2,8,0)
-substTyVarBndrKind = substTyVarBndrType
-#else
-substTyVarBndrKind _ = tyVarBndrToType
-#endif
-
-substNameWithKindStarInTyVarBndr :: Name -> TyVarBndr -> Type
-substNameWithKindStarInTyVarBndr n = substTyVarBndrKind (Map.singleton n starK)
 
 -------------------------------------------------------------------------------
 -- StarKindStatus
@@ -163,30 +104,44 @@ hasKindStar (SigT _ StarK) = True
 #endif
 hasKindStar _              = False
 
--- | Gets all of the type/kind variable names mentioned somewhere in a Type.
-tyVarNamesOfType :: Type -> [Name]
-tyVarNamesOfType = go
-  where
-    go :: Type -> [Name]
-    go (AppT t1 t2) = go t1 ++ go t2
-    go (SigT t _k)  = go t
-#if MIN_VERSION_template_haskell(2,8,0)
-                           ++ go _k
-#endif
-    go (VarT n)     = [n]
-    go _            = []
-
 -- | Gets all of the required type/kind variable binders mentioned in a Type.
 -- This does not add separate items for kind variable binders (in contrast with
--- the behavior of 'tyVarNamesOfType').
-requiredTyVarsOfType :: Type -> [TyVarBndr]
-requiredTyVarsOfType = go
-  where
-    go :: Type -> [TyVarBndr]
-    go (AppT t1 t2)      = go t1 ++ go t2
-    go (SigT (VarT n) k) = [KindedTV n k]
-    go (VarT n)          = [PlainTV n]
-    go _                 = []
+-- the behavior of 'freeVariables').
+requiredTyVarsOfTypes :: [Type] -> [TyVarBndr]
+requiredTyVarsOfTypes tys =
+  let fvs :: [Name]
+      fvs = nub $ concatMap freeVariables tys
+
+      varKindSigs :: Map Name Kind
+      varKindSigs = foldMap go tys
+        where
+          go :: Type -> Map Name Kind
+          go (ForallT {}) = error "`forall` type used in type family pattern"
+          go (AppT t1 t2) = go t1 `mappend` go t2
+          go (SigT t k) =
+            let kSigs =
+#if MIN_VERSION_template_haskell(2,8,0)
+                  go k
+#else
+                  mempty
+#endif
+            in case t of
+                 VarT n -> Map.insert n k kSigs
+                 _      -> go t `mappend` kSigs
+          go _ = mempty
+
+      ascribeWithKind n
+        | Just k <- Map.lookup n varKindSigs
+        = KindedTV n k
+        | otherwise
+        = PlainTV n
+
+      isKindBinder = (`Set.member` kindVars)
+        where
+          kindVars = Set.fromList $ concatMap freeVariables $ Map.elems varKindSigs
+
+  in map ascribeWithKind $
+     filter (not . isKindBinder) fvs
 
 -- | Converts a VarT or a SigT into Just the corresponding TyVarBndr.
 -- Converts other Types to Nothing.
@@ -322,19 +277,6 @@ tyVarBndrToType :: TyVarBndr -> Type
 tyVarBndrToType (PlainTV n)    = VarT n
 tyVarBndrToType (KindedTV n k) = SigT (VarT n) k
 
-tyVarBndrName :: TyVarBndr -> Name
-tyVarBndrName (PlainTV  name)   = name
-tyVarBndrName (KindedTV name _) = name
-
-tyVarBndrKind :: TyVarBndr -> Kind
-tyVarBndrKind PlainTV{}      = starK
-tyVarBndrKind (KindedTV _ k) = k
-
--- | If a VarT is missing an explicit kind signature, steal it from a TyVarBndr.
-stealKindForType :: TyVarBndr -> Type -> Type
-stealKindForType tvb t@VarT{} = SigT t (tyVarBndrKind tvb)
-stealKindForType _   t        = t
-
 -- | Generate a list of fresh names with a common prefix, and numbered suffixes.
 newNameList :: String -> Int -> Q [Name]
 newNameList prefix n = mapM (newName . (prefix ++) . show) [1..n]
@@ -443,16 +385,11 @@ foldr1' _ x [] = x
 foldr1' _ _ [x] = x
 foldr1' f x (h:t) = f h (foldr1' f x t)
 
--- | Extracts the name of a constructor.
-constructorName :: Con -> Name
-constructorName (NormalC name      _  ) = name
-constructorName (RecC    name      _  ) = name
-constructorName (InfixC  _    name _  ) = name
-constructorName (ForallC _    _    con) = constructorName con
-#if MIN_VERSION_template_haskell(2,11,0)
-constructorName (GadtC    names _ _)    = head names
-constructorName (RecGadtC names _ _)    = head names
-#endif
+isNewtypeVariant :: DatatypeVariant_ -> Bool
+isNewtypeVariant Datatype_             = False
+isNewtypeVariant Newtype_              = True
+isNewtypeVariant (DataInstance_ {})    = False
+isNewtypeVariant (NewtypeInstance_ {}) = True
 
 #if MIN_VERSION_template_haskell(2,7,0)
 -- | Extracts the constructors of a data or newtype declaration.
@@ -482,83 +419,49 @@ data GenericKind = Gen0
                  | Gen1 Name (Maybe Name)
 
 -- Determines the universally quantified type variables (possibly after
--- substituting * in the case of Generic1), the types of a constructor's
--- arguments, and the last type parameter name (if there is one).
-reifyConTys :: GenericClass
-            -> Name
-            -> Q ([Type], [Type], GenericKind)
-reifyConTys gClass conName = do
-    info <- reify conName
-    let (tvbs, uncTy) = case info of
-          DataConI _ ty _
-#if !(MIN_VERSION_template_haskell(2,11,0))
-                   _
-#endif
-                   -> uncurryTy ty
-          _ -> error "Must be a data constructor"
-    let (argTys, [resTy]) = splitAt (length uncTy - 1) uncTy
-    -- Make sure to expand through synonyms on the last type, or else you might
-    -- have something like
-    --
-    --   type Constant a b = a
-    --   data Good a = Good (Constant a b)
-    --
-    -- which you'd only be able to tell was legal if you expand Constant a b to a!
-    resTyExp <- expandSyn resTy
-    let numResTyVars = length . nub $ requiredTyVarsOfType resTyExp
-        -- We need to grab a number of types from the constructor's
-        -- type signature to re-use for the Rep(1) type synonym's type variable
-        -- binders. As it turns out, that number is equal to the number of distinct
-        -- type variables which appear in the result type.
-        --
-        -- We assume that the required types all come last in the list
-        -- of forall'd type variables. I suppose nothing guarantees this, but
-        -- this seems to always be the case via experimentation. Fingers crossed.
-        requiredTvbs = drop (length tvbs - numResTyVars) tvbs
-    let (requiredTyVars', gk) = case gClass of
-           Generic  -> (map tyVarBndrToType requiredTvbs, Gen0)
-           Generic1 ->
-             -- If deriving Generic1 and the last type variable is polykinded,
-             -- make sure to substitute that kind with * in the other type
-             -- variable binders' kind signatures
-             let headRequiredTvbs :: [TyVarBndr]
-                 lastRequiredTvb :: TyVarBndr
-                 (headRequiredTvbs, [lastRequiredTvb]) =
-                   splitAt (length requiredTvbs - 1) requiredTvbs
-
-                 mbLastArgKindName :: Maybe Name
-                 mbLastArgKindName = starKindStatusToName
-                                   . canRealizeKindStar
-                                   $ tyVarBndrToType lastRequiredTvb
-
-                 requiredTyVars :: [Type]
-                 requiredTyVars =
-                   case mbLastArgKindName of
-                        Nothing   -> map tyVarBndrToType headRequiredTvbs
-                        Just _lakn ->
--- See Note [Generic1 is polykinded in base-4.10] in Generics.Deriving.TH
-#if MIN_VERSION_base(4,10,0)
-                          map tyVarBndrToType headRequiredTvbs
-#else
-                          map (substNameWithKindStarInTyVarBndr _lakn)
-                              headRequiredTvbs
-#endif
-             in ( requiredTyVars
-                , Gen1 (tyVarBndrName lastRequiredTvb) mbLastArgKindName
-                )
-    return (requiredTyVars', argTys, gk)
-
--- | Indicates whether Generic(1) is being derived for a plain data type (DataPlain)
--- or a data family instance (DataFamily). DataFamily bundles the Name of the data
--- family instance's first constructor (for Name-generation purposes) and the types
--- used to instantiate the instance.
-data DataVariety = DataPlain | DataFamily Name [Type]
-
-showsDataVariety :: DataVariety -> ShowS
-showsDataVariety dv = (++ '_':label dv)
+-- substituting * in the case of Generic1) and the last type parameter name
+-- (if there is one).
+genericKind :: GenericClass -> [Type] -> ([TyVarBndr], GenericKind)
+genericKind gClass tySynVars =
+  case gClass of
+    Generic  -> (requiredTyVarsOfTypes tySynVars, Gen0)
+    Generic1 -> (requiredTyVarsOfTypes initArgs, Gen1 (varTToName lastArg) mbLastArgKindName)
   where
-    label DataPlain        = "Plain"
-    label (DataFamily n _) = "Family_" ++ sanitizeName (nameBase n)
+    -- Everything below is only used for Generic1.
+    initArgs :: [Type]
+    initArgs = init tySynVars
+
+    lastArg :: Type
+    lastArg = last tySynVars
+
+    mbLastArgKindName :: Maybe Name
+    mbLastArgKindName = starKindStatusToName
+                      $ canRealizeKindStar lastArg
+
+-- | A version of 'DatatypeVariant' in which the data family instance
+-- constructors come equipped with the 'ConstructorInfo' of the first
+-- constructor in the family instance (for 'Name' generation purposes).
+data DatatypeVariant_
+  = Datatype_
+  | Newtype_
+  | DataInstance_    ConstructorInfo
+  | NewtypeInstance_ ConstructorInfo
+
+showsDatatypeVariant :: DatatypeVariant_ -> ShowS
+showsDatatypeVariant variant = (++ '_':label)
+  where
+    dataPlain :: String
+    dataPlain = "Plain"
+
+    dataFamily :: ConstructorInfo -> String
+    dataFamily con = "Family_" ++ sanitizeName (nameBase $ constructorName con)
+
+    label :: String
+    label = case variant of
+              Datatype_            -> dataPlain
+              Newtype_             -> dataPlain
+              DataInstance_    con -> dataFamily con
+              NewtypeInstance_ con -> dataFamily con
 
 showNameQual :: Name -> String
 showNameQual = sanitizeName . showQual
@@ -577,15 +480,15 @@ sanitizeName nb = 'N':(
 
 -- | One of the last type variables cannot be eta-reduced (see the canEtaReduce
 -- function for the criteria it would have to meet).
-etaReductionError :: Type -> a
-etaReductionError instanceType = error $
+etaReductionError :: Type -> Q a
+etaReductionError instanceType = fail $
   "Cannot eta-reduce to an instance of form \n\tinstance (...) => "
   ++ pprint instanceType
 
 -- | Either the given data type doesn't have enough type variables, or one of
 -- the type variables to be eta-reduced cannot realize kind *.
-derivingKindError :: Name -> a
-derivingKindError tyConName = error
+derivingKindError :: Name -> Q a
+derivingKindError tyConName = fail
   . showString "Cannot derive well-kinded instance of form ‘Generic1 "
   . showParen True
     ( showString (nameBase tyConName)
@@ -594,14 +497,9 @@ derivingKindError tyConName = error
   . showString "‘\n\tClass Generic1 expects an argument of kind * -> *"
   $ ""
 
-outOfPlaceTyVarError :: a
-outOfPlaceTyVarError = error $
+outOfPlaceTyVarError :: Q a
+outOfPlaceTyVarError = fail
     "Type applied to an argument involving the last parameter is not of kind * -> *"
-
--- | Deriving Generic(1) doesn't work with ExistentialQuantification or GADTs
-gadtError :: Con -> a
-gadtError con = error $
-  nameBase (constructorName con) ++ " must be a vanilla data constructor"
 
 -- | Cannot have a constructor argument of form (forall a1 ... an. <type>)
 -- when deriving Generic(1)
@@ -617,85 +515,41 @@ rankNError = error "Cannot have polymorphic arguments"
 --
 -- Any other value will result in an exception.
 reifyDataInfo :: Name
-              -> Q (Either String (Name, Bool, [TyVarBndr], [Con], DataVariety))
+              -> Q (Either String (Name, [Type], [ConstructorInfo], DatatypeVariant_))
 reifyDataInfo name = do
-  info <- reify name
-  case info of
-    TyConI dec ->
-      return $ case dec of
-        DataD ctxt _ tvbs
-#if MIN_VERSION_template_haskell(2,11,0)
-              _
-#endif
-              cons _ -> Right $
-          checkDataContext name ctxt (name, False, tvbs, cons, DataPlain)
-        NewtypeD ctxt _ tvbs
-#if MIN_VERSION_template_haskell(2,11,0)
-                 _
-#endif
-                 con _ -> Right $
-          checkDataContext name ctxt (name, True, tvbs, [con], DataPlain)
-        TySynD{} -> Left $ ns ++ "Type synonyms are not supported."
-        _        -> Left $ ns ++ "Unsupported type: " ++ show dec
-#if MIN_VERSION_template_haskell(2,7,0)
-# if MIN_VERSION_template_haskell(2,11,0)
-    DataConI _ _ parentName   -> do
-# else
-    DataConI _ _ parentName _ -> do
-# endif
-      parentInfo <- reify parentName
-      return $ case parentInfo of
-# if MIN_VERSION_template_haskell(2,11,0)
-        FamilyI (DataFamilyD _ tvbs _) decs ->
-# else
-        FamilyI (FamilyD DataFam _ tvbs _) decs ->
-# endif
-          -- This isn't total, but the API requires that the data family instance have
-          -- at least one constructor anyways, so this will always succeed.
-          let instDec = flip find decs $ any ((name ==) . constructorName) . dataDecCons
-           in case instDec of
-                Just (DataInstD ctxt _ instTys
-# if MIN_VERSION_template_haskell(2,11,0)
-                                _
-# endif
-                                cons _) -> Right $
-                  checkDataContext parentName ctxt
-                    (parentName, False, tvbs, cons, DataFamily (constructorName $ head cons) instTys)
-                Just (NewtypeInstD ctxt _ instTys
-# if MIN_VERSION_template_haskell(2,11,0)
-                                   _
-# endif
-                                   con _) -> Right $
-                  checkDataContext parentName ctxt
-                    (parentName, True, tvbs, [con], DataFamily (constructorName con) instTys)
-                _ -> Left $ ns ++
-                  "Could not find data or newtype instance constructor."
-        _ -> Left $ ns ++ "Data constructor " ++ show name ++
-          " is not from a data family instance constructor."
-# if MIN_VERSION_template_haskell(2,11,0)
-    FamilyI DataFamilyD{} _ ->
-# else
-    FamilyI (FamilyD DataFam _ _ _) _ ->
-# endif
-      return . Left $
-        ns ++ "Cannot use a data family name. Use a data family instance constructor instead."
-    _ -> return . Left $ ns ++ "The name must be of a plain data type constructor, "
-                            ++ "or a data family instance constructor."
-#else
-    DataConI{} -> return . Left $ ns ++ "Cannot use a data constructor."
-        ++ "\n\t(Note: if you are trying to derive for a data family instance, use GHC >= 7.4 instead.)"
-    _          -> return . Left $ ns ++ "The name must be of a plain type constructor."
-#endif
+  return $ Left $ ns ++ " Could not reify " ++ nameBase name
+ `recover`
+  do DatatypeInfo { datatypeContext = ctxt
+                  , datatypeName    = parentName
+                  , datatypeVars    = tys
+                  , datatypeVariant = variant
+                  , datatypeCons    = cons
+                  } <- reifyDatatype name
+     let variant_ = case variant of
+                      Datatype        -> Datatype_
+                      Newtype         -> Newtype_
+                      -- This isn't total, but the API requires that the data
+                      -- family instance have at least one constructor anyways,
+                      -- so this will always succeed.
+                      DataInstance    -> DataInstance_    $ head cons
+                      NewtypeInstance -> NewtypeInstance_ $ head cons
+     checkDataContext parentName ctxt $ Right (parentName, tys, cons, variant_)
   where
     ns :: String
     ns = "Generics.Deriving.TH.reifyDataInfo: "
 
 -- | One cannot derive Generic(1) instance for anything that uses DatatypeContexts,
 -- so check to make sure the Cxt field of a datatype is null.
-checkDataContext :: Name -> Cxt -> a -> a
-checkDataContext _        [] x = x
-checkDataContext dataName _  _ = error $
+checkDataContext :: Name -> Cxt -> a -> Q a
+checkDataContext _        [] x = return x
+checkDataContext dataName _  _ = fail $
   nameBase dataName ++ " must not have a datatype context"
+
+-- | Deriving Generic(1) doesn't work with ExistentialQuantification or GADTs.
+checkExistentialContext :: Name -> [TyVarBndr] -> Cxt -> Q ()
+checkExistentialContext conName vars ctxt =
+  unless (null vars && null ctxt) $ fail $
+    nameBase conName ++ " must be a vanilla data constructor"
 
 -------------------------------------------------------------------------------
 -- Manually quoted names
