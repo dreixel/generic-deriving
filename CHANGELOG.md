@@ -1,3 +1,6 @@
+# next [????.??.??]
+* Refactor internals using `th-abstraction`.
+
 # 1.12.1 [2018.01.11]
 * Remove a test that won't work on GHC 8.4.
 
