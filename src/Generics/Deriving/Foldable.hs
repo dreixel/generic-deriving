@@ -1,8 +1,11 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -107,6 +110,15 @@ instance (GFoldable' f, GFoldable' g) => GFoldable' (f :*: g) where
 
 instance (GFoldable f, GFoldable' g) => GFoldable' (f :.: g) where
   gfoldMap' f (Comp1 x) = gfoldMap (gfoldMap' f) x
+
+instance (forall x. GFoldable' (WrappedApply f x)) => GFoldable' (ExQuant a f) where
+  gfoldMap' f (ExQuant x) = gfoldMap' f x
+
+instance GFoldable' (Apply f x) => GFoldable' (WrappedApply f x) where
+  gfoldMap' f (WrapApply x) = gfoldMap' f x
+
+instance (c => GFoldable' f) => GFoldable' (ExContext c f) where
+  gfoldMap' f (ExContext x) = gfoldMap' f x
 
 instance GFoldable' UAddr where
   gfoldMap' _ (UAddr _) = mempty

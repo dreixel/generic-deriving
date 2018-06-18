@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 {- |
 Module      :  Generics.Deriving.TH
@@ -100,7 +102,7 @@ module Generics.Deriving.TH (
     , makeTo1Options
   ) where
 
-import           Control.Monad ((>=>), unless, when)
+import           Control.Monad ((>=>), unless, when, mapAndUnzipM)
 
 import qualified Data.Map as Map (empty, fromList)
 
@@ -114,6 +116,9 @@ import           Generics.Deriving.TH.Pre4_9
 import           Language.Haskell.TH.Datatype
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH
+
+import           Language.Haskell.TH.Desugar
+import           Data.Singletons.TH (genDefunSymbols)
 
 {- $options
 'Options' gives you a way to further tweak derived 'Generic' and 'Generic1' instances:
@@ -316,9 +321,12 @@ deriveRepCommon gClass useKindSigs n = do
       tySynVars' = if useKindSigs
                       then tySynVars
                       else map unKindedTV tySynVars
-  fmap (:[]) $ tySynD (genRepName gClass dv name)
-                      tySynVars'
-                      (repType gk dv name Map.empty cons)
+  (tySynRHS, auxes) <- repType gk dv name Map.empty tySynVars cons
+  auxDecs <- concatMapM (\(a,b,c) -> whargarbl a b c) auxes
+  tySynDec <- tySynD (genRepName gClass dv name)
+                     tySynVars'
+                     (return tySynRHS)
+  return $ tySynDec:auxDecs
 
 deriveInst :: GenericClass -> Options -> Name -> Q [Dec]
 deriveInst Generic  = deriveInstCommon genericTypeName  repTypeName  Generic  fromValName  toValName
@@ -338,9 +346,9 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
       useKindSigs = kindSigOptions opts
   -- See Note [Forcing buildTypeInstance]
   !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name instTys
-  tyInsRHS <- if repOptions opts == InlineRep
-                 then makeRepInline   gClass dv name instTys cons origTy
-                 else makeRepTySynApp gClass dv name              origTy
+  (tyInsRHS, auxes) <- if repOptions opts == InlineRep
+                          then makeRepInline   gClass dv name instTys cons origTy
+                          else (,[]) <$> makeRepTySynApp gClass dv name              origTy
 
   let origSigTy = if useKindSigs
                      then SigT origTy origKind
@@ -357,9 +365,18 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
       fcs = mkBody mkFrom
       tcs = mkBody mkTo
 
-  fmap (:[]) $
+  auxDecs <- concatMapM (\(a,b,c) -> whargarbl a b c) auxes
+  instDec <-
     instanceD (cxt []) (conT genericName `appT` return origSigTy)
                          [return tyIns, funD fromName fcs, funD toName tcs]
+  return $ instDec:auxDecs
+
+-- TODO RGS: Move below? Also, docs pls. And a better name.
+whargarbl :: Name -> [TyVarBndr] -> Q Type -> Q [Dec]
+whargarbl auxName auxBndrs auxRHS = do
+  synDec    <- tySynD auxName auxBndrs auxRHS
+  defunDecs <- withLocalDeclarations [synDec] $ genDefunSymbols [auxName]
+  return $ synDec:defunDecs
 
 {- $make
 
@@ -558,7 +575,7 @@ makeRepCommon gClass repOpts n mbQTy = do
 
   case (mbQTy, repOpts) of
        (Just qTy, TypeSynonymRep) -> qTy >>= makeRepTySynApp gClass dv name
-       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass dv name instTys cons
+       (Just qTy, InlineRep)      -> qTy >>= fmap fst . makeRepInline   gClass dv name instTys cons
        (Nothing,  TypeSynonymRep) -> conT $ genRepName gClass dv name
        (Nothing,  InlineRep)      -> fail "makeRepCommon"
 
@@ -568,7 +585,7 @@ makeRepInline :: GenericClass
               -> [Type]
               -> [ConstructorInfo]
               -> Type
-              -> Q Type
+              -> Q (Type, [(Name, [TyVarBndr], Q Type)])
 makeRepInline gClass dv name instTys cons ty = do
   let instVars = requiredTyVarsOfTypes [ty]
       (tySynVars, gk)  = genericKind gClass instTys
@@ -578,7 +595,7 @@ makeRepInline gClass dv name instTys cons ty = do
         zip (map tvName tySynVars)
             (map (VarT . tvName) instVars)
 
-  repType gk dv name typeSubst cons
+  repType gk dv name typeSubst instVars cons
 
 makeRepTySynApp :: GenericClass -> DatatypeVariant_ -> Name
                 -> Type -> Q Type
@@ -655,12 +672,14 @@ repType :: GenericKind
         -> DatatypeVariant_
         -> Name
         -> TypeSubst
+        -> [TyVarBndr]
         -> [ConstructorInfo]
-        -> Q Type
-repType gk dv dt typeSubst cs =
-    conT d1TypeName `appT` mkMetaDataType dv dt `appT`
-      foldr1' sum' (conT v1TypeName)
-        (map (repCon gk dv dt typeSubst) cs)
+        -> Q (Type, [(Name, [TyVarBndr], Q Type)])
+repType gk dv dt typeSubst univTvBndrs cs = do
+    (mains, auxes) <- mapAndUnzipM (repCon gk dv dt typeSubst univTvBndrs) cs
+    mainRep <- conT d1TypeName `appT` mkMetaDataType dv dt `appT`
+                 foldr1' sum' (conT v1TypeName) (map return mains)
+    return (mainRep, concat auxes)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
@@ -669,17 +688,18 @@ repCon :: GenericKind
        -> DatatypeVariant_
        -> Name
        -> TypeSubst
+       -> [TyVarBndr]
        -> ConstructorInfo
-       -> Q Type
-repCon gk dv dt typeSubst
+       -> Q (Type, [(Name, [TyVarBndr], Q Type)])
+repCon gk dv dt typeSubst univTvBndrs
   (ConstructorInfo { constructorName       = n
-                   , constructorVars       = vars
+                   , constructorVars       = exTvBndrs
                    , constructorContext    = ctxt
                    , constructorStrictness = bangs
                    , constructorFields     = ts
                    , constructorVariant    = cv
                    }) = do
-  checkExistentialContext n vars ctxt
+  checkExistentialContext n exTvBndrs ctxt
   let mbSelNames = case cv of
                      NormalConstructor          -> Nothing
                      InfixConstructor           -> Nothing
@@ -693,24 +713,64 @@ repCon gk dv dt typeSubst
                      InfixConstructor    -> True
                      RecordConstructor _ -> False
   ssis <- reifySelStrictInfo n bangs
-  repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
+  repConWith gk dv dt n typeSubst univTvBndrs exTvBndrs
+             ctxt mbSelNames ssis ts isRecord isInfix
 
 repConWith :: GenericKind
            -> DatatypeVariant_
            -> Name
            -> Name
            -> TypeSubst
+           -> [TyVarBndr]
+           -> [TyVarBndr]
+           -> Cxt
            -> Maybe [Name]
            -> [SelStrictInfo]
            -> [Type]
            -> Bool
            -> Bool
-           -> Q Type
-repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
-    let structureType :: Q Type
-        structureType = case ssis of
-                             [] -> conT u1TypeName
-                             _  -> foldr1 prodT f
+           -> Q (Type, [(Name, [TyVarBndr], Q Type)])
+repConWith gk dv dt n typeSubst univTvBndrs exTvBndrs
+           ctxt mbSelNames ssis ts isRecord isInfix = do
+    let structureTypes :: Q (Type, [(Name, [TyVarBndr], Q Type)])
+        structureTypes = mkExQuants $ mkExContext mkRest
+          where
+            mkExQuants :: Q Type -> Q (Type, [(Name, [TyVarBndr], Q Type)])
+            mkExQuants qty = go 0 univTvBndrs exTvBndrs
+              where
+                go :: Int -> [TyVarBndr] -> [TyVarBndr]
+                   -> Q (Type, [(Name, [TyVarBndr], Q Type)])
+                go !_ !_     [] = do ty <- qty
+                                     return (ty, [])
+                go !i !bndrs (v:vs) = do
+                  let repAuxName = genRepAuxName (toGenericClass gk) dv i n
+                      repAuxSymName = mkName $ nameBase repAuxName
+                                            ++ "Sym" ++ show (length bndrs)
+                      main = ConT exQuantTypeName
+                               `AppT` tvKind v
+                               `AppT` applyTyToTvbs repAuxSymName bndrs
+                      goBndrs = bndrs ++ [v]
+                  (rest, auxes) <- go (i+1) goBndrs vs
+                  return (main, (repAuxName, goBndrs, return rest):auxes)
+
+            mkExContext =
+              case ctxt of
+                [] -> id
+                _  -> (conT exContextTypeName `appT` mkExContextType `appT`)
+              where
+                mkExContextType =
+                  foldl (\acc pred' -> appT acc (cleanup pred'))
+                        (tupleT (length ctxt)) ctxt
+
+                -- TODO RGS: What is this?
+                cleanup pred' = return $
+                  case asEqualPred pred' of
+                    Just (ty1, ty2) -> ConT heqTypeName `AppT` ty1 `AppT` ty2
+                    Nothing         -> pred'
+
+            mkRest = case ssis of
+                       [] -> conT u1TypeName
+                       _  -> foldr1 prodT f
 
         f :: [Q Type]
         f = case mbSelNames of
@@ -719,9 +779,18 @@ repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
                  Nothing       -> zipWith  (repField gk dv dt n typeSubst Nothing)
                                            ssis ts
 
-    conT c1TypeName
-      `appT` mkMetaConsType dv dt n isRecord isInfix
-      `appT` structureType
+    (main, auxes) <- structureTypes
+    repRHS <- conT c1TypeName
+                `appT` mkMetaConsType dv dt n isRecord isInfix
+                `appT` return main
+    return (repRHS, auxes)
+
+-- TODO RGS: Move below? Also, docs.
+genRepAuxName :: GenericClass -> DatatypeVariant_
+              -> Int -> Name -> Name
+genRepAuxName gClass dv i n
+  = let repName = genRepName gClass dv n
+    in mkName $ nameBase repName ++ "Aux" ++ show i
 
 prodT :: Q Type -> Q Type -> Q Type
 prodT a b = conT productTypeName `appT` a `appT` b
@@ -870,15 +939,24 @@ fromCon gk wrap m i
                    , constructorFields  = ts
                    }) = do
   checkExistentialContext cn vars ctxt
-  case ts of
-    [] -> match (conP cn [])
-                (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
-    _ -> do
-      fNames <- newNameList "f" $ length ts
-      match
-        (conP cn (map varP fNames))
-        (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
-          foldr1 prodE (zipWith (fromField gk) fNames ts)) []
+  fNames <- newNameList "f" $ length ts
+  match (conP cn (map varP fNames))
+        (normalB $ wrap $ lrE m i $ appE (conE m1DataName)
+                 $ mkExQuants $ mkExContext $ mkRHS fNames)
+        []
+  where
+    mkExQuants =
+      nTimes (length vars) (\e -> conE exQuantDataName `appE` (conE wrapApplyDataName `appE` e))
+
+    mkExContext =
+      case ctxt of
+        [] -> id
+        _  -> appE (conE exContextDataName)
+
+    mkRHS fNames =
+      case ts of
+        [] -> conE u1DataName
+        _  -> foldr1 prodE (zipWith (fromField gk) fNames ts)
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
@@ -931,18 +1009,27 @@ toCon gk wrap m i
                    , constructorFields  = ts
                    }) = do
   checkExistentialContext cn vars ctxt
-  case ts of
-    [] -> match (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
-                (normalB $ conE cn) []
-    _ -> do
-      fNames <- newNameList "f" $ length ts
-      match
-        (wrap $ lrP m i $ conP m1DataName
-          [foldr1 prod (zipWith (toField gk) fNames ts)])
+  fNames <- newNameList "f" $ length ts
+  match (wrap $ lrP m i $ conP m1DataName
+              $ mkExQuants $ mkExContext $ mkLHS fNames)
         (normalB $ foldl appE (conE cn)
                          (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
-                         fNames ts)) []
-  where prod x y = conP productDataName [x,y]
+                                  fNames ts))
+        []
+  where
+    mkExQuants =
+      nTimes (length vars) (\ps -> [conP exQuantDataName [conP wrapApplyDataName ps]])
+
+    mkExContext ps =
+      case ctxt of
+        [] -> ps
+        _  -> [conP exContextDataName ps]
+
+    mkLHS fNames =
+      case ts of
+        [] -> [conP u1DataName []]
+        _  -> [foldr1 prod (zipWith (toField gk) fNames ts)]
+    prod x y = conP productDataName [x,y]
 
 toConUnwC :: GenericKind -> Name -> Type -> Q Exp
 toConUnwC Gen0          nr _ = varE nr

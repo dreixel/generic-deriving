@@ -1,24 +1,28 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 711
-{-# LANGUAGE Safe #-}
-#elif __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE Trustworthy #-}
-#endif
+{-# LANGUAGE UndecidableInstances #-}
 
 module Generics.Deriving.Base.Internal (
 -- * Introduction
@@ -617,8 +621,10 @@ module Generics.Deriving.Base.Internal (
 #endif
 #if !(MIN_VERSION_base(4,9,0))
   -- ** Unboxed representation types
-    URec(..), UAddr, UChar, UDouble, UFloat, UInt, UWord
+  URec(..), UAddr, UChar, UDouble, UFloat, UInt, UWord,
 #endif
+  -- ** New stuff!
+  ExQuant(..), ExContext(..), WrappedApply(..), Apply, type (~>)
   ) where
 
 
@@ -628,7 +634,7 @@ import GHC.Generics
 import Control.Applicative ( Alternative(..) )
 import Control.Monad ( MonadPlus(..) )
 import Control.Monad.Fix ( MonadFix(..), fix )
-import Data.Data ( Data(..), DataType, constrIndex, mkDataType )
+import Data.Data ( DataType, constrIndex, mkDataType )
 import Data.Ix ( Ix )
 import Text.ParserCombinators.ReadPrec (pfail)
 import Text.Read ( Read(..), parens, readListDefault, readListPrecDefault )
@@ -643,10 +649,14 @@ import Data.Word ( Word )
 #endif
 
 #if !(MIN_VERSION_base(4,9,0))
-import Data.Typeable
 import GHC.Prim ( Addr#, Char#, Double#, Float#, Int#, Word# )
 import GHC.Ptr ( Ptr )
 #endif
+
+import Control.Applicative
+import Control.Monad
+import Data.Kind
+import Data.Singletons (Apply, type (~>))
 
 #if !(MIN_VERSION_base(4,4,0))
 --------------------------------------------------------------------------------
@@ -1134,3 +1144,45 @@ type UInt    = URec Int
 -- | Type synonym for 'URec': 'Word#'
 type UWord   = URec Word
 #endif
+
+data ExQuant (a :: Type) :: forall k. (a ~> (k -> Type)) -> (k -> Type) where
+  ExQuant :: { unExQuant :: WrappedApply f x p } -> ExQuant a f p
+
+deriving instance (forall x. Show (WrappedApply f x p)) => Show (ExQuant a f p)
+deriving instance (forall x. Functor (WrappedApply f x)) => Functor (ExQuant a f)
+deriving instance (forall x. Foldable (WrappedApply f x)) => Foldable (ExQuant a f)
+deriving instance ( forall x. Functor     (WrappedApply f x)
+                  , forall x. Foldable    (WrappedApply f x)
+                  , forall x. Traversable (WrappedApply f x)
+                  ) => Traversable (ExQuant a f)
+
+newtype WrappedApply :: forall a k. (a ~> (k -> Type)) -> (a -> k -> Type) where
+  WrapApply :: { unWrapApply :: Apply f x p } -> WrappedApply f x p
+
+deriving instance Eq (Apply f x p) => Eq (WrappedApply f x p)
+deriving instance Ord (Apply f x p) => Ord (WrappedApply f x p)
+deriving instance Read (Apply f x p) => Read (WrappedApply f x p)
+deriving instance Show (Apply f x p) => Show (WrappedApply f x p)
+deriving instance Functor (Apply f x) => Functor (WrappedApply f x)
+deriving instance Foldable (Apply f x) => Foldable (WrappedApply f x)
+deriving instance Traversable (Apply f x) => Traversable (WrappedApply f x)
+deriving instance Applicative (Apply f x) => Applicative (WrappedApply f x)
+deriving instance Monad (Apply f x) => Monad (WrappedApply f x)
+deriving instance Alternative (Apply f x) => Alternative (WrappedApply f x)
+deriving instance MonadPlus (Apply f x) => MonadPlus (WrappedApply f x)
+deriving instance Semigroup (Apply f x p) => Semigroup (WrappedApply f x p)
+deriving instance Monoid (Apply f x p) => Monoid (WrappedApply f x p)
+deriving instance Generic (WrappedApply f x p)
+deriving instance Generic1 (WrappedApply f x)
+
+data ExContext :: forall k. Constraint -> (k -> Type) -> (k -> Type) where
+  ExContext :: c => { unExContext :: f a } -> ExContext c f a
+
+deriving instance (c => Eq (f p)) => Eq (ExContext c f p)
+deriving instance (c => Ord (f p)) => Ord (ExContext c f p)
+deriving instance (c => Show (f p)) => Show (ExContext c f p)
+deriving instance (c => Functor f)  => Functor (ExContext c f)
+deriving instance (c => Foldable f) => Foldable (ExContext c f)
+deriving instance (c => Traversable f) => Traversable (ExContext c f)
+instance (c => Semigroup (f p)) => Semigroup (ExContext c f p) where
+  ExContext x <> ExContext y = ExContext (x <> y)

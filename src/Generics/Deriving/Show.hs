@@ -1,11 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -109,6 +112,18 @@ instance GShow' U1 where
 instance (GShow c) => GShow' (K1 i c) where
   gshowsPrec' _ n (K1 a) = gshowsPrec n a
   isNullary _ = False
+
+instance (forall x. GShow' (WrappedApply f x)) => GShow' (ExQuant a f) where
+  gshowsPrec' t n (ExQuant x) = gshowsPrec' t n x
+  isNullary (ExQuant x) = isNullary x
+
+instance GShow' (Apply f x) => GShow' (WrappedApply f x) where
+  gshowsPrec' t n (WrapApply x) = gshowsPrec' t n x
+  isNullary (WrapApply x) = isNullary x
+
+instance (c => GShow' f) => GShow' (ExContext c f) where
+  gshowsPrec' t n (ExContext x) = gshowsPrec' t n x
+  isNullary (ExContext x) = isNullary x
 
 -- No instances for P or Rec because gshow is only applicable to types of kind *
 

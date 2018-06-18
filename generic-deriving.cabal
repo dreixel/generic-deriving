@@ -25,26 +25,13 @@ maintainer:             generics@haskell.org
 stability:              experimental
 build-type:             Simple
 cabal-version:          >= 1.10
-tested-with:            GHC == 7.0.4
-                      , GHC == 7.2.2
-                      , GHC == 7.4.2
-                      , GHC == 7.6.3
-                      , GHC == 7.8.4
-                      , GHC == 7.10.3
-                      , GHC == 8.0.2
-                      , GHC == 8.2.2
-                      , GHC == 8.4.3
+tested-with:            GHC == 8.6.1
 extra-source-files:     CHANGELOG.md
                       , README.md
 
 source-repository head
   type: git
   location: https://github.com/dreixel/generic-deriving
-
-flag base-4-9
-  description:          Use base-4.9 or later. This version of base uses a
-                        DataKinds-based encoding of GHC generics metadata.
-  default:              True
 
 library
   hs-source-dirs:       src
@@ -67,18 +54,16 @@ library
 
   other-modules:        Generics.Deriving.Base.Internal
                         Generics.Deriving.TH.Internal
+                        Generics.Deriving.TH.Post4_9
                         Paths_generic_deriving
-  if flag(base-4-9)
-    build-depends:      base >= 4.9 && < 5
-    other-modules:      Generics.Deriving.TH.Post4_9
-  else
-    build-depends:      base >= 4.3 && < 4.9
-    other-modules:      Generics.Deriving.TH.Pre4_9
 
-  build-depends:        containers       >= 0.1   && < 0.6
+  build-depends:        base             >= 4.12  && < 5
+                      , containers       >= 0.6   && < 0.7
                       , ghc-prim                     < 1
-                      , template-haskell >= 2.4   && < 2.14
-                      , th-abstraction   >= 0.2.7 && < 0.3
+                      , singletons       >= 2.5   && < 2.6
+                      , template-haskell >= 2.14  && < 2.15
+                      , th-abstraction   >= 0.2.8 && < 0.3
+                      , th-desugar       >= 1.9   && < 1.10
 
   default-language:     Haskell2010
   ghc-options:          -Wall
@@ -88,11 +73,12 @@ test-suite spec
   main-is:              Spec.hs
   other-modules:        EmptyCaseSpec
                         ExampleSpec
+                        GADTSpec
                         TypeInTypeSpec
-  build-depends:        base             >= 4.3  && < 5
+  build-depends:        base             >= 4.10 && < 5
                       , generic-deriving
                       , hspec            >= 2    && < 3
-                      , template-haskell >= 2.4  && < 2.14
+                      , template-haskell >= 2.12 && < 2.14
   build-tool-depends:   hspec-discover:hspec-discover
   hs-source-dirs:       tests
   default-language:     Haskell2010

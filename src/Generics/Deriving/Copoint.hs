@@ -1,7 +1,10 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -80,6 +83,15 @@ instance (GCopoint f) => GCopoint' (Rec1 f) where
 
 instance (GCopoint f, GCopoint' g) => GCopoint' (f :.: g) where
     gcopoint' (Comp1 x) = gcopoint' . gcopoint $ x
+
+instance (forall x. GCopoint' (WrappedApply f x)) => GCopoint' (ExQuant a f) where
+    gcopoint' (ExQuant x) = gcopoint' x
+
+instance GCopoint' (Apply f x) => GCopoint' (WrappedApply f x) where
+    gcopoint' (WrapApply x) = gcopoint' x
+
+instance (c => GCopoint' f) => GCopoint' (ExContext c f) where
+    gcopoint' (ExContext x) = gcopoint' x
 
 class GCopoint d where
   gcopoint :: d a -> a

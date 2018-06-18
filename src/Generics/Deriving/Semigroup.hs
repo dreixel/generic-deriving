@@ -1,7 +1,10 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -63,6 +66,9 @@ instance GSemigroup' f => GSemigroup' (M1 i c f) where
 
 instance (GSemigroup' f, GSemigroup' g) => GSemigroup' (f :*: g) where
   gsappend' (x1 :*: y1) (x2 :*: y2) = gsappend' x1 x2 :*: gsappend' y1 y2
+
+instance (c => GSemigroup' f) => GSemigroup' (ExContext c f) where
+  gsappend' (ExContext x) (ExContext y) = ExContext (x `gsappend'` y)
 
 -------------------------------------------------------------------------------
 

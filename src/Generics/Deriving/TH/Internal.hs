@@ -14,8 +14,6 @@ Template Haskell-related utilities.
 
 module Generics.Deriving.TH.Internal where
 
-import           Control.Monad (unless)
-
 import           Data.Char (isAlphaNum, ord)
 import           Data.Foldable (foldr')
 import           Data.List
@@ -385,6 +383,16 @@ foldr1' _ x [] = x
 foldr1' _ _ [x] = x
 foldr1' f x (h:t) = f h (foldr1' f x t)
 
+-- | Compose a function with itself n times.  (nth rather than twice)
+nTimes :: Int -> (a -> a) -> (a -> a)
+nTimes 0 _ = id
+nTimes 1 f = f
+nTimes n f = f . nTimes (n-1) f
+
+-- | Monadic version of concatMap
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs = fmap concat (mapM f xs)
+
 isNewtypeVariant :: DatatypeVariant_ -> Bool
 isNewtypeVariant Datatype_             = False
 isNewtypeVariant Newtype_              = True
@@ -417,6 +425,11 @@ data GenericClass = Generic | Generic1 deriving Enum
 --    then it has 'Just' the kind variable 'Name'. Otherwise, it has 'Nothing'.
 data GenericKind = Gen0
                  | Gen1 Name (Maybe Name)
+
+-- | Convert a 'GenericKind' to a 'GenericClass'.
+toGenericClass :: GenericKind -> GenericClass
+toGenericClass Gen0      = Generic
+toGenericClass (Gen1 {}) = Generic1
 
 -- Determines the universally quantified type variables (possibly after
 -- substituting * in the case of Generic1) and the last type parameter name
@@ -545,11 +558,12 @@ checkDataContext _        [] x = return x
 checkDataContext dataName _  _ = fail $
   nameBase dataName ++ " must not have a datatype context"
 
--- | Deriving Generic(1) doesn't work with ExistentialQuantification or GADTs.
+-- TODO RGS: Soon, we will allow any sort of existential goings-on. What this
+-- check should turn into is in the case of Generic1, ensure that the last type
+-- variable does not occur in any of the kinds of the type variables nor in the
+-- context.
 checkExistentialContext :: Name -> [TyVarBndr] -> Cxt -> Q ()
-checkExistentialContext conName vars ctxt =
-  unless (null vars && null ctxt) $ fail $
-    nameBase conName ++ " must be a vanilla data constructor"
+checkExistentialContext _conName _vars _ctxt = return ()
 
 -------------------------------------------------------------------------------
 -- Manually quoted names
@@ -629,6 +643,12 @@ mkGHCPrimName_v = mkNameG_v "ghc-prim"
 comp1DataName :: Name
 comp1DataName = mkGD4'4_d "Comp1"
 
+exContextDataName :: Name
+exContextDataName = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal" "ExContext"
+
+exQuantDataName :: Name
+exQuantDataName = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal" "ExQuant"
+
 infixDataName :: Name
 infixDataName = mkGD4'4_d "Infix"
 
@@ -686,6 +706,9 @@ uIntDataName = mkGD4'9_d "UInt"
 uWordDataName :: Name
 uWordDataName = mkGD4'9_d "UWord"
 
+wrapApplyDataName :: Name
+wrapApplyDataName = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal" "WrapApply"
+
 c1TypeName :: Name
 c1TypeName = mkGD4'4_tc "C1"
 
@@ -706,6 +729,15 @@ generic1TypeName = mkGD4'4_tc "Generic1"
 
 datatypeTypeName :: Name
 datatypeTypeName = mkGD4'4_tc "Datatype"
+
+exContextTypeName :: Name
+exContextTypeName = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal" "ExContext"
+
+exQuantTypeName :: Name
+exQuantTypeName = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal" "ExQuant"
+
+heqTypeName :: Name
+heqTypeName = mkNameG_tc "ghc-prim" "GHC.Types" "~~"
 
 noSelectorTypeName :: Name
 noSelectorTypeName = mkGD4'4_tc "NoSelector"

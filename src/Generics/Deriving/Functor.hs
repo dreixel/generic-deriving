@@ -1,9 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -97,6 +100,15 @@ instance (GFunctor' f, GFunctor' g) => GFunctor' (f :*: g) where
 
 instance (GFunctor f, GFunctor' g) => GFunctor' (f :.: g) where
   gmap' f (Comp1 x) = Comp1 (gmap (gmap' f) x)
+
+instance (forall x. GFunctor' (WrappedApply f x)) => GFunctor' (ExQuant a f) where
+  gmap' f (ExQuant x) = ExQuant (gmap' f x)
+
+instance GFunctor' (Apply f x) => GFunctor' (WrappedApply f x) where
+  gmap' f (WrapApply x) = WrapApply (gmap' f x)
+
+instance (c => GFunctor' f) => GFunctor' (ExContext c f) where
+  gmap' f (ExContext x) = ExContext (gmap' f x)
 
 instance GFunctor' UAddr where
   gmap' _ (UAddr a) = UAddr a

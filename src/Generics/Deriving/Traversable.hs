@@ -1,9 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -101,6 +104,15 @@ instance (GTraversable' f, GTraversable' g) => GTraversable' (f :*: g) where
 
 instance (GTraversable f, GTraversable' g) => GTraversable' (f :.: g) where
   gtraverse' f (Comp1 x) = Comp1 <$> gtraverse (gtraverse' f) x
+
+instance (forall x. GTraversable' (WrappedApply f x)) => GTraversable' (ExQuant a f) where
+  gtraverse' f (ExQuant x) = ExQuant <$> gtraverse' f x
+
+instance GTraversable' (Apply f x) => GTraversable' (WrappedApply f x) where
+  gtraverse' f (WrapApply x) = WrapApply <$> gtraverse' f x
+
+instance (c => GTraversable' f) => GTraversable' (ExContext c f) where
+  gtraverse' f (ExContext x) = ExContext <$> gtraverse' f x
 
 instance GTraversable' UAddr where
   gtraverse' _ (UAddr a) = pure (UAddr a)

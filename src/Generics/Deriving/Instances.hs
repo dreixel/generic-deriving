@@ -3,27 +3,23 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 711
-{-# LANGUAGE Safe #-}
-#elif __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE Trustworthy #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
-{-# LANGUAGE PolyKinds #-}
-#endif
-
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
+    Rep0ExQuant
+  , Rep1ExQuant
+  , Rep0ExContext
+  , Rep1ExContext
 #if !(MIN_VERSION_base(4,9,0))
-    Rep0ExitCode
+  , Rep0ExitCode
   , Rep0Version
   , Rep1ConSum
   , Rep1ConProduct
@@ -138,6 +134,10 @@ import Data.Version (Version(..))
 import Generics.Deriving.Base.Internal
 import System.Exit (ExitCode(..))
 #endif
+
+import Data.Kind
+import Data.Singletons (Apply, type (~>))
+import Generics.Deriving.Base.Internal
 
 #if !(MIN_VERSION_base(4,9,0))
 type Rep0ExitCode = D1 D1ExitCode (C1 C1_0ExitCode U1
@@ -1778,3 +1778,66 @@ instance Generic (a, b, c, d, e, f, g) where
       = (a, b, c, d, e, f, g)
 
 #endif
+
+-----
+
+type GDModule = "Generics.Deriving.Base.Internal"
+-- TODO RGS: This is subtly wrong
+type GDPackageID = "generic-deriving"
+
+-----
+
+type Rep0ExQuant (a :: Type) (f :: a ~> (k -> Type)) (p :: k) =
+  D1 ('MetaData "ExQuant" GDModule GDPackageID 'False)
+    (C1 ('MetaCons "ExQuant" 'PrefixI 'True)
+      (ExQuant a (Rep0ExQuantAuxSym a f p)))
+type Rep1ExQuant (a :: Type) (f :: a ~> (k -> Type)) =
+  D1 ('MetaData "ExQuant" GDModule GDPackageID 'False)
+    (C1 ('MetaCons "ExQuant" 'PrefixI 'True)
+      (ExQuant a (Rep1ExQuantAuxSym a f)))
+
+type Rep0ExQuantAux (a :: Type) (f :: a ~> (k -> Type)) (p :: k) (x :: a) =
+  S1 ('MetaSel ('Just "unExQuant") 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy)
+    (Rec0 (WrappedApply f x p))
+type Rep1ExQuantAux (a :: Type) (f :: a ~> (k -> Type)) (x :: a) =
+  S1 ('MetaSel ('Just "unExQuant") 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy)
+    (Rec1 (WrappedApply f x))
+data Rep0ExQuantAuxSym (a :: Type) (f :: a ~> (k -> Type)) (p :: k) :: a ~> (Type -> Type)
+data Rep1ExQuantAuxSym (a :: Type) (f :: a ~> (k -> Type))          :: a ~> (k    -> Type)
+type instance Apply (Rep0ExQuantAuxSym a f p) x = Rep0ExQuantAux a f p x
+type instance Apply (Rep1ExQuantAuxSym a f)   x = Rep1ExQuantAux a f   x
+
+instance Generic (ExQuant a f p) where
+  type Rep (ExQuant a f p) = Rep0ExQuant a f p
+  from (ExQuant x) = M1 (M1 (ExQuant (WrapApply (M1 (K1 x)))))
+  to (M1 (M1 (ExQuant (WrapApply (M1 (K1 x)))))) = ExQuant x
+
+instance Generic1 (ExQuant a f) where
+  type Rep1 (ExQuant a f) = Rep1ExQuant a f
+  from1 (ExQuant x) = M1 (M1 (ExQuant (WrapApply (M1 (Rec1 x)))))
+  to1 (M1 (M1 (ExQuant (WrapApply (M1 (Rec1 x)))))) = ExQuant x
+
+-----
+
+type Rep0ExContext (c :: Constraint) (f :: k -> Type) (p :: k) =
+  D1 ('MetaData "ExContext" GDModule GDPackageID 'False)
+    (C1 ('MetaCons "ExContext" 'PrefixI 'True)
+      (ExContext c
+        (S1 ('MetaSel ('Just "unExContext") 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy)
+          (Rec0 (f p)))))
+type Rep1ExContext (c :: Constraint) (f :: k -> Type) =
+  D1 ('MetaData "ExContext" GDModule GDPackageID 'False)
+    (C1 ('MetaCons "ExContext" 'PrefixI 'True)
+      (ExContext c
+        (S1 ('MetaSel ('Just "unExContext") 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy)
+          (Rec1 f))))
+
+instance Generic (ExContext c f p) where
+  type Rep (ExContext c f p) = Rep0ExContext c f p
+  from (ExContext x) = M1 (M1 (ExContext (M1 (K1 x))))
+  to (M1 (M1 (ExContext (M1 (K1 x))))) = ExContext x
+
+instance Generic1 (ExContext c f) where
+  type Rep1 (ExContext c f) = Rep1ExContext c f
+  from1 (ExContext x) = M1 (M1 (ExContext (M1 (Rec1 x))))
+  to1 (M1 (M1 (ExContext (M1 (Rec1 x))))) = ExContext x

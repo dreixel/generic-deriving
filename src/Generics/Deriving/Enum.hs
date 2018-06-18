@@ -2,8 +2,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
@@ -131,6 +133,9 @@ instance (Enum' f, Enum' g) => Enum' (f :+: g) where
 
 instance (Enum' f, Enum' g) => Enum' (f :*: g) where
   enum' = diag [ [ x :*: y | y <- enum' ] | x <- enum' ]
+
+instance (forall x. Enum' (WrappedApply f x)) => Enum' (ExQuant a f) where
+  enum' = map ExQuant enum'
 
 genumDefault :: (Generic a, Enum' (Rep a)) => [a]
 genumDefault = map to enum'

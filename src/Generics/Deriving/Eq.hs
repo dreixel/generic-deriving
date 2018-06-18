@@ -1,10 +1,13 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MagicHash #-}
 
 #if __GLASGOW_HASKELL__ >= 701
@@ -103,6 +106,9 @@ instance (GEq' a, GEq' b) => GEq' (a :+: b) where
 
 instance (GEq' a, GEq' b) => GEq' (a :*: b) where
   geq' (a1 :*: b1) (a2 :*: b2) = geq' a1 a2 && geq' b1 b2
+
+instance (c => GEq' f) => GEq' (ExContext c f) where
+  geq' (ExContext x) (ExContext y) = geq' x y
 
 -- Unboxed types
 instance GEq' UAddr where
