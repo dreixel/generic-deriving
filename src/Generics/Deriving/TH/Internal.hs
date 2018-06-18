@@ -837,7 +837,10 @@ falseDataName = mkGHCPrimName_d "GHC.Bool"  "False"
 #endif
 
 nothingDataName, justDataName :: Name
-#if MIN_VERSION_base(4,8,0)
+#if MIN_VERSION_base(4,12,0)
+nothingDataName = mkBaseName_d "GHC.Maybe"  "Nothing"
+justDataName    = mkBaseName_d "GHC.Maybe"  "Just"
+#elif MIN_VERSION_base(4,8,0)
 nothingDataName = mkBaseName_d "GHC.Base"   "Nothing"
 justDataName    = mkBaseName_d "GHC.Base"   "Just"
 #else

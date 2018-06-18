@@ -1,5 +1,6 @@
 # next [????.??.??]
 * Refactor internals using `th-abstraction`.
+* Adapt to `Maybe` moving to `GHC.Maybe` in GHC 8.6.
 
 # 1.12.1 [2018.01.11]
 * Remove a test that won't work on GHC 8.4.
