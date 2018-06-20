@@ -3,6 +3,7 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -11,6 +12,10 @@
 {-# LANGUAGE Safe #-}
 #elif __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 702
+{-# LANGUAGE DeriveGeneric #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705
@@ -22,8 +27,12 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
+#if !(MIN_VERSION_base(4,12,0))
+    Rep0Down
+  , Rep1Down
+#endif
 #if !(MIN_VERSION_base(4,9,0))
-    Rep0ExitCode
+  , Rep0ExitCode
   , Rep0Version
   , Rep1ConSum
   , Rep1ConProduct
@@ -135,9 +144,51 @@ import Data.Proxy (Proxy(..))
 
 #if !(MIN_VERSION_base(4,9,0))
 import Data.Version (Version(..))
-import Generics.Deriving.Base.Internal
 import System.Exit (ExitCode(..))
 #endif
+
+#if !(MIN_VERSION_base(4,12,0))
+# if MIN_VERSION_base(4,6,0)
+import Data.Ord (Down(..))
+# else
+import GHC.Exts (Down(..))
+# endif
+import Generics.Deriving.Base.Internal
+#endif
+
+#if !(MIN_VERSION_base(4,12,0))
+# if MIN_VERSION_base(4,6,0)
+type Rep0Down a = Rep (Down a)
+type Rep1Down   = Rep1 Down
+deriving instance Generic (Down a)
+deriving instance Generic1 Down
+# else
+type Rep0Down a = D1 D1Down (C1 C1_0Down (S1 NoSelector (Rec0 a)))
+type Rep1Down   = D1 D1Down (C1 C1_0Down (S1 NoSelector Par1))
+
+instance Generic (Down a) where
+    type Rep (Down a) = Rep0Down a
+    from (Down x) = M1 (M1 (M1 (K1 x)))
+    to (M1 (M1 (M1 (K1 x)))) = Down x
+
+instance Generic1 Down where
+    type Rep1 Down = Rep1Down
+    from1 (Down x) = M1 (M1 (M1 (Par1 x)))
+    to1 (M1 (M1 (M1 x))) = Down (unPar1 x)
+
+data D1Down
+data C1_0Down
+
+instance Datatype D1Down where
+    datatypeName _ = "Down"
+    moduleName   _ = "GHC.Exts"
+
+instance Constructor C1_0Down where
+    conName _ = "Down"
+# endif
+#endif
+
+-----
 
 #if !(MIN_VERSION_base(4,9,0))
 type Rep0ExitCode = D1 D1ExitCode (C1 C1_0ExitCode U1
