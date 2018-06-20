@@ -1,6 +1,7 @@
 # next [????.??.??]
 * Backport the `Generic(1)` instances for `Data.Ord.Down`, introduced in
-  `base-4.12`.
+  `base-4.12`. Add `GEq`, `GShow`, `GSemigroup`, `GMonoid`, `GFunctor`,
+  `GFoldable`, `GTraversable`, and `GCopoint` instances for `Down`.
 * Refactor internals using `th-abstraction`.
 * Adapt to `Maybe` moving to `GHC.Maybe` in GHC 8.6.
 

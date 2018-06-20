@@ -428,6 +428,9 @@ instance GShow CWchar where
 instance GShow Double where
   gshowsPrec = showsPrec
 
+instance GShow a => GShow (Down a) where
+  gshowsPrec = gshowsPrecdefault
+
 instance GShow a => GShow (Dual a) where
   gshowsPrec = gshowsPrecdefault
 

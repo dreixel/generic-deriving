@@ -5,11 +5,16 @@
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Safe #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+{-# LANGUAGE Safe #-}
+#elif __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
 #endif
 
 {- | This module provides two main features:
@@ -70,6 +75,12 @@ module Generics.Deriving.Monoid (
 import Control.Applicative
 import Data.Monoid
 import Generics.Deriving.Base
+
+#if MIN_VERSION_base(4,6,0)
+import Data.Ord (Down)
+#else
+import GHC.Exts (Down)
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Proxy (Proxy)
@@ -217,6 +228,9 @@ instance GMonoid b => GMonoid (a -> b) where
   gmempty _ = gmempty
   gmappend f g x = gmappend (f x) (g x)
 instance GMonoid a => GMonoid (Const a b) where
+  gmempty  = gmemptydefault
+  gmappend = gmappenddefault
+instance GMonoid a => GMonoid (Down a) where
   gmempty  = gmemptydefault
   gmappend = gmappenddefault
 

@@ -365,6 +365,9 @@ instance GEq DecidedStrictness where
 instance GEq Double where
   geq = (==)
 
+instance GEq a => GEq (Down a) where
+  geq = geqdefault
+
 instance GEq a => GEq (Dual a) where
   geq = geqdefault
 

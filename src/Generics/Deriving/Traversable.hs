@@ -7,7 +7,6 @@
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Safe #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705
@@ -16,6 +15,12 @@
 
 #if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE EmptyCase #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+{-# LANGUAGE Safe #-}
+#elif __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
 #endif
 
 module Generics.Deriving.Traversable (
@@ -44,6 +49,12 @@ import           Generics.Deriving.Functor
 
 #if MIN_VERSION_base(4,4,0)
 import           Data.Complex (Complex)
+#endif
+
+#if MIN_VERSION_base(4,6,0)
+import           Data.Ord (Down)
+#else
+import           GHC.Exts (Down)
 #endif
 
 #if MIN_VERSION_base(4,7,0)
@@ -159,6 +170,9 @@ instance GTraversable Complex where
 #endif
 
 instance GTraversable (Const m) where
+  gtraverse = gtraversedefault
+
+instance GTraversable Down where
   gtraverse = gtraversedefault
 
 instance GTraversable Dual where

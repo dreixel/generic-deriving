@@ -5,11 +5,16 @@
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Safe #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+{-# LANGUAGE Safe #-}
+#elif __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
 #endif
 
 module Generics.Deriving.Semigroup (
@@ -30,6 +35,12 @@ import Data.Monoid as Monoid
   hiding ((<>))
 #endif
 import Generics.Deriving.Base
+
+#if MIN_VERSION_base(4,6,0)
+import Data.Ord (Down)
+#else
+import GHC.Exts (Down)
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Proxy (Proxy)
@@ -138,6 +149,8 @@ instance GSemigroup a => GSemigroup (Maybe a) where
 instance GSemigroup b => GSemigroup (a -> b) where
   gsappend f g x = gsappend (f x) (g x)
 instance GSemigroup a => GSemigroup (Const a b) where
+  gsappend = gsappenddefault
+instance GSemigroup a => GSemigroup (Down a) where
   gsappend = gsappenddefault
 instance GSemigroup (Either a b) where
   gsappend Left{} b = b

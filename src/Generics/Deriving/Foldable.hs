@@ -6,11 +6,16 @@
 
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Safe #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+{-# LANGUAGE Safe #-}
+#elif __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
 #endif
 
 module Generics.Deriving.Foldable (
@@ -55,6 +60,12 @@ import           Generics.Deriving.Base
 
 #if MIN_VERSION_base(4,4,0)
 import           Data.Complex (Complex)
+#endif
+
+#if MIN_VERSION_base(4,6,0)
+import           Data.Ord (Down)
+#else
+import           GHC.Exts (Down)
 #endif
 
 #if MIN_VERSION_base(4,7,0)
@@ -187,6 +198,9 @@ instance GFoldable Complex where
 #endif
 
 instance GFoldable (Const m) where
+  gfoldMap = gfoldMapdefault
+
+instance GFoldable Down where
   gfoldMap = gfoldMapdefault
 
 instance GFoldable Dual where
