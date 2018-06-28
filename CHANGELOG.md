@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.12.2 [2018.06.28]
 * Backport the `Generic(1)` instances for `Data.Ord.Down`, introduced in
   `base-4.12`. Add `GEq`, `GShow`, `GSemigroup`, `GMonoid`, `GFunctor`,
   `GFoldable`, `GTraversable`, and `GCopoint` instances for `Down`.
