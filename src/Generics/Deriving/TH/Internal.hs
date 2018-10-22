@@ -113,22 +113,32 @@ requiredTyVarsOfTypes tys =
       fvs = nub $ concatMap freeVariables tys
 
       varKindSigs :: Map Name Kind
-      varKindSigs = foldMap go tys
+      varKindSigs = foldMap go_ty tys
         where
-          go :: Type -> Map Name Kind
-          go (ForallT {}) = error "`forall` type used in type family pattern"
-          go (AppT t1 t2) = go t1 `mappend` go t2
-          go (SigT t k) =
+          go_ty :: Type -> Map Name Kind
+          go_ty (ForallT tvbs ctxt t) =
+            foldr (\tvb -> Map.delete (tvName tvb))
+                  (foldMap go_pred ctxt `mappend` go_ty t) tvbs
+          go_ty (AppT t1 t2) = go_ty t1 `mappend` go_ty t2
+          go_ty (SigT t k) =
             let kSigs =
 #if MIN_VERSION_template_haskell(2,8,0)
-                  go k
+                  go_ty k
 #else
                   mempty
 #endif
             in case t of
                  VarT n -> Map.insert n k kSigs
-                 _      -> go t `mappend` kSigs
-          go _ = mempty
+                 _      -> go_ty t `mappend` kSigs
+          go_ty _ = mempty
+
+          go_pred :: Pred -> Map Name Kind
+#if MIN_VERSION_template_haskell(2,10,0)
+          go_pred = go_ty
+#else
+          go_pred (ClassP _ ts)  = foldMap go_ty ts
+          go_pred (EqualP t1 t2) = go_ty t1 `mappend` go_ty t2
+#endif
 
       ascribeWithKind n
         | Just k <- Map.lookup n varKindSigs
