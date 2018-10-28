@@ -401,22 +401,6 @@ isNewtypeVariant Newtype_              = True
 isNewtypeVariant (DataInstance_ {})    = False
 isNewtypeVariant (NewtypeInstance_ {}) = True
 
-#if MIN_VERSION_template_haskell(2,7,0)
--- | Extracts the constructors of a data or newtype declaration.
-dataDecCons :: Dec -> [Con]
-dataDecCons (DataInstD _ _ _
-# if MIN_VERSION_template_haskell(2,11,0)
-                       _
-# endif
-                       cons _) = cons
-dataDecCons (NewtypeInstD _ _ _
-# if MIN_VERSION_template_haskell(2,11,0)
-                          _
-# endif
-                          con _) = [con]
-dataDecCons _ = error "Must be a data or newtype declaration."
-#endif
-
 -- | Indicates whether Generic or Generic1 is being derived.
 data GenericClass = Generic | Generic1 deriving Enum
 
