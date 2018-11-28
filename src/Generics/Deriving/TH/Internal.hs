@@ -389,11 +389,15 @@ trd3 (_, _, c) = c
 shrink :: (a, b, c) -> (b, c)
 shrink (_, b, c) = (b, c)
 
--- | Variant of foldr1 which returns a special element for empty lists
-foldr1' :: (a -> a -> a) -> a -> [a] -> a
-foldr1' _ x [] = x
-foldr1' _ _ [x] = x
-foldr1' f x (h:t) = f h (foldr1' f x t)
+-- | Variant of foldr1 for producing balanced lists
+foldBal :: (a -> a -> a) -> [a] -> a
+foldBal op = foldBal' op (error "foldBal: empty list")
+
+foldBal' :: (a -> a -> a) -> a -> [a] -> a
+foldBal' _  x []  = x
+foldBal' _  _ [y] = y
+foldBal' op x l   = let (a,b) = splitAt (length l `div` 2) l
+                    in foldBal' op x a `op` foldBal' op x b
 
 isNewtypeVariant :: DatatypeVariant_ -> Bool
 isNewtypeVariant Datatype_             = False

@@ -3,6 +3,9 @@
   `OverlappingInstances` in `Generics.Deriving.TH`. As a consequence, the
   `GShow String` instance has been removed, as it is now fully subsumed by
   the `GShow [a]` instance (with which it previously overlapped).
+* Functions in `Generics.Deriving.TH` now balance groups of `(:*:)` and `(:+:)`
+  as much as possible (`deriving Generic` was already performing this
+  optimization, and now `generic-deriving` does too).
 
 # 1.12.2 [2018.06.28]
 * Backport the `Generic(1)` instances for `Data.Ord.Down`, introduced in

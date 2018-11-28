@@ -659,8 +659,9 @@ repType :: GenericKind
         -> Q Type
 repType gk dv dt typeSubst cs =
     conT d1TypeName `appT` mkMetaDataType dv dt `appT`
-      foldr1' sum' (conT v1TypeName)
-        (map (repCon gk dv dt typeSubst) cs)
+      case cs of
+        [] -> conT v1TypeName
+        _  -> foldBal sum' (map (repCon gk dv dt typeSubst) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
@@ -710,7 +711,7 @@ repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
     let structureType :: Q Type
         structureType = case ssis of
                              [] -> conT u1TypeName
-                             _  -> foldr1 prodT f
+                             _  -> foldBal prodT f
 
         f :: [Q Type]
         f = case mbSelNames of
@@ -795,7 +796,7 @@ mkCaseExp
   -> Q Exp
 mkCaseExp gClass ecOptions dt instTys cs matchmaker = do
   val <- newName "val"
-  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 0 dt instTys cs]
+  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 1 dt instTys cs]
 
 mkFrom :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
        -> [ConstructorInfo] -> Q Match
@@ -807,8 +808,8 @@ mkFrom gClass ecOptions m i dt instTys cs = do
   where
     cases = case cs of
               [] -> errorFrom ecOptions dt
-              _  -> zipWith (fromCon gk wrapE (length cs)) [0..] cs
-    wrapE e = lrE m i e
+              _  -> zipWith (fromCon gk wrapE (length cs)) [1..] cs
+    wrapE e = lrE i m e
     (_, gk) = genericKind gClass instTys
 
 errorFrom :: EmptyCaseOptions -> Name -> [Q Match]
@@ -836,8 +837,8 @@ mkTo gClass ecOptions m i dt instTys cs = do
   where
     cases = case cs of
               [] -> errorTo ecOptions dt
-              _  -> zipWith (toCon gk wrapP (length cs)) [0..] cs
-    wrapP p = lrP m i p
+              _  -> zipWith (toCon gk wrapP (length cs)) [1..] cs
+    wrapP p = lrP i m p
     (_, gk) = genericKind gClass instTys
 
 errorTo :: EmptyCaseOptions -> Name -> [Q Match]
@@ -872,13 +873,13 @@ fromCon gk wrap m i
   checkExistentialContext cn vars ctxt
   case ts of
     [] -> match (conP cn [])
-                (normalB $ wrap $ lrE m i $ conE m1DataName `appE` (conE u1DataName)) []
+                (normalB $ wrap $ lrE i m $ conE m1DataName `appE` (conE u1DataName)) []
     _ -> do
       fNames <- newNameList "f" $ length ts
       match
         (conP cn (map varP fNames))
-        (normalB $ wrap $ lrE m i $ conE m1DataName `appE`
-          foldr1 prodE (zipWith (fromField gk) fNames ts)) []
+        (normalB $ wrap $ lrE i m $ conE m1DataName `appE`
+          foldBal prodE (zipWith (fromField gk) fNames ts)) []
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
@@ -932,13 +933,13 @@ toCon gk wrap m i
                    }) = do
   checkExistentialContext cn vars ctxt
   case ts of
-    [] -> match (wrap $ lrP m i $ conP m1DataName [conP u1DataName []])
+    [] -> match (wrap $ lrP i m $ conP m1DataName [conP u1DataName []])
                 (normalB $ conE cn) []
     _ -> do
       fNames <- newNameList "f" $ length ts
       match
-        (wrap $ lrP m i $ conP m1DataName
-          [foldr1 prod (zipWith (toField gk) fNames ts)])
+        (wrap $ lrP i m $ conP m1DataName
+          [foldBal prod (zipWith (toField gk) fNames ts)])
         (normalB $ foldl appE (conE cn)
                          (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
                          fNames ts)) []
@@ -987,14 +988,20 @@ unboxRepName :: Type -> Name
 unboxRepName = maybe unK1ValName trd3 . unboxedRepNames
 
 lrP :: Int -> Int -> (Q Pat -> Q Pat)
-lrP 1 0 p = p
-lrP _ 0 p = conP l1DataName [p]
-lrP m i p = conP r1DataName [lrP (m-1) (i-1) p]
+lrP i n p
+  | n == 0       = fail "lrP: impossible"
+  | n == 1       = p
+  | i <= div n 2 = conP l1DataName [lrP i     (div n 2) p]
+  | otherwise    = conP r1DataName [lrP (i-m) (n-m)     p]
+                     where m = div n 2
 
 lrE :: Int -> Int -> (Q Exp -> Q Exp)
-lrE 1 0 e = e
-lrE _ 0 e = conE l1DataName `appE` e
-lrE m i e = conE r1DataName `appE` lrE (m-1) (i-1) e
+lrE i n e
+  | n == 0       = fail "lrE: impossible"
+  | n == 1       = e
+  | i <= div n 2 = conE l1DataName `appE` lrE i     (div n 2) e
+  | otherwise    = conE r1DataName `appE` lrE (i-m) (n-m)     e
+                     where m = div n 2
 
 unboxedRepNames :: Type -> Maybe (Name, Name, Name)
 unboxedRepNames ty
