@@ -1,3 +1,9 @@
+# next [????.??.??]
+* Add a `gshowList` method to `GShow`, which lets us avoid the need for
+  `OverlappingInstances` in `Generics.Deriving.TH`. As a consequence, the
+  `GShow String` instance has been removed, as it is now fully subsumed by
+  the `GShow [a]` instance (with which it previously overlapped).
+
 # 1.12.2 [2018.06.28]
 * Backport the `Generic(1)` instances for `Data.Ord.Down`, introduced in
   `base-4.12`. Add `GEq`, `GShow`, `GSemigroup`, `GMonoid`, `GFunctor`,

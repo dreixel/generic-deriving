@@ -16,10 +16,6 @@
 {-# LANGUAGE EmptyCase #-}
 #endif
 
-#if __GLASGOW_HASKELL__ < 709
-{-# LANGUAGE OverlappingInstances #-}
-#endif
-
 module Generics.Deriving.Show (
   -- * Generic show class
     GShow(..)
@@ -32,7 +28,7 @@ module Generics.Deriving.Show (
 
   ) where
 
-import Control.Applicative (Const, ZipList)
+import           Control.Applicative (Const, ZipList)
 
 import           Data.Char (GeneralCategory)
 import           Data.Int
@@ -181,15 +177,23 @@ instance GShow' UWord where
 
 class GShow a where
   gshowsPrec :: Int -> a -> ShowS
-  gshows :: a -> ShowS
-  gshows = gshowsPrec 0
-  gshow :: a -> String
-  gshow x = gshows x ""
 #if __GLASGOW_HASKELL__ >= 701
   default gshowsPrec :: (Generic a, GShow' (Rep a))
                      => Int -> a -> ShowS
   gshowsPrec = gshowsPrecdefault
 #endif
+
+  gshows :: a -> ShowS
+  gshows = gshowsPrec 0
+
+  gshow :: a -> String
+  gshow x = gshows x ""
+
+  gshowList :: [a] -> ShowS
+  gshowList l =   showChar '['
+                . foldr (.) id
+                   (intersperse (showChar ',') (map (gshowsPrec 0) l))
+                . showChar ']'
 
 gshowsPrecdefault :: (Generic a, GShow' (Rep a))
                   => Int -> a -> ShowS
@@ -221,15 +225,8 @@ instance (GShow a, GShow b, GShow c, GShow d, GShow e, GShow f, GShow g)
     => GShow (a, b, c, d, e, f, g) where
   gshowsPrec = gshowsPrecdefault
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPABLE #-}
-#endif
-    (GShow a) => GShow [a] where
-  gshowsPrec _ l =   showChar '['
-                   . foldr (.) id
-                      (intersperse (showChar ',') (map (gshowsPrec 0) l))
-                   . showChar ']'
+instance GShow a => GShow [a] where
+  gshowsPrec _ = gshowList
 
 instance (GShow (f p), GShow (g p)) => GShow ((f :+: g) p) where
   gshowsPrec = gshowsPrecdefault
@@ -299,6 +296,7 @@ instance GShow CGid where
 
 instance GShow Char where
   gshowsPrec = showsPrec
+  gshowList  = showList
 
 #if defined(HTYPE_INO_T)
 instance GShow CIno where
@@ -568,13 +566,6 @@ instance GShow (f p) => GShow (Rec1 f p) where
   gshowsPrec = gshowsPrecdefault
 
 instance GShow SeekMode where
-  gshowsPrec = showsPrec
-
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPING #-}
-#endif
-    GShow String where
   gshowsPrec = showsPrec
 
 instance GShow a => GShow (Sum a) where
