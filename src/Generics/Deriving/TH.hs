@@ -659,9 +659,7 @@ repType :: GenericKind
         -> Q Type
 repType gk dv dt typeSubst cs =
     conT d1TypeName `appT` mkMetaDataType dv dt `appT`
-      case cs of
-        [] -> conT v1TypeName
-        _  -> foldBal sum' (map (repCon gk dv dt typeSubst) cs)
+      foldBal sum' (conT v1TypeName) (map (repCon gk dv dt typeSubst) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
@@ -709,9 +707,7 @@ repConWith :: GenericKind
            -> Q Type
 repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
     let structureType :: Q Type
-        structureType = case ssis of
-                             [] -> conT u1TypeName
-                             _  -> foldBal prodT f
+        structureType = foldBal prodT (conT u1TypeName) f
 
         f :: [Q Type]
         f = case mbSelNames of
@@ -871,15 +867,10 @@ fromCon gk wrap m i
                    , constructorFields  = ts
                    }) = do
   checkExistentialContext cn vars ctxt
-  case ts of
-    [] -> match (conP cn [])
-                (normalB $ wrap $ lrE i m $ conE m1DataName `appE` (conE u1DataName)) []
-    _ -> do
-      fNames <- newNameList "f" $ length ts
-      match
-        (conP cn (map varP fNames))
+  fNames <- newNameList "f" $ length ts
+  match (conP cn (map varP fNames))
         (normalB $ wrap $ lrE i m $ conE m1DataName `appE`
-          foldBal prodE (zipWith (fromField gk) fNames ts)) []
+          foldBal prodE (conE u1DataName) (zipWith (fromField gk) fNames ts)) []
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
@@ -932,14 +923,9 @@ toCon gk wrap m i
                    , constructorFields  = ts
                    }) = do
   checkExistentialContext cn vars ctxt
-  case ts of
-    [] -> match (wrap $ lrP i m $ conP m1DataName [conP u1DataName []])
-                (normalB $ conE cn) []
-    _ -> do
-      fNames <- newNameList "f" $ length ts
-      match
-        (wrap $ lrP i m $ conP m1DataName
-          [foldBal prod (zipWith (toField gk) fNames ts)])
+  fNames <- newNameList "f" $ length ts
+  match (wrap $ lrP i m $ conP m1DataName
+          [foldBal prod (conP u1DataName []) (zipWith (toField gk) fNames ts)])
         (normalB $ foldl appE (conE cn)
                          (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
                          fNames ts)) []
