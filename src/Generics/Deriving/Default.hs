@@ -41,6 +41,7 @@ module Generics.Deriving.Default
 import Generics.Deriving.Base
 import Generics.Deriving.Enum
 import Generics.Deriving.Eq
+import Generics.Deriving.Monoid
 import Generics.Deriving.Semigroup
 import Generics.Deriving.Show
 
@@ -86,4 +87,20 @@ instance (Generic a, GSemigroup' (Rep a)) => Semigroup (Default a) where
 
 instance (Generic a, GSemigroup' (Rep a)) => GSemigroup (Default a) where
   Default x `gsappend` Default y = Default $ x `gsappenddefault` y
+
+--------------------------------------------------------------------------------
+-- Monoid
+--------------------------------------------------------------------------------
+
+#if (MIN_VERSION_base(4,11,0))
+instance (Generic a, GMonoid' (Rep a), Semigroup a, GSemigroup' (Rep a)) => Monoid (Default a) where
+#else
+instance (Generic a, GMonoid' (Rep a)) => Monoid (Default a) where
+#endif
+  mempty = Default gmemptydefault
+  Default x `mappend` Default y = Default $ x `gmappenddefault` y
+
+instance (Generic a, GMonoid' (Rep a)) => GMonoid (Default a) where
+  gmempty = Default gmemptydefault
+  Default x `gmappend` Default y = Default $ x `gmappenddefault` y
 
