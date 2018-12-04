@@ -41,6 +41,7 @@ module Generics.Deriving.Default
 import Generics.Deriving.Base
 import Generics.Deriving.Enum
 import Generics.Deriving.Eq
+import Generics.Deriving.Semigroup
 import Generics.Deriving.Show
 
 newtype Default a = Default a
@@ -75,4 +76,14 @@ instance (Generic a, GShow' (Rep a)) => Show (Default a) where
 
 instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
   gshowsPrec n (Default x) = gshowsPrecdefault n x
+
+--------------------------------------------------------------------------------
+-- Semigroup
+--------------------------------------------------------------------------------
+
+instance (Generic a, GSemigroup' (Rep a)) => Semigroup (Default a) where
+  Default x <> Default y = Default $ x `gsappenddefault` y
+
+instance (Generic a, GSemigroup' (Rep a)) => GSemigroup (Default a) where
+  Default x `gsappend` Default y = Default $ x `gsappenddefault` y
 
