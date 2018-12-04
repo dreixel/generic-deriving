@@ -91,6 +91,8 @@ test-suite spec
   other-modules:        EmptyCaseSpec
                         ExampleSpec
                         TypeInTypeSpec
+  if impl(ghc >= 8.6.1)
+    other-modules:      DefaultSpec
   build-depends:        base             >= 4.3  && < 5
                       , generic-deriving
                       , hspec            >= 2    && < 3
