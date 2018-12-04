@@ -1,10 +1,11 @@
 -- |
 -- Module      : DefaultSpec
 -- Description : Ensure that deriving via Default newtype works
+-- License     : BSD-3-Clause
 --
--- Maintainer  : David Baynard <haskell@baynard.me>
+-- Maintainer  : generics@haskell.org
 -- Stability   : experimental
--- Portability : portable
+-- Portability : non-portable
 --
 -- Tests DerivingVia on GHC versions 8.6 and above.
 

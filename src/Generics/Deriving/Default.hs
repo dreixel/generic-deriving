@@ -1,11 +1,11 @@
 -- |
 -- Module      : Generics.Deriving.Default
--- Description : Default implementations of generic classes, for
--- DerivingVia
+-- Description : Default implementations of generic classes
+-- License     : BSD-3-Clause
 --
--- Maintainer  : David Baynard <haskell@baynard.me>
+-- Maintainer  : generics@haskell.org
 -- Stability   : experimental
--- Portability : portable
+-- Portability : non-portable
 --
 -- GHC 8.6 introduced the 'DerivingVia' language extension, which means
 -- an instance of a typeclass for a type can be derived from an instance
