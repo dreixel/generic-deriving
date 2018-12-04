@@ -1,3 +1,31 @@
+-- |
+-- Module      : Generics.Deriving.Default
+-- Description : Default implementations of generic classes, for
+-- DerivingVia
+--
+-- Maintainer  : David Baynard <haskell@baynard.me>
+-- Stability   : experimental
+-- Portability : portable
+--
+-- GHC 8.6 introduced the 'DerivingVia' language extension, which means
+-- an instance of a typeclass for a type can be derived from an instance
+-- for an isomorphic type.
+--
+-- There are a number of default instantiations for the classes to be
+-- derived via generics in this package. This module exports the 'Default'
+-- newtype, which indicates that a type should use those default instances
+-- for its typeclass instances.
+--
+-- Use as follows:
+--
+-- @
+-- data MyType = …
+--  deriving (Generic)
+--  deriving (Eq) via (Default MyType)
+--
+-- deriving via (Default MyType) instance Show MyType
+-- @
+
 {-# LANGUAGE CPP #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
