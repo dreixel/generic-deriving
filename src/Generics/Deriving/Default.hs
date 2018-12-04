@@ -31,6 +31,9 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE Safe #-}
 #endif
+#if __GLASGOW_HASKELL__ >= 706
+{-# LANGUAGE InstanceSigs #-}
+#endif
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -44,8 +47,9 @@ import Generics.Deriving.Eq
 import Generics.Deriving.Monoid
 import Generics.Deriving.Semigroup
 import Generics.Deriving.Show
+import Generics.Deriving.Uniplate
 
-newtype Default a = Default a
+newtype Default a = Default { unDefault :: a }
 
 --------------------------------------------------------------------------------
 -- Eq
@@ -104,3 +108,24 @@ instance (Generic a, GMonoid' (Rep a)) => GMonoid (Default a) where
   gmempty = Default gmemptydefault
   Default x `gmappend` Default y = Default $ x `gmappenddefault` y
 
+--------------------------------------------------------------------------------
+-- Uniplate
+--------------------------------------------------------------------------------
+
+instance (Generic a, Uniplate' (Rep a) a, Context' (Rep a) a) => Uniplate (Default a) where
+
+#if __GLASGOW_HASKELL__ >= 706
+  children   ::                                             Default a  ->   [Default a]
+  context    ::                             Default a   -> [Default a] ->    Default a
+  descend    ::            (Default a ->    Default a)  ->  Default a  ->    Default a
+  descendM   :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
+  transform  ::            (Default a ->    Default a)  ->  Default a  ->    Default a
+  transformM :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
+#endif
+
+  children     (Default x)    = Default <$> childrendefault    x
+  context      (Default x) ys = Default  $  contextdefault     x   (unDefault <$> ys)
+  descend    f (Default x)    = Default  $  descenddefault         (unDefault . f . Default) x
+  descendM   f (Default x)    = Default <$> descendMdefault   (fmap unDefault . f . Default) x
+  transform  f (Default x)    = Default  $  transformdefault       (unDefault . f . Default) x
+  transformM f (Default x)    = Default <$> transformMdefault (fmap unDefault . f . Default) x
