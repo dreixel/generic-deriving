@@ -54,6 +54,7 @@ library
                         Generics.Deriving.Instances
                         Generics.Deriving.Copoint
                         Generics.Deriving.ConNames
+                        Generics.Deriving.Default
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
                         Generics.Deriving.Foldable
