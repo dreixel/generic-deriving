@@ -42,6 +42,7 @@ module Generics.Deriving.Default
   ) where
 
 import Generics.Deriving.Base
+import Generics.Deriving.Copoint
 import Generics.Deriving.Enum
 import Generics.Deriving.Eq
 import Generics.Deriving.Functor
@@ -178,3 +179,14 @@ instance (Generic1 f, GFunctor' (Rep1 f)) => GFunctor (Default1 f) where
   gmap :: (a -> b) -> (Default1 f) a -> (Default1 f) b
 #endif
   gmap f (Default1 fx) = Default1 $ gmapdefault f fx
+
+--------------------------------------------------
+-- Copoint
+--------------------------------------------------
+
+instance (Generic1 f, GCopoint' (Rep1 f)) => GCopoint (Default1 f) where
+#if __GLASGOW_HASKELL__ >= 706
+  gcopoint :: Default1 f a -> a
+#endif
+  gcopoint = gcopointdefault . unDefault1
+
