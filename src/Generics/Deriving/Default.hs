@@ -56,9 +56,15 @@ newtype Default a = Default { unDefault :: a }
 --------------------------------------------------------------------------------
 
 instance (Generic a, GEq' (Rep a)) => Eq (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  (==) :: Default a -> Default a -> Bool
+#endif
   Default x == Default y = x `geqdefault` y
 
 instance (Generic a, GEq' (Rep a)) => GEq (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  geq :: Default a -> Default a -> Bool
+#endif
   Default x `geq` Default y = x `geqdefault` y
 
 --------------------------------------------------------------------------------
@@ -66,10 +72,17 @@ instance (Generic a, GEq' (Rep a)) => GEq (Default a) where
 --------------------------------------------------------------------------------
 
 instance (Generic a, GEq a, Enum' (Rep a)) => Enum (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  toEnum :: Int -> Default a
+  fromEnum :: Default a -> Int
+#endif
   toEnum = Default . toEnumDefault
   fromEnum (Default x) = fromEnumDefault x
 
 instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  genum :: [Default a]
+#endif
   genum = Default . to <$> enum'
 
 --------------------------------------------------------------------------------
@@ -77,9 +90,15 @@ instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
 --------------------------------------------------------------------------------
 
 instance (Generic a, GShow' (Rep a)) => Show (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  showsPrec :: Int -> Default a -> ShowS
+#endif
   showsPrec n (Default x) = gshowsPrecdefault n x
 
 instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  gshowsPrec :: Int -> Default a -> ShowS
+#endif
   gshowsPrec n (Default x) = gshowsPrecdefault n x
 
 --------------------------------------------------------------------------------
@@ -87,9 +106,15 @@ instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
 --------------------------------------------------------------------------------
 
 instance (Generic a, GSemigroup' (Rep a)) => Semigroup (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  (<>) :: Default a -> Default a -> Default a
+#endif
   Default x <> Default y = Default $ x `gsappenddefault` y
 
 instance (Generic a, GSemigroup' (Rep a)) => GSemigroup (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  gsappend :: Default a -> Default a -> Default a
+#endif
   Default x `gsappend` Default y = Default $ x `gsappenddefault` y
 
 --------------------------------------------------------------------------------
@@ -101,10 +126,18 @@ instance (Generic a, GMonoid' (Rep a), Semigroup a, GSemigroup' (Rep a)) => Mono
 #else
 instance (Generic a, GMonoid' (Rep a)) => Monoid (Default a) where
 #endif
+#if __GLASGOW_HASKELL__ >= 706
+  mempty :: Default a
+  mappend :: Default a -> Default a -> Default a
+#endif
   mempty = Default gmemptydefault
   Default x `mappend` Default y = Default $ x `gmappenddefault` y
 
 instance (Generic a, GMonoid' (Rep a)) => GMonoid (Default a) where
+#if __GLASGOW_HASKELL__ >= 706
+  gmempty :: Default a
+  gmappend :: Default a -> Default a -> Default a
+#endif
   gmempty = Default gmemptydefault
   Default x `gmappend` Default y = Default $ x `gmappenddefault` y
 
