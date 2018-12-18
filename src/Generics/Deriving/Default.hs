@@ -52,6 +52,7 @@ import Generics.Deriving.Functor
 import Generics.Deriving.Monoid
 import Generics.Deriving.Semigroup
 import Generics.Deriving.Show
+import Generics.Deriving.Traversable
 import Generics.Deriving.Uniplate
 
 newtype Default a = Default { unDefault :: a }
@@ -222,3 +223,25 @@ instance (Generic1 t, GFoldable' (Rep1 t)) => GFoldable (Default1 t) where
   gfoldMap :: Monoid m => (a -> m) -> Default1 t a -> m
 #endif
   gfoldMap f (Default1 tx) = gfoldMapdefault f tx
+
+--------------------------------------------------
+-- Traversable
+--------------------------------------------------
+
+instance (Generic1 t, GFunctor' (Rep1 t), GFoldable' (Rep1 t), GTraversable' (Rep1 t)) => Traversable (Default1 t) where
+#if __GLASGOW_HASKELL__ >= 706
+  traverse  :: Applicative f => (a -> f b) -> Default1 t    a  -> f (Default1 t b)
+  sequenceA :: Applicative f =>               Default1 t (f a) -> f (Default1 t a)
+  mapM      ::       Monad m => (a -> m b) -> Default1 t    a  -> m (Default1 t b)
+  sequence  ::       Monad m =>               Default1 t (m a) -> m (Default1 t a)
+#endif
+  sequenceA = gsequenceA
+  mapM      = gmapM
+  sequence  = gsequence
+  traverse  = gtraverse
+
+instance (Generic1 t, GFunctor' (Rep1 t), GFoldable' (Rep1 t), GTraversable' (Rep1 t)) => GTraversable (Default1 t) where
+#if __GLASGOW_HASKELL__ >= 706
+  gtraverse :: Applicative f => (a -> f b) -> Default1 t a -> f (Default1 t b)
+#endif
+  gtraverse f (Default1 fx) = Default1 <$> gtraversedefault f fx
