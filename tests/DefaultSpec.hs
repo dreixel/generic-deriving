@@ -8,6 +8,8 @@
 -- Portability : non-portable
 --
 -- Tests DerivingVia on GHC versions 8.6 and above.
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE DerivingVia #-}
 
 module DefaultSpec (main, spec) where
