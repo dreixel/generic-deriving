@@ -39,6 +39,7 @@
 
 module Generics.Deriving.Default
   ( Default(..)
+  , Default1(..)
   ) where
 
 import Data.Foldable
@@ -101,7 +102,7 @@ instance (Generic a, GShow' (Rep a)) => Show (Default a) where
 #if __GLASGOW_HASKELL__ >= 706
   showsPrec :: Int -> Default a -> ShowS
 #endif
-  showsPrec n (Default x) = gshowsPrecdefault n x
+  showsPrec = gshowsPrec
 
 instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
 #if __GLASGOW_HASKELL__ >= 706
@@ -117,7 +118,7 @@ instance (Generic a, GSemigroup' (Rep a)) => Semigroup (Default a) where
 #if __GLASGOW_HASKELL__ >= 706
   (<>) :: Default a -> Default a -> Default a
 #endif
-  Default x <> Default y = Default $ x `gsappenddefault` y
+  (<>) = gsappend
 
 instance (Generic a, GSemigroup' (Rep a)) => GSemigroup (Default a) where
 #if __GLASGOW_HASKELL__ >= 706
@@ -138,8 +139,8 @@ instance (Generic a, GMonoid' (Rep a)) => Monoid (Default a) where
   mempty :: Default a
   mappend :: Default a -> Default a -> Default a
 #endif
-  mempty = Default gmemptydefault
-  Default x `mappend` Default y = Default $ x `gmappenddefault` y
+  mempty = gmempty
+  mappend = gmappend
 
 instance (Generic a, GMonoid' (Rep a)) => GMonoid (Default a) where
 #if __GLASGOW_HASKELL__ >= 706
