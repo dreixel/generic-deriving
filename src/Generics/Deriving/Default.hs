@@ -41,10 +41,13 @@ module Generics.Deriving.Default
   ( Default(..)
   ) where
 
+import Data.Foldable
+
 import Generics.Deriving.Base
 import Generics.Deriving.Copoint
 import Generics.Deriving.Enum
 import Generics.Deriving.Eq
+import Generics.Deriving.Foldable
 import Generics.Deriving.Functor
 import Generics.Deriving.Monoid
 import Generics.Deriving.Semigroup
@@ -190,3 +193,32 @@ instance (Generic1 f, GCopoint' (Rep1 f)) => GCopoint (Default1 f) where
 #endif
   gcopoint = gcopointdefault . unDefault1
 
+--------------------------------------------------
+-- Foldable
+--------------------------------------------------
+
+instance (Generic1 t, GFoldable' (Rep1 t)) => Foldable (Default1 t) where
+#if __GLASGOW_HASKELL__ >= 706
+  foldMap :: (Monoid m) => (a -> m) -> Default1 t a -> m
+  fold    ::  Monoid m              => Default1 t m -> m
+  foldr   :: (a -> b -> b)    -> b  -> Default1 t a -> b
+  foldr'  :: (a -> b -> b)    -> b  -> Default1 t a -> b
+  foldl   :: (a -> b -> a)    -> a  -> Default1 t b -> a
+  foldl'  :: (a -> b -> a)    -> a  -> Default1 t b -> a
+  foldr1  :: (a -> a -> a)          -> Default1 t a -> a
+  foldl1  :: (a -> a -> a)          -> Default1 t a -> a
+#endif
+  foldMap = gfoldMap
+  fold    = gfold
+  foldr   = gfoldr
+  foldr'  = gfoldr'
+  foldl   = gfoldl
+  foldl'  = gfoldl'
+  foldr1  = gfoldr1
+  foldl1  = gfoldl1
+
+instance (Generic1 t, GFoldable' (Rep1 t)) => GFoldable (Default1 t) where
+#if __GLASGOW_HASKELL__ >= 706
+  gfoldMap :: Monoid m => (a -> m) -> Default1 t a -> m
+#endif
+  gfoldMap f (Default1 tx) = gfoldMapdefault f tx
