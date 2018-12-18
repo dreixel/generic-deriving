@@ -44,12 +44,15 @@ module Generics.Deriving.Default
 import Generics.Deriving.Base
 import Generics.Deriving.Enum
 import Generics.Deriving.Eq
+import Generics.Deriving.Functor
 import Generics.Deriving.Monoid
 import Generics.Deriving.Semigroup
 import Generics.Deriving.Show
 import Generics.Deriving.Uniplate
 
 newtype Default a = Default { unDefault :: a }
+
+newtype Default1 f a = Default1 { unDefault1 :: f a }
 
 --------------------------------------------------------------------------------
 -- Eq
@@ -162,3 +165,16 @@ instance (Generic a, Uniplate' (Rep a) a, Context' (Rep a) a) => Uniplate (Defau
   descendM   f (Default x)    = Default <$> descendMdefault   (fmap unDefault . f . Default) x
   transform  f (Default x)    = Default  $  transformdefault       (unDefault . f . Default) x
   transformM f (Default x)    = Default <$> transformMdefault (fmap unDefault . f . Default) x
+
+--------------------------------------------------------------------------------
+-- Functor
+--------------------------------------------------------------------------------
+
+instance (Generic1 f, GFunctor' (Rep1 f)) => Functor (Default1 f) where
+  fmap = gmap
+
+instance (Generic1 f, GFunctor' (Rep1 f)) => GFunctor (Default1 f) where
+#if __GLASGOW_HASKELL__ >= 706
+  gmap :: (a -> b) -> (Default1 f) a -> (Default1 f) b
+#endif
+  gmap f (Default1 fx) = Default1 $ gmapdefault f fx
