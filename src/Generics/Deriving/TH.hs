@@ -570,7 +570,7 @@ makeRepInline :: GenericClass
               -> Type
               -> Q Type
 makeRepInline gClass dv name instTys cons ty = do
-  let instVars = requiredTyVarsOfTypes [ty]
+  let instVars = freeVariablesWellScoped [ty]
       (tySynVars, gk)  = genericKind gClass instTys
 
       typeSubst :: TypeSubst
@@ -587,7 +587,7 @@ makeRepTySynApp gClass dv name ty =
   -- of the LHS of the Rep(1) instance. We call unKindedTV because the kind
   -- inferencer can figure out the kinds perfectly well, so we don't need to
   -- give anything here explicit kind signatures.
-  let instTvbs = map unKindedTV $ requiredTyVarsOfTypes [ty]
+  let instTvbs = map unKindedTV $ freeVariablesWellScoped [ty]
   in return $ applyTyToTvbs (genRepName gClass dv name) instTvbs
 
 -- | A backwards-compatible synonym for 'makeFrom0'.

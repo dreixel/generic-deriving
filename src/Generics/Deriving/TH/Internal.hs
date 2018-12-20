@@ -30,11 +30,6 @@ import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH.Ppr (pprint)
 import           Language.Haskell.TH.Syntax
 
-#if !(MIN_VERSION_base(4,8,0))
-import           Data.Foldable (Foldable(foldMap))
-import           Data.Monoid (Monoid(..))
-#endif
-
 #ifndef CURRENT_PACKAGE_KEY
 import           Data.Version (showVersion)
 import           Paths_generic_deriving (version)
@@ -103,55 +98,6 @@ hasKindStar (SigT _ StarT) = True
 hasKindStar (SigT _ StarK) = True
 #endif
 hasKindStar _              = False
-
--- | Gets all of the required type/kind variable binders mentioned in a Type.
--- This does not add separate items for kind variable binders (in contrast with
--- the behavior of 'freeVariables').
-requiredTyVarsOfTypes :: [Type] -> [TyVarBndr]
-requiredTyVarsOfTypes tys =
-  let fvs :: [Name]
-      fvs = nub $ concatMap freeVariables tys
-
-      varKindSigs :: Map Name Kind
-      varKindSigs = foldMap go_ty tys
-        where
-          go_ty :: Type -> Map Name Kind
-          go_ty (ForallT tvbs ctxt t) =
-            foldr (\tvb -> Map.delete (tvName tvb))
-                  (foldMap go_pred ctxt `mappend` go_ty t) tvbs
-          go_ty (AppT t1 t2) = go_ty t1 `mappend` go_ty t2
-          go_ty (SigT t k) =
-            let kSigs =
-#if MIN_VERSION_template_haskell(2,8,0)
-                  go_ty k
-#else
-                  mempty
-#endif
-            in case t of
-                 VarT n -> Map.insert n k kSigs
-                 _      -> go_ty t `mappend` kSigs
-          go_ty _ = mempty
-
-          go_pred :: Pred -> Map Name Kind
-#if MIN_VERSION_template_haskell(2,10,0)
-          go_pred = go_ty
-#else
-          go_pred (ClassP _ ts)  = foldMap go_ty ts
-          go_pred (EqualP t1 t2) = go_ty t1 `mappend` go_ty t2
-#endif
-
-      ascribeWithKind n
-        | Just k <- Map.lookup n varKindSigs
-        = KindedTV n k
-        | otherwise
-        = PlainTV n
-
-      isKindBinder = (`Set.member` kindVars)
-        where
-          kindVars = Set.fromList $ concatMap freeVariables $ Map.elems varKindSigs
-
-  in map ascribeWithKind $
-     filter (not . isKindBinder) fvs
 
 -- | Converts a VarT or a SigT into Just the corresponding TyVarBndr.
 -- Converts other Types to Nothing.
@@ -418,8 +364,8 @@ data GenericKind = Gen0
 genericKind :: GenericClass -> [Type] -> ([TyVarBndr], GenericKind)
 genericKind gClass tySynVars =
   case gClass of
-    Generic  -> (requiredTyVarsOfTypes tySynVars, Gen0)
-    Generic1 -> (requiredTyVarsOfTypes initArgs, Gen1 (varTToName lastArg) mbLastArgKindName)
+    Generic  -> (freeVariablesWellScoped tySynVars, Gen0)
+    Generic1 -> (freeVariablesWellScoped initArgs, Gen1 (varTToName lastArg) mbLastArgKindName)
   where
     -- Everything below is only used for Generic1.
     initArgs :: [Type]
