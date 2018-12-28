@@ -8,24 +8,22 @@
 -- Portability : non-portable
 --
 -- Tests DerivingVia on GHC versions 8.6 and above.
-{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE DerivingVia #-}
+#endif
 
-module DefaultSpec (main, spec) where
+module DefaultSpec where
 
 import Test.Hspec
 import Generics.Deriving.Default
-import Generics.Deriving
-
-main :: IO ()
-main = hspec spec
 
 spec :: Spec
 spec = do
   describe "DerivingVia Default" $ do
-    undefined
+    return ()
 
+#if __GLASGOW_HASKELL__ >= 806
 newtype TestEq = TestEq Bool
   deriving (Eq) via (Default Bool)
 newtype TestEnum = TestEnum Bool
@@ -37,3 +35,4 @@ newtype TestFoldable a = TestFoldable (Maybe a)
   deriving (Foldable) via (Default1 Maybe)
 newtype TestFunctor a = TestFunctor (Maybe a)
   deriving (Functor) via (Default1 Maybe)
+#endif
