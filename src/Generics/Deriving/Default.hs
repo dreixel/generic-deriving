@@ -31,9 +31,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE Safe #-}
 #endif
-#if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE InstanceSigs #-}
-#endif
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -65,15 +62,11 @@ newtype Default1 f a = Default1 { unDefault1 :: f a }
 --------------------------------------------------------------------------------
 
 instance (Generic a, GEq' (Rep a)) => Eq (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  (==) :: Default a -> Default a -> Bool
-#endif
+  -- (==) :: Default a -> Default a -> Bool
   Default x == Default y = x `geqdefault` y
 
 instance (Generic a, GEq' (Rep a)) => GEq (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  geq :: Default a -> Default a -> Bool
-#endif
+  -- geq :: Default a -> Default a -> Bool
   Default x `geq` Default y = x `geqdefault` y
 
 --------------------------------------------------------------------------------
@@ -81,17 +74,14 @@ instance (Generic a, GEq' (Rep a)) => GEq (Default a) where
 --------------------------------------------------------------------------------
 
 instance (Generic a, GEq a, Enum' (Rep a)) => Enum (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  toEnum :: Int -> Default a
-  fromEnum :: Default a -> Int
-#endif
+  -- toEnum :: Int -> Default a
   toEnum = Default . toEnumDefault
+
+  -- fromEnum :: Default a -> Int
   fromEnum (Default x) = fromEnumDefault x
 
 instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  genum :: [Default a]
-#endif
+  -- genum :: [Default a]
   genum = Default . to <$> enum'
 
 --------------------------------------------------------------------------------
@@ -99,15 +89,11 @@ instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
 --------------------------------------------------------------------------------
 
 instance (Generic a, GShow' (Rep a)) => Show (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  showsPrec :: Int -> Default a -> ShowS
-#endif
+  -- showsPrec :: Int -> Default a -> ShowS
   showsPrec = gshowsPrec
 
 instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  gshowsPrec :: Int -> Default a -> ShowS
-#endif
+  -- gshowsPrec :: Int -> Default a -> ShowS
   gshowsPrec n (Default x) = gshowsPrecdefault n x
 
 --------------------------------------------------------------------------------
@@ -115,15 +101,11 @@ instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
 --------------------------------------------------------------------------------
 
 instance (Generic a, GSemigroup' (Rep a)) => Semigroup (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  (<>) :: Default a -> Default a -> Default a
-#endif
+  -- (<>) :: Default a -> Default a -> Default a
   (<>) = gsappend
 
 instance (Generic a, GSemigroup' (Rep a)) => GSemigroup (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  gsappend :: Default a -> Default a -> Default a
-#endif
+  -- gsappend :: Default a -> Default a -> Default a
   Default x `gsappend` Default y = Default $ x `gsappenddefault` y
 
 --------------------------------------------------------------------------------
@@ -135,19 +117,18 @@ instance (Generic a, GMonoid' (Rep a), Semigroup a, GSemigroup' (Rep a)) => Mono
 #else
 instance (Generic a, GMonoid' (Rep a)) => Monoid (Default a) where
 #endif
-#if __GLASGOW_HASKELL__ >= 706
-  mempty :: Default a
-  mappend :: Default a -> Default a -> Default a
-#endif
+
+  -- mempty :: Default a
   mempty = gmempty
+
+  -- mappend :: Default a -> Default a -> Default a
   mappend = gmappend
 
 instance (Generic a, GMonoid' (Rep a)) => GMonoid (Default a) where
-#if __GLASGOW_HASKELL__ >= 706
-  gmempty :: Default a
-  gmappend :: Default a -> Default a -> Default a
-#endif
+  -- gmempty :: Default a
   gmempty = Default gmemptydefault
+
+  -- gmappend :: Default a -> Default a -> Default a
   Default x `gmappend` Default y = Default $ x `gmappenddefault` y
 
 --------------------------------------------------------------------------------
@@ -156,14 +137,12 @@ instance (Generic a, GMonoid' (Rep a)) => GMonoid (Default a) where
 
 instance (Generic a, Uniplate' (Rep a) a, Context' (Rep a) a) => Uniplate (Default a) where
 
-#if __GLASGOW_HASKELL__ >= 706
-  children   ::                                             Default a  ->   [Default a]
-  context    ::                             Default a   -> [Default a] ->    Default a
-  descend    ::            (Default a ->    Default a)  ->  Default a  ->    Default a
-  descendM   :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
-  transform  ::            (Default a ->    Default a)  ->  Default a  ->    Default a
-  transformM :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
-#endif
+  -- children   ::                                             Default a  ->   [Default a]
+  -- context    ::                             Default a   -> [Default a] ->    Default a
+  -- descend    ::            (Default a ->    Default a)  ->  Default a  ->    Default a
+  -- descendM   :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
+  -- transform  ::            (Default a ->    Default a)  ->  Default a  ->    Default a
+  -- transformM :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
 
   children     (Default x)    = Default <$> childrendefault    x
   context      (Default x) ys = Default  $  contextdefault     x   (unDefault <$> ys)
@@ -180,9 +159,7 @@ instance (Generic1 f, GFunctor' (Rep1 f)) => Functor (Default1 f) where
   fmap = gmap
 
 instance (Generic1 f, GFunctor' (Rep1 f)) => GFunctor (Default1 f) where
-#if __GLASGOW_HASKELL__ >= 706
-  gmap :: (a -> b) -> (Default1 f) a -> (Default1 f) b
-#endif
+  -- gmap :: (a -> b) -> (Default1 f) a -> (Default1 f) b
   gmap f (Default1 fx) = Default1 $ gmapdefault f fx
 
 --------------------------------------------------
@@ -190,9 +167,7 @@ instance (Generic1 f, GFunctor' (Rep1 f)) => GFunctor (Default1 f) where
 --------------------------------------------------
 
 instance (Generic1 f, GCopoint' (Rep1 f)) => GCopoint (Default1 f) where
-#if __GLASGOW_HASKELL__ >= 706
-  gcopoint :: Default1 f a -> a
-#endif
+  -- gcopoint :: Default1 f a -> a
   gcopoint = gcopointdefault . unDefault1
 
 --------------------------------------------------
@@ -200,16 +175,16 @@ instance (Generic1 f, GCopoint' (Rep1 f)) => GCopoint (Default1 f) where
 --------------------------------------------------
 
 instance (Generic1 t, GFoldable' (Rep1 t)) => Foldable (Default1 t) where
-#if __GLASGOW_HASKELL__ >= 706
-  foldMap :: (Monoid m) => (a -> m) -> Default1 t a -> m
-  fold    ::  Monoid m              => Default1 t m -> m
-  foldr   :: (a -> b -> b)    -> b  -> Default1 t a -> b
-  foldr'  :: (a -> b -> b)    -> b  -> Default1 t a -> b
-  foldl   :: (a -> b -> a)    -> a  -> Default1 t b -> a
-  foldl'  :: (a -> b -> a)    -> a  -> Default1 t b -> a
-  foldr1  :: (a -> a -> a)          -> Default1 t a -> a
-  foldl1  :: (a -> a -> a)          -> Default1 t a -> a
-#endif
+
+  -- foldMap :: (Monoid m) => (a -> m) -> Default1 t a -> m
+  -- fold    ::  Monoid m              => Default1 t m -> m
+  -- foldr   :: (a -> b -> b)    -> b  -> Default1 t a -> b
+  -- foldr'  :: (a -> b -> b)    -> b  -> Default1 t a -> b
+  -- foldl   :: (a -> b -> a)    -> a  -> Default1 t b -> a
+  -- foldl'  :: (a -> b -> a)    -> a  -> Default1 t b -> a
+  -- foldr1  :: (a -> a -> a)          -> Default1 t a -> a
+  -- foldl1  :: (a -> a -> a)          -> Default1 t a -> a
+
   foldMap = gfoldMap
   fold    = gfold
   foldr   = gfoldr
@@ -220,9 +195,7 @@ instance (Generic1 t, GFoldable' (Rep1 t)) => Foldable (Default1 t) where
   foldl1  = gfoldl1
 
 instance (Generic1 t, GFoldable' (Rep1 t)) => GFoldable (Default1 t) where
-#if __GLASGOW_HASKELL__ >= 706
-  gfoldMap :: Monoid m => (a -> m) -> Default1 t a -> m
-#endif
+  -- gfoldMap :: Monoid m => (a -> m) -> Default1 t a -> m
   gfoldMap f (Default1 tx) = gfoldMapdefault f tx
 
 --------------------------------------------------
@@ -230,19 +203,17 @@ instance (Generic1 t, GFoldable' (Rep1 t)) => GFoldable (Default1 t) where
 --------------------------------------------------
 
 instance (Generic1 t, GFunctor' (Rep1 t), GFoldable' (Rep1 t), GTraversable' (Rep1 t)) => Traversable (Default1 t) where
-#if __GLASGOW_HASKELL__ >= 706
-  traverse  :: Applicative f => (a -> f b) -> Default1 t    a  -> f (Default1 t b)
-  sequenceA :: Applicative f =>               Default1 t (f a) -> f (Default1 t a)
-  mapM      ::       Monad m => (a -> m b) -> Default1 t    a  -> m (Default1 t b)
-  sequence  ::       Monad m =>               Default1 t (m a) -> m (Default1 t a)
-#endif
+
+  -- traverse  :: Applicative f => (a -> f b) -> Default1 t    a  -> f (Default1 t b)
+  -- sequenceA :: Applicative f =>               Default1 t (f a) -> f (Default1 t a)
+  -- mapM      ::       Monad m => (a -> m b) -> Default1 t    a  -> m (Default1 t b)
+  -- sequence  ::       Monad m =>               Default1 t (m a) -> m (Default1 t a)
+
   sequenceA = gsequenceA
   mapM      = gmapM
   sequence  = gsequence
   traverse  = gtraverse
 
 instance (Generic1 t, GFunctor' (Rep1 t), GFoldable' (Rep1 t), GTraversable' (Rep1 t)) => GTraversable (Default1 t) where
-#if __GLASGOW_HASKELL__ >= 706
-  gtraverse :: Applicative f => (a -> f b) -> Default1 t a -> f (Default1 t b)
-#endif
+  -- gtraverse :: Applicative f => (a -> f b) -> Default1 t a -> f (Default1 t b)
   gtraverse f (Default1 fx) = Default1 <$> gtraversedefault f fx
