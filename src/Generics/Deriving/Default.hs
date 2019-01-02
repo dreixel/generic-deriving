@@ -8,22 +8,45 @@
 -- Portability : non-portable
 --
 -- GHC 8.6 introduced the 'DerivingVia' language extension, which means
--- an instance of a typeclass for a type can be derived from an instance
--- for an isomorphic type.
+-- a typeclass instance can be derived from an existing instance for an
+-- isomorphic type. Any newtype is isomorphic to the underlying type. By
+-- implementing a typeclass once for the newtype, it is possible to derive
+-- any typeclass for any type with a 'Generic' instance.
 --
--- There are a number of default instantiations for the classes to be
--- derived via generics in this package. This module exports the 'Default'
--- newtype, which indicates that a type should use those default instances
--- for its typeclass instances.
+-- For a number of classes, there are sensible default instantiations. In
+-- older GHCs, these can be supplied in the class definition, using the
+-- 'DefaultSignatures' extension. However, only one default can be
+-- provided! With 'DerivingVia' it is now possible to choose from many
+-- default instantiations.
 --
--- Use as follows:
+-- This package contains a number of such classes. This module demonstrates
+-- how one might create a newtype called 'Default' for which such instances
+-- are defined.
+--
+-- Then one might use 'DerivingVia' as follows. The implementations of the
+-- data types are elided here (they are irrelevant). Either the deriving
+-- clause with the data type definition or the standalone clause will work.
+--
+-- 1.  For data types of kind '*', use 'Default'.
 --
 -- @
 -- data MyType = …
 --  deriving (Generic)
---  deriving (Eq) via (Default MyType)
+--  deriving (GEq) via (Default MyType)
 --
--- deriving via (Default MyType) instance Show MyType
+-- deriving via (Default MyType) instance GShow MyType
+-- @
+--
+-- TODO Confirm classes of kind '* -> Constraint' vs kind 'Constraint'
+--
+-- 2.  For data types of kind '* -> *', use 'Default1'.
+--
+-- @
+-- data MyType1 a = …
+--  deriving (Generic)
+--  deriving (GFunctor) via (Default1 MyType1)
+--
+-- deriving via (Default1 MyType1) instance GFoldable MyType1
 -- @
 
 {-# LANGUAGE CPP #-}
@@ -51,8 +74,12 @@ import Generics.Deriving.Show
 import Generics.Deriving.Traversable
 import Generics.Deriving.Uniplate
 
+-- | This newtype wrapper can be used to derive default instances for data
+-- types of kind '*'.
 newtype Default a = Default { unDefault :: a }
 
+-- | This newtype wrapper can be used to derive default instances for data
+-- types of kind '* -> *'.
 newtype Default1 f a = Default1 { unDefault1 :: f a }
 
 --------------------------------------------------------------------------------
