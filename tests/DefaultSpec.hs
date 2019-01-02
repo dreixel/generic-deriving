@@ -16,7 +16,9 @@
 module DefaultSpec where
 
 import Test.Hspec
-import Generics.Deriving.Default
+import Generics.Deriving
+import Generics.Deriving.Default ()
+import Generics.Deriving.Foldable
 
 spec :: Spec
 spec = do
@@ -25,14 +27,14 @@ spec = do
 
 #if __GLASGOW_HASKELL__ >= 806
 newtype TestEq = TestEq Bool
-  deriving (Eq) via (Default Bool)
+  deriving (GEq) via (Default Bool)
 newtype TestEnum = TestEnum Bool
-  deriving (Enum) via (Default Bool)
+  deriving (GEnum) via (Default Bool)
 newtype TestShow = TestShow Bool
-  deriving (Show) via (Default Bool)
+  deriving (GShow) via (Default Bool)
 
 newtype TestFoldable a = TestFoldable (Maybe a)
-  deriving (Foldable) via (Default1 Maybe)
+  deriving (GFoldable) via (Default1 Maybe)
 newtype TestFunctor a = TestFunctor (Maybe a)
-  deriving (Functor) via (Default1 Maybe)
+  deriving (GFunctor) via (Default1 Maybe)
 #endif
