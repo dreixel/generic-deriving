@@ -459,11 +459,15 @@ reifyDataInfo :: Name
 reifyDataInfo name = do
   return $ Left $ ns ++ " Could not reify " ++ nameBase name
  `recover`
-  do DatatypeInfo { datatypeContext = ctxt
-                  , datatypeName    = parentName
-                  , datatypeVars    = tys
-                  , datatypeVariant = variant
-                  , datatypeCons    = cons
+  do DatatypeInfo { datatypeContext   = ctxt
+                  , datatypeName      = parentName
+#if MIN_VERSION_th_abstraction(0,3,0)
+                  , datatypeInstTypes = tys
+#else
+                  , datatypeVars      = tys
+#endif
+                  , datatypeVariant   = variant
+                  , datatypeCons      = cons
                   } <- reifyDatatype name
      let variant_ = case variant of
                       Datatype        -> Datatype_

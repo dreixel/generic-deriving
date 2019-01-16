@@ -1,3 +1,6 @@
+# next [????.??.??]
+* Support `th-abstraction-0.3.0.0` or later.
+
 # 1.12.3 [2019.02.09]
 * Support `template-haskell-2.15`.
 * Add a `gshowList` method to `GShow`, which lets us avoid the need for
