@@ -1,4 +1,5 @@
 # next [????.??.??]
+* Support `template-haskell-2.15`.
 * Add a `gshowList` method to `GShow`, which lets us avoid the need for
   `OverlappingInstances` in `Generics.Deriving.TH`. As a consequence, the
   `GShow String` instance has been removed, as it is now fully subsumed by
