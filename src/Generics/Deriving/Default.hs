@@ -62,6 +62,11 @@ module Generics.Deriving.Default
   , Default1(..)
   ) where
 
+#if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative ((<$>))
+#endif
+import Control.Monad (liftM)
+
 import Generics.Deriving.Base
 import Generics.Deriving.Copoint
 import Generics.Deriving.Enum
@@ -189,12 +194,12 @@ instance (Generic a, Uniplate' (Rep a) a, Context' (Rep a) a) => Uniplate (Defau
   -- transform  ::            (Default a ->    Default a)  ->  Default a  ->    Default a
   -- transformM :: Monad m => (Default a -> m (Default a)) ->  Default a  -> m (Default a)
 
-  children     (Default x)    = Default <$> childrendefault    x
-  context      (Default x) ys = Default  $  contextdefault     x   (unDefault <$> ys)
-  descend    f (Default x)    = Default  $  descenddefault         (unDefault . f . Default) x
-  descendM   f (Default x)    = Default <$> descendMdefault   (fmap unDefault . f . Default) x
-  transform  f (Default x)    = Default  $  transformdefault       (unDefault . f . Default) x
-  transformM f (Default x)    = Default <$> transformMdefault (fmap unDefault . f . Default) x
+  children     (Default x)    =       Default <$> childrendefault    x
+  context      (Default x) ys =       Default  $  contextdefault     x    (unDefault <$> ys)
+  descend    f (Default x)    =       Default  $  descenddefault          (unDefault . f . Default) x
+  descendM   f (Default x)    = liftM Default  $  descendMdefault   (liftM unDefault . f . Default) x
+  transform  f (Default x)    =       Default  $  transformdefault        (unDefault . f . Default) x
+  transformM f (Default x)    = liftM Default  $  transformMdefault (liftM unDefault . f . Default) x
 
 --------------------------------------------------------------------------------
 -- Functor
