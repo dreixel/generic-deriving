@@ -15,8 +15,10 @@
 {-# LANGUAGE CPP #-}
 #if __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 #endif
 
 module DefaultSpec where
@@ -83,13 +85,22 @@ spec = do
 
       in  functor_prop <$> universe
 
+    it "GEq is commutative for parameterized derivingVia (Default (TestFoldable Bool))" . sequenceA_ $
+      let commutative :: GEq a => a -> a -> Expectation
+          commutative x y = x `geq` y `shouldBe` y `geq` x
+
+          universe :: [TestHigherEq Bool]
+          universe = TestHigherEq <$> [Nothing, Just False, Just True]
+
+      in  commutative <$> universe <*> universe
+
 #endif
     return ()
 
 #if __GLASGOW_HASKELL__ >= 806
 
--- These types all implement instances using `DerivingVia`. Most use
--- `Default` (one uses `First` for )
+-- These types all implement instances using `DerivingVia`: most via
+-- `Default` (one uses `First`).
 
 newtype TestEq = TestEq Bool
   deriving (GEq) via (Default Bool)
@@ -105,7 +116,12 @@ newtype FirstSemigroup = FirstSemigroup Bool
 
 newtype TestFoldable a = TestFoldable (Maybe a)
   deriving (GFoldable) via (Default1 Option)
+
 newtype TestFunctor a = TestFunctor (Maybe a)
   deriving stock (Eq, Show, Functor)
   deriving (GFunctor) via (Default1 Maybe)
+
+newtype TestHigherEq a = TestHigherEq (Maybe a)
+  deriving stock (Generic)
+  deriving (GEq) via (Default (TestHigherEq a))
 #endif
