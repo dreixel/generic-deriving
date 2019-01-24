@@ -89,20 +89,20 @@ import Generics.Deriving.Uniplate
 --
 -- @
 -- data MyType = …
---  deriving (Generic)
---  deriving (GEq) via (Default MyType)
+--  deriving ('Generic')
+--  deriving ('GEq') via ('Default' MyType)
 --
--- deriving via (Default MyType) instance GShow MyType
+-- deriving via ('Default' MyType) instance 'GShow' MyType
 -- @
 --
 -- Instances may be parameterized by type variables.
 --
 -- @
 -- data MyType1 a = …
---  deriving (Generic)
---  deriving (GShow) via (Default (MyType1 a))
+--  deriving ('Generic')
+--  deriving ('GShow') via ('Default' (MyType1 a))
 --
--- deriving via Default (MyType1 a) instance GEq a => GEq (MyType1 a)
+-- deriving via 'Default' (MyType1 a) instance 'GEq' a => 'GEq' (MyType1 a)
 -- @
 --
 -- These types both require instances for 'Generic'. This is because the
@@ -126,14 +126,14 @@ newtype Default a = Default { unDefault :: a }
 -- 'Data.Kind.Type'@, use 'Default1'.  An example of this class from @base@
 -- would be 'Data.Functor.Classes.Eq1', or 'Generic1'.
 --
--- Unlike for 'MyType1', there can be no implementation of these classes for @MyType :: 'Data.Kind.Type'@.
+-- Unlike for @MyType1@, there can be no implementation of these classes for @MyType :: 'Data.Kind.Type'@.
 --
 -- @
 -- data MyType1 a = …
---  deriving (Generic1)
---  deriving (GFunctor) via (Default1 MyType1)
+--  deriving ('Generic1')
+--  deriving ('GFunctor') via ('Default1' MyType1)
 --
--- deriving via (Default1 MyType1) instance GFoldable MyType1
+-- deriving via ('Default1' MyType1) instance 'GFoldable' MyType1
 -- @
 --
 -- Note that these instances require a @'Generic1' MyType1@ constraint as
@@ -160,7 +160,7 @@ instance (Generic a, GEq' (Rep a)) => GEq (Default a) where
 -- Enum
 --------------------------------------------------------------------------------
 
--- | The 'Enum' class in 'base' is slightly different; it comprises 'toEnum' and
+-- | The 'Enum' class in @base@ is slightly different; it comprises 'toEnum' and
 -- 'fromEnum'. "Generics.Deriving.Enum" provides functions 'toEnumDefault'
 -- and 'fromEnumDefault'.
 instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
@@ -174,8 +174,8 @@ instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
 -- | For example, with this type:
 --
 -- @
--- newtype TestShow = TestShow Bool
---   deriving (GShow) via (Default Bool)
+-- newtype TestShow = TestShow 'Bool'
+--   deriving ('GShow') via ('Default' 'Bool')
 -- @
 --
 -- 'gshow' for @TestShow@ would produce the same string as `gshow` for
@@ -196,16 +196,17 @@ instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
 --------------------------------------------------------------------------------
 
 -- | Semigroups often have many sensible implementations of
--- @append/`gsappend`@, and therefore no sensible default. Indeed, there is
--- no 'GSemigroup'' instance for representations of sum types.
+-- 'Data.Semigroup.<>' / 'gsappend', and therefore no sensible default.
+-- Indeed, there is no 'GSemigroup'' instance for representations of sum
+-- types.
 --
 -- In other cases, one may wish to use the existing wrapper newtypes in
--- 'base', such as the following (using 'Data.Semigroup.First'):
+-- @base@, such as the following (using 'Data.Semigroup.First'):
 --
 -- @
--- newtype FirstSemigroup = FirstSemigroup Bool
---   deriving stock (Eq, Show)
---   deriving (GSemigroup) via (First Bool)
+-- newtype FirstSemigroup = FirstSemigroup 'Bool'
+--   deriving stock ('Eq', 'Show')
+--   deriving ('GSemigroup') via ('Data.Semigroup.First' 'Bool')
 -- @
 --
 instance (Generic a, GSemigroup' (Rep a)) => GSemigroup (Default a) where
