@@ -54,6 +54,9 @@ module Generics.Deriving.Uniplate (
 
   -- * Internal Uniplate class
   , Uniplate'(..)
+
+  -- * Internal Context class
+  , Context'(..)
   ) where
 
 

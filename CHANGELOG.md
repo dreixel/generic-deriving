@@ -7,6 +7,9 @@
 * Functions in `Generics.Deriving.TH` now balance groups of `(:*:)` and `(:+:)`
   as much as possible (`deriving Generic` was already performing this
   optimization, and now `generic-deriving` does too).
+* Add a `Generics.Deriving.Default` module demonstrating and explaining
+  how and why to use `DerivingVia`. There is also a test suite with
+  further examples.
 
 # 1.12.2 [2018.06.28]
 * Backport the `Generic(1)` instances for `Data.Ord.Down`, introduced in

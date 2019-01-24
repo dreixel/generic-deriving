@@ -54,6 +54,7 @@ library
                         Generics.Deriving.Instances
                         Generics.Deriving.Copoint
                         Generics.Deriving.ConNames
+                        Generics.Deriving.Default
                         Generics.Deriving.Enum
                         Generics.Deriving.Eq
                         Generics.Deriving.Foldable
@@ -87,7 +88,8 @@ library
 test-suite spec
   type:                 exitcode-stdio-1.0
   main-is:              Spec.hs
-  other-modules:        EmptyCaseSpec
+  other-modules:        DefaultSpec
+                        EmptyCaseSpec
                         ExampleSpec
                         TypeInTypeSpec
   build-depends:        base             >= 4.3  && < 5
