@@ -41,6 +41,32 @@ spec = do
   describe "DerivingVia Default" $ do
 
 #if __GLASGOW_HASKELL__ >= 806
+    it "GEq is commutative for derivingVia (Default MyType)" . sequenceA_ $
+      let commutative :: GEq a => a -> a -> Expectation
+          commutative x y = x `geq` y `shouldBe` y `geq` x
+
+          universe :: [MyType]
+          universe = MyType <$> [False, True]
+
+      in  commutative <$> universe <*> universe
+
+    it "GShow for MyType is like Show for Bool with derivingVia (Default MyType) but prefixed with 'MyType '" $ do
+      gshowsPrec 0 (MyType False) "" `shouldBe` "MyType " <> showsPrec 0 False ""
+      gshowsPrec 0 (MyType True) "" `shouldBe` "MyType " <> showsPrec 0 True ""
+
+    it "GEq is commutative for parameterized derivingVia (Default (MyType1 Bool))" . sequenceA_ $
+      let commutative :: GEq a => a -> a -> Expectation
+          commutative x y = x `geq` y `shouldBe` y `geq` x
+
+          universe :: [MyType1 Bool]
+          universe = MyType1 <$> [False, True]
+
+      in  commutative <$> universe <*> universe
+
+    it "GShow for MyType1 Bool is like Show for Bool with derivingVia (Default (MyType1 Bool)) but prefixed with 'MyType1 '" $ do
+      gshowsPrec 0 (MyType1 False) "" `shouldBe` "MyType1 " <> showsPrec 0 False ""
+      gshowsPrec 0 (MyType1 True) "" `shouldBe` "MyType1 " <> showsPrec 0 True ""
+
     it "GEq is commutative for derivingVia (Default Bool)" . sequenceA_ $
       let commutative :: GEq a => a -> a -> Expectation
           commutative x y = x `geq` y `shouldBe` y `geq` x
@@ -85,15 +111,6 @@ spec = do
 
       in  functor_prop <$> universe
 
-    it "GEq is commutative for parameterized derivingVia (Default (TestFoldable Bool))" . sequenceA_ $
-      let commutative :: GEq a => a -> a -> Expectation
-          commutative x y = x `geq` y `shouldBe` y `geq` x
-
-          universe :: [TestHigherEq Bool]
-          universe = TestHigherEq <$> [Nothing, Just False, Just True]
-
-      in  commutative <$> universe <*> universe
-
 #endif
     return ()
 
@@ -124,4 +141,21 @@ newtype TestFunctor a = TestFunctor (Maybe a)
 newtype TestHigherEq a = TestHigherEq (Maybe a)
   deriving stock (Generic)
   deriving (GEq) via (Default (TestHigherEq a))
+
+-- These types correspond to the hypothetical examples in the module
+-- documentation.
+
+data MyType = MyType Bool
+  deriving (Generic)
+  deriving (GEq) via (Default MyType)
+
+deriving via (Default MyType) instance GShow MyType
+
+data MyType1 a = MyType1 a
+  deriving (Generic, Generic1)
+  deriving (GEq) via (Default (MyType1 a))
+  deriving (GFunctor) via (Default1 MyType1)
+
+deriving via Default (MyType1 a) instance GShow a => GShow (MyType1 a)
+deriving via (Default1 MyType1) instance GFoldable MyType1
 #endif

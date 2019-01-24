@@ -45,13 +45,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Generics.Deriving.Default
-  ( -- * Kind Type
+  ( -- * Kind @*@ (aka @Type@)
 
     -- $default
 
     Default(..)
 
-  , -- * Kind (Type -> Type)
+  , -- * Kind @* -> *@ (aka @Type -> Type@)
 
     -- $default1
 
@@ -81,7 +81,9 @@ import Generics.Deriving.Uniplate
 
 -- $default
 --
--- For classes which take an argument of kind 'Data.Kind.Type', use 'Default'.
+-- For classes which take an argument of kind 'Data.Kind.Type', use
+-- 'Default'. An example of this class from @base@ would be 'Eq', or
+-- 'Generic'.
 --
 -- These examples use 'GShow' and 'GEq'; they are interchangeable.
 --
@@ -102,6 +104,17 @@ import Generics.Deriving.Uniplate
 --
 -- deriving via Default (MyType1 a) instance GEq a => GEq (MyType1 a)
 -- @
+--
+-- These types both require instances for 'Generic'. This is because the
+-- implementations of 'geq' and 'gshowsPrec' for @'Default' b@ have a @'Generic'
+-- b@ constraint, i.e. the type corresponding to @b@ require a 'Generic'
+-- instance. For these two types, that means instances for @'Generic' MyType@
+-- and @'Generic' (MyType1 a)@ respectively.
+--
+-- It also means the 'Generic' instance is not needed when there is already
+-- a generic instance for the type used to derive the relevant instances.
+-- For an example, see the documentation of the 'GShow' instance for
+-- 'Default', below.
 
 -- | This newtype wrapper can be used to derive default instances for
 -- classes taking an argument of kind 'Data.Kind.Type'.
@@ -109,18 +122,23 @@ newtype Default a = Default { unDefault :: a }
 
 -- $default1
 --
--- For classes which take an argument of kind @'Data.Kind.Type' -> 'Data.Kind.Type'@, use 'Default1'.
+-- For classes which take an argument of kind @'Data.Kind.Type' ->
+-- 'Data.Kind.Type'@, use 'Default1'.  An example of this class from @base@
+-- would be 'Data.Functor.Classes.Eq1', or 'Generic1'.
 --
 -- Unlike for 'MyType1', there can be no implementation of these classes for @MyType :: 'Data.Kind.Type'@.
 --
 -- @
 -- data MyType1 a = …
---  deriving (Generic)
+--  deriving (Generic1)
 --  deriving (GFunctor) via (Default1 MyType1)
 --
 -- deriving via (Default1 MyType1) instance GFoldable MyType1
 -- @
-
+--
+-- Note that these instances require a @'Generic1' MyType1@ constraint as
+-- 'gmap' and 'gfoldMap' have @'Generic1' a@ constraints on the
+-- implementations for @'Default1' a@.
 
 -- | This newtype wrapper can be used to derive default instances for
 -- classes taking an argument of kind @'Data.Kind.Type' -> 'Data.Kind.Type'@.
@@ -160,8 +178,15 @@ instance (Generic a, GEq a, Enum' (Rep a)) => GEnum (Default a) where
 --   deriving (GShow) via (Default Bool)
 -- @
 --
--- `gshow` for `TestShow` would produce the same string as `gshow` for
--- `Bool`.
+-- 'gshow' for @TestShow@ would produce the same string as `gshow` for
+-- 'Bool'.
+--
+-- In this example, @TestShow@ requires no 'Generic' instance, as the
+-- constraint on 'gshowsPrec' from @'Default' 'Bool'@ is @'Generic' 'Bool'@.
+--
+-- In general, when using a newtype wrapper, the instance can be derived
+-- via the wrapped type, as here (via @'Default' 'Bool'@ rather than @'Default'
+-- TestShow@).
 instance (Generic a, GShow' (Rep a)) => GShow (Default a) where
   -- gshowsPrec :: Int -> Default a -> ShowS
   gshowsPrec n (Default x) = gshowsPrecdefault n x
