@@ -54,7 +54,7 @@ import Data.Void (Void)
 #if MIN_VERSION_base(4,9,0)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Semigroup as Semigroup
-import Generics.Deriving.Monoid (GMonoid(..))
+import Generics.Deriving.Monoid.Internal (GMonoid(..))
 #endif
 
 -------------------------------------------------------------------------------

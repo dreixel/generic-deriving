@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.12.4
+version:                1.13
 synopsis:               Generic programming library for generalised deriving.
 description:
 
@@ -69,6 +69,7 @@ library
                         Generics.Deriving.TH
 
   other-modules:        Generics.Deriving.Base.Internal
+                        Generics.Deriving.Monoid.Internal
                         Generics.Deriving.TH.Internal
                         Paths_generic_deriving
   if flag(base-4-9)
