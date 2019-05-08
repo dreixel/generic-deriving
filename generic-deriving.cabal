@@ -1,5 +1,5 @@
 name:                   generic-deriving
-version:                1.12.4
+version:                1.13
 synopsis:               Generic programming library for generalised deriving.
 description:
 
