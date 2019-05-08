@@ -1,3 +1,7 @@
+# 1.13 [TBD]
+* In the instance `GMonoid (Maybe a)`, relax the constraint on `a` from
+  `GMonoid` to `GSemigroup`.
+
 # 1.12.4 [2019.04.26]
 * Support `th-abstraction-0.3.0.0` or later.
 
