@@ -39,7 +39,11 @@
 {-# LANGUAGE CPP #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
+# if __GLASGOW_HASKELL__ >= 704
 {-# LANGUAGE Safe #-}
+# else
+{-# LANGUAGE Trustworthy #-}
+# endif
 #endif
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
