@@ -21,12 +21,12 @@ module Generics.Deriving.Monoid.Internal (
 
   -- * Introduction
   {- | This module provides two main features:
-  
+
       1. 'GMonoid', a generic version of the 'Monoid' type class, including instances
       of the types from "Data.Monoid"
-  
+
       2. Default generic definitions for the 'Monoid' methods 'mempty' and 'mappend'
-  
+
   The generic defaults only work for types without alternatives (i.e. they have
   only one constructor). We cannot in general know how to deal with different
   constructors.
@@ -76,6 +76,7 @@ module Generics.Deriving.Monoid.Internal (
 import Control.Applicative
 import Data.Monoid
 import Generics.Deriving.Base
+import Generics.Deriving.Semigroup.Internal
 
 #if MIN_VERSION_base(4,6,0)
 import Data.Ord (Down)
@@ -91,13 +92,9 @@ import Data.Proxy (Proxy)
 import Data.Functor.Identity (Identity)
 #endif
 
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (WrappedMonoid)
-#endif
-
 --------------------------------------------------------------------------------
 
-class GMonoid' f where
+class GSemigroup' f => GMonoid' f where
   gmempty'  :: f x
   gmappend' :: f x -> f x -> f x
 
@@ -157,7 +154,7 @@ mappenddefault x y = to (mappend' (from x) (from y))
 
 --------------------------------------------------------------------------------
 
-class GMonoid a where
+class GSemigroup a => GMonoid a where
 
   -- | Generic 'mempty'
   gmempty  :: a
@@ -244,12 +241,6 @@ instance GMonoid
 
 #if MIN_VERSION_base(4,8,0)
 instance GMonoid a => GMonoid (Identity a) where
-  gmempty  = gmemptydefault
-  gmappend = gmappenddefault
-#endif
-
-#if MIN_VERSION_base(4,9,0)
-instance GMonoid m => GMonoid (WrappedMonoid m) where
   gmempty  = gmemptydefault
   gmappend = gmappenddefault
 #endif

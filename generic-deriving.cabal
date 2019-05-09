@@ -70,6 +70,7 @@ library
 
   other-modules:        Generics.Deriving.Base.Internal
                         Generics.Deriving.Monoid.Internal
+                        Generics.Deriving.Semigroup.Internal
                         Generics.Deriving.TH.Internal
                         Paths_generic_deriving
   if flag(base-4-9)

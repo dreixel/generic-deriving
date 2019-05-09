@@ -1,4 +1,6 @@
 # 1.13 [TBD]
+* Make `GSemigroup` a superclass of `GMonoid`. Similarly, make
+  `GSemigroup'` a superclass of `GMonoid'`.
 * In the instance `GMonoid (Maybe a)`, relax the constraint on `a` from
   `GMonoid` to `GSemigroup`.
 
