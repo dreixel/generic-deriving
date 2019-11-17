@@ -27,8 +27,12 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
+#if !(MIN_VERSION_base(4,14,0))
+    Rep0Kleisli
+  , Rep1Kleisli
+#endif
 #if !(MIN_VERSION_base(4,12,0))
-    Rep0Down
+  , Rep0Down
   , Rep1Down
 #endif
 #if !(MIN_VERSION_base(4,9,0))
@@ -153,7 +157,55 @@ import Data.Ord (Down(..))
 # else
 import GHC.Exts (Down(..))
 # endif
+#endif
+
+#if !(MIN_VERSION_base(4,14,0))
+import Control.Arrow (Kleisli(..))
+#endif
+
+#if !(MIN_VERSION_base(4,14,0))
 import Generics.Deriving.Base.Internal
+#endif
+
+#if !(MIN_VERSION_base(4,14,0))
+# if MIN_VERSION_base(4,6,0)
+type Rep0Kleisli m a b = Rep  (Kleisli m a b)
+type Rep1Kleisli m a   = Rep1 (Kleisli m a)
+deriving instance Generic  (Kleisli m a b)
+deriving instance Generic1 (Kleisli m a)
+# else
+type Rep0Kleisli m a b = D1 D1Kleisli (C1 C1_0Kleisli (S1 S1_0_0Kleisli (Rec0 (a -> m b))))
+type Rep1Kleisli m a   = D1 D1Kleisli (C1 C1_0Kleisli (S1 S1_0_0Kleisli ((->) a :.: Rec1 m)))
+
+instance Generic (Kleisli m a b) where
+    type Rep (Kleisli m a b) = Rep0Kleisli m a b
+    from x = M1 (case x of
+        Kleisli g -> M1 (M1 (K1 g)))
+    to (M1 x) = case x of
+        M1 (M1 (K1 g)) -> Kleisli g
+
+instance Generic1 (Kleisli m a) where
+    type Rep1 (Kleisli m a) = Rep1Kleisli m a
+    from1 x = M1 (case x of
+        Kleisli g -> M1 (M1 (Comp1 (fmap Rec1 g))))
+    to1 (M1 x) = case x of
+        M1 (M1 g) -> Kleisli (fmap unRec1 (unComp1 g))
+
+data D1Kleisli
+data C1_0Kleisli
+data S1_0_0Kleisli
+
+instance Datatype D1Kleisli where
+  datatypeName _ = "Kleisli"
+  moduleName   _ = "Control.Arrow"
+
+instance Constructor C1_0Kleisli where
+  conName     _ = "Kleisli"
+  conIsRecord _ = True
+
+instance Selector S1_0_0Kleisli where
+  selName _ = "runKleisli"
+# endif
 #endif
 
 #if !(MIN_VERSION_base(4,12,0))
@@ -168,13 +220,17 @@ type Rep1Down   = D1 D1Down (C1 C1_0Down (S1 NoSelector Par1))
 
 instance Generic (Down a) where
     type Rep (Down a) = Rep0Down a
-    from (Down x) = M1 (M1 (M1 (K1 x)))
-    to (M1 (M1 (M1 (K1 x)))) = Down x
+    from x = M1 (case x of
+        Down g -> M1 (M1 (K1 g)))
+    to (M1 x) = case x of
+        M1 (M1 (K1 g)) -> Down g
 
 instance Generic1 Down where
     type Rep1 Down = Rep1Down
-    from1 (Down x) = M1 (M1 (M1 (Par1 x)))
-    to1 (M1 (M1 (M1 x))) = Down (unPar1 x)
+    from1 x = M1 (case x of
+        Down g -> M1 (M1 (Par1 g)))
+    to1 (M1 x) = case x of
+        M1 (M1 g) -> Down (unPar1 g)
 
 data D1Down
 data C1_0Down

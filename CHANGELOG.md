@@ -1,3 +1,6 @@
+# next [????.??.??]
+* Backport the `Generic(1)` instances for `Kleisli` introduced in `base-4.14`.
+
 # 1.13 [2019.08.27]
 * Make `GSemigroup` a superclass of `GMonoid`. Similarly, make
   `GSemigroup'` a superclass of `GMonoid'`.
