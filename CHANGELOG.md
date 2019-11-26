@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.13.1 [2019.11.26]
 * Backport the `Generic(1)` instances for `Kleisli` introduced in `base-4.14`.
 
 # 1.13 [2019.08.27]
