@@ -27,7 +27,7 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
-#if !(MIN_VERSION_base(4,14,0))
+#if !(MIN_VERSION_base(4,14,0)) && !(MIN_VERSION_base(4,13,0))
     Rep0Kleisli
   , Rep1Kleisli
 #endif
@@ -159,15 +159,15 @@ import GHC.Exts (Down(..))
 # endif
 #endif
 
-#if !(MIN_VERSION_base(4,14,0))
+#if !(MIN_VERSION_base(4,14,0)) && !(MIN_VERSION_base(4,13,0))
 import Control.Arrow (Kleisli(..))
 #endif
 
-#if !(MIN_VERSION_base(4,14,0))
+#if !(MIN_VERSION_base(4,14,0)) && !(MIN_VERSION_base(4,13,0))
 import Generics.Deriving.Base.Internal
 #endif
 
-#if !(MIN_VERSION_base(4,14,0))
+#if !(MIN_VERSION_base(4,14,0)) && !(MIN_VERSION_base(4,13,0))
 # if MIN_VERSION_base(4,6,0)
 type Rep0Kleisli m a b = Rep  (Kleisli m a b)
 type Rep1Kleisli m a   = Rep1 (Kleisli m a)
