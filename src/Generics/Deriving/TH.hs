@@ -754,7 +754,7 @@ repFieldArg gk (SigT t _) = repFieldArg gk t
 repFieldArg Gen0 t = boxT t
 repFieldArg (Gen1 name _) (VarT t) | t == name = conT par1TypeName
 repFieldArg gk@(Gen1 name _) t = do
-  let tyHead:tyArgs      = unapplyTy t
+  let (tyHead, tyArgs)   = unapplyTy t
       numLastArgs        = min 1 $ length tyArgs
       (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
       rec0Type           = boxT t
@@ -888,7 +888,7 @@ wC (VarT t) name | t == name = conE par1DataName
 wC t name
   | ground t name = conE $ boxRepName t
   | otherwise = do
-      let tyHead:tyArgs      = unapplyTy t
+      let (tyHead, tyArgs)   = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
           (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
 
@@ -947,7 +947,7 @@ unwC (VarT t)   name | t == name = varE unPar1ValName
 unwC t name
   | ground t name = varE $ unboxRepName t
   | otherwise = do
-      let tyHead:tyArgs      = unapplyTy t
+      let (tyHead, tyArgs)   = unapplyTy t
           numLastArgs        = min 1 $ length tyArgs
           (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
 
