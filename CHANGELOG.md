@@ -1,3 +1,7 @@
+# next [????.??.??]
+* Fix a bug in which `deriveAll1` would needlessly reject data types whose last
+  type parameter appears as an oversaturated argument to a type family.
+
 # 1.13.1 [2019.11.26]
 * Backport the `Generic(1)` instances for `Kleisli` introduced in `base-4.14`.
 

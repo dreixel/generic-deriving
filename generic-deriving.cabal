@@ -95,6 +95,7 @@ test-suite spec
   other-modules:        DefaultSpec
                         EmptyCaseSpec
                         ExampleSpec
+                        T68Spec
                         TypeInTypeSpec
   build-depends:        base             >= 4.3  && < 5
                       , generic-deriving

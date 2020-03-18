@@ -771,9 +771,8 @@ repFieldArg gk@(Gen1 name _) t = do
                                `appT` repFieldArg gk beta
       inspectTy _ = rec0Type
 
-  itf <- isTyFamily tyHead
-  if any (not . (`ground` name)) lhsArgs
-       || any (not . (`ground` name)) tyArgs && itf
+  itf <- isInTypeFamilyApp name tyHead tyArgs
+  if any (not . (`ground` name)) lhsArgs || itf
      then outOfPlaceTyVarError
      else case rhsArgs of
           []   -> rec0Type
@@ -902,9 +901,8 @@ wC t name
                                     (varE composeValName)
                                     (varE fmapValName `appE` wC beta name)
 
-      itf <- isTyFamily tyHead
-      if any (not . (`ground` name)) lhsArgs
-           || any (not . (`ground` name)) tyArgs && itf
+      itf <- isInTypeFamilyApp name tyHead tyArgs
+      if any (not . (`ground` name)) lhsArgs || itf
          then outOfPlaceTyVarError
          else case rhsArgs of
               []   -> conE $ boxRepName t
@@ -961,9 +959,8 @@ unwC t name
                                     (varE composeValName)
                                     (varE unComp1ValName)
 
-      itf <- isTyFamily tyHead
-      if any (not . (`ground` name)) lhsArgs
-           || any (not . (`ground` name)) tyArgs && itf
+      itf <- isInTypeFamilyApp name tyHead tyArgs
+      if any (not . (`ground` name)) lhsArgs || itf
          then outOfPlaceTyVarError
          else case rhsArgs of
               []   -> varE $ unboxRepName t
