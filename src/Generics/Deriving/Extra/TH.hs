@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP #-}
 
 {- |
-Module      :  Generics.Deriving.TH
+Module      :  Generics.Deriving.Extra.TH
 Copyright   :  (c) 2008--2009 Universiteit Utrecht
 License     :  BSD3
 
@@ -42,14 +42,8 @@ $('deriveAll1' 'FamilyTrue) -- instance Generic1 (Family Bool) where ...
 -}
 
 -- Adapted from Generics.Regular.TH
-module Generics.Deriving.TH (
-      -- * @derive@- functions
-      deriveMeta
-    , deriveData
-    , deriveConstructors
-    , deriveSelectors
-
-    , deriveAll
+module Generics.Deriving.Extra.TH (
+      deriveAll
     , deriveAll0
     , deriveAll1
     , deriveAll0And1
@@ -103,15 +97,11 @@ module Generics.Deriving.TH (
 import           Control.Monad ((>=>), unless, when)
 
 import qualified Data.Map as Map (empty, fromList)
+import           Data.Maybe (fromMaybe)
 
-import           Generics.Deriving.TH.Internal
-#if MIN_VERSION_base(4,9,0)
-import           Generics.Deriving.TH.Post4_9
-#else
-import           Generics.Deriving.TH.Pre4_9
-#endif
+import           Generics.Deriving.Extra.TH.Internal
 
-import           Language.Haskell.TH.Datatype
+import           Language.Haskell.TH.Datatype as D
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH
 
@@ -251,14 +241,13 @@ deriveAll0And1Options = deriveAllCommon True True
 
 deriveAllCommon :: Bool -> Bool -> Options -> Name -> Q [Dec]
 deriveAllCommon generic generic1 opts n = do
-    a <- deriveMeta n
-    b <- if generic
+    a <- if generic
             then deriveRepresentableCommon Generic opts n
             else return []
-    c <- if generic1
+    b <- if generic1
             then deriveRepresentableCommon Generic1 opts n
             else return []
-    return (a ++ b ++ c)
+    return (a ++ b)
 
 -- | Given the type and the name (as string) for the Representable0 type
 -- synonym to derive, generate the 'Representable0' instance.
@@ -673,7 +662,7 @@ repCon gk dv dt typeSubst
                    , constructorFields     = ts
                    , constructorVariant    = cv
                    }) = do
-  checkExistentialContext n vars ctxt
+  checkExistentialVars n vars
   let mbSelNames = case cv of
                      NormalConstructor          -> Nothing
                      InfixConstructor           -> Nothing
@@ -687,22 +676,36 @@ repCon gk dv dt typeSubst
                      InfixConstructor    -> True
                      RecordConstructor _ -> False
   ssis <- reifySelStrictInfo n bangs
-  repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
+  repConWith gk dv dt n typeSubst ctxt mbSelNames ssis ts isRecord isInfix
 
 repConWith :: GenericKind
            -> DatatypeVariant_
            -> Name
            -> Name
            -> TypeSubst
+           -> Cxt
            -> Maybe [Name]
            -> [SelStrictInfo]
            -> [Type]
            -> Bool
            -> Bool
            -> Q Type
-repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
+repConWith gk dv dt n typeSubst ctxt mbSelNames ssis ts isRecord isInfix = do
     let structureType :: Q Type
         structureType = foldBal prodT (conT u1TypeName) f
+
+        mkExContext :: Q Type -> Q Type
+        mkExContext t
+          | null ctxt = t
+          | otherwise = do
+              ctxt' <- repCxt gk typeSubst ctxt
+              conT exContextTypeName
+                `appT` return (cxtToConstraintTuple ctxt')
+                `appT` t
+
+        cxtToConstraintTuple :: Cxt -> Type
+        cxtToConstraintTuple [p] = p
+        cxtToConstraintTuple c   = applyTyToTys (TupleT (length c)) c
 
         f :: [Q Type]
         f = case mbSelNames of
@@ -713,10 +716,31 @@ repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
 
     conT c1TypeName
       `appT` mkMetaConsType dv dt n isRecord isInfix
-      `appT` structureType
+      `appT` mkExContext structureType
 
 prodT :: Q Type -> Q Type -> Q Type
 prodT a b = conT productTypeName `appT` a `appT` b
+
+repCxt :: GenericKind -> TypeSubst -> Cxt -> Q Cxt
+repCxt gk typeSubst ctxt = do
+  ctxt' <- mapM resolveTypeSynonyms (applySubstitution typeSubst ctxt)
+  mapM (repPred gk) ctxt'
+
+repPred :: GenericKind -> Pred -> Q Pred
+repPred gk pred' = do
+  case gk of
+    Gen0 -> return ()
+    Gen1 name _ -> do
+      when (not $ pred' `ground` name)
+        tyVarInExContextError
+
+  -- EqualityT can refer to both homogeneous and heterogeneous equality, but TH
+  -- always splices EqualityT back in as if it were homogeneous. To be on the
+  -- safe side, always conservatively assume that the equality is
+  -- heterogeneous, since it is more permissive.
+  return $ case asEqualPred pred' of
+    Just (ty1, ty2) -> ConT heqTypeName `AppT` ty1 `AppT` ty2
+    Nothing         -> pred'
 
 repField :: GenericKind
          -> DatatypeVariant_
@@ -730,19 +754,7 @@ repField :: GenericKind
 repField gk dv dt ns typeSubst mbF ssi t =
            conT s1TypeName
     `appT` mkMetaSelType dv dt ns mbF ssi
-    `appT` (repFieldArg gk =<< resolveTypeSynonyms t'')
-  where
-    -- See Note [Generic1 is polykinded in base-4.10]
-    t', t'' :: Type
-    t' = case gk of
-              Gen1 _ (Just _kvName) ->
-#if MIN_VERSION_base(4,10,0)
-                t
-#else
-                substNameWithKind _kvName starK t
-#endif
-              _ -> t
-    t'' = applySubstitution typeSubst t'
+    `appT` (repFieldArg gk =<< resolveTypeSynonyms (applySubstitution typeSubst t))
 
 repFieldArg :: GenericKind -> Type -> Q Type
 repFieldArg _ ForallT{} = rankNError
@@ -804,7 +816,7 @@ mkFrom gClass ecOptions m i dt instTys cs = do
 
 errorFrom :: EmptyCaseOptions -> Name -> [Q Match]
 errorFrom useEmptyCase dt
-  | useEmptyCase && ghc7'8OrLater
+  | useEmptyCase
   = []
   | otherwise
   = [do z <- newName "z"
@@ -833,7 +845,7 @@ mkTo gClass ecOptions m i dt instTys cs = do
 
 errorTo :: EmptyCaseOptions -> Name -> [Q Match]
 errorTo useEmptyCase dt
-  | useEmptyCase && ghc7'8OrLater
+  | useEmptyCase
   = []
   | otherwise
   = [do z <- newName "z"
@@ -845,13 +857,6 @@ errorTo useEmptyCase dt
                  (stringE $ "No values for empty datatype " ++ nameBase dt))
           []]
 
-ghc7'8OrLater :: Bool
-#if __GLASGOW_HASKELL__ >= 708
-ghc7'8OrLater = True
-#else
-ghc7'8OrLater = False
-#endif
-
 fromCon :: GenericKind -> (Q Exp -> Q Exp) -> Int -> Int
         -> ConstructorInfo -> Q Match
 fromCon gk wrap m i
@@ -860,11 +865,16 @@ fromCon gk wrap m i
                    , constructorContext = ctxt
                    , constructorFields  = ts
                    }) = do
-  checkExistentialContext cn vars ctxt
+  checkExistentialVars cn vars
   fNames <- newNameList "f" $ length ts
   match (conP cn (map varP fNames))
-        (normalB $ wrap $ lrE i m $ conE m1DataName `appE`
+        (normalB $ wrap $ lrE i m $ appE (conE m1DataName) $ mkExContext $
           foldBal prodE (conE u1DataName) (zipWith (fromField gk) fNames ts)) []
+  where
+    mkExContext :: Q Exp -> Q Exp
+    mkExContext = case ctxt of
+      [] -> id
+      _  -> appE (conE suchThatDataName)
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
@@ -915,14 +925,22 @@ toCon gk wrap m i
                    , constructorContext = ctxt
                    , constructorFields  = ts
                    }) = do
-  checkExistentialContext cn vars ctxt
+  checkExistentialVars cn vars
   fNames <- newNameList "f" $ length ts
-  match (wrap $ lrP i m $ conP m1DataName
+  match (wrap $ lrP i m $ conP m1DataName $ mkExContext
           [foldBal prod (conP u1DataName []) (zipWith (toField gk) fNames ts)])
         (normalB $ foldl appE (conE cn)
                          (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
                          fNames ts)) []
-  where prod x y = conP productDataName [x,y]
+  where
+    mkExContext :: [Q Pat] -> [Q Pat]
+    mkExContext ps =
+      case ctxt of
+        [] -> ps
+        _  -> [conP suchThatDataName ps]
+
+    prod :: Q Pat -> Q Pat -> Q Pat
+    prod x y = conP productDataName [x,y]
 
 toConUnwC :: GenericKind -> Name -> Type -> Q Exp
 toConUnwC Gen0          nr _ = varE nr
@@ -1028,28 +1046,12 @@ buildTypeInstance gClass useKindSigs tyConName varTysOrig = do
 
         -- Substitute kind * for any dropped kind variables
     let varTysExpSubst :: [Type]
--- See Note [Generic1 is polykinded in base-4.10]
-#if MIN_VERSION_base(4,10,0)
+        -- See Note [Generic1 is polykinded in base-4.10]
         varTysExpSubst = varTysExp
-#else
-        varTysExpSubst = map (substNamesWithKindStar droppedKindVarNames) varTysExp
-
-        droppedKindVarNames :: [Name]
-        droppedKindVarNames = catKindVarNames droppedStarKindStati
-#endif
 
     let remainingTysExpSubst, droppedTysExpSubst :: [Type]
         (remainingTysExpSubst, droppedTysExpSubst) =
           splitAt remainingLength varTysExpSubst
-
--- See Note [Generic1 is polykinded in base-4.10]
-#if !(MIN_VERSION_base(4,10,0))
-    -- If any of the dropped types were polykinded, ensure that there are of
-    -- kind * after substituting * for the dropped kind variables. If not,
-    -- throw an error.
-    unless (all hasKindStar droppedTysExpSubst) $
-      derivingKindError tyConName
-#endif
 
         -- We now substitute all of the specialized-to-* kind variable names
         -- with *, but in the original types, not the synonym-expanded types. The reason
@@ -1068,14 +1070,8 @@ buildTypeInstance gClass useKindSigs tyConName varTysOrig = do
         --
         --   instance C (Fam [Char])
     let varTysOrigSubst :: [Type]
-        varTysOrigSubst =
--- See Note [Generic1 is polykinded in base-4.10]
-#if MIN_VERSION_base(4,10,0)
-          id
-#else
-          map (substNamesWithKindStar droppedKindVarNames)
-#endif
-            $ varTysOrig
+        -- See Note [Generic1 is polykinded in base-4.10]
+        varTysOrigSubst = varTysOrig
 
         remainingTysOrigSubst, droppedTysOrigSubst :: [Type]
         (remainingTysOrigSubst, droppedTysOrigSubst) =
@@ -1101,6 +1097,80 @@ buildTypeInstance gClass useKindSigs tyConName varTysOrig = do
     unless (canEtaReduce remainingTysExpSubst droppedTysExpSubst) $
       etaReductionError instanceType
     return (instanceType, instanceKind)
+
+mkMetaDataType :: DatatypeVariant_ -> Name -> Q Type
+mkMetaDataType dv n =
+           promotedT metaDataDataName
+    `appT` litT (strTyLit (nameBase n))
+    `appT` litT (strTyLit m)
+    `appT` litT (strTyLit pkg)
+    `appT` promoteBool (isNewtypeVariant dv)
+  where
+    m, pkg :: String
+    m   = fromMaybe (error "Cannot fetch module name!")  (nameModule n)
+    pkg = fromMaybe (error "Cannot fetch package name!") (namePackage n)
+
+mkMetaConsType :: DatatypeVariant_ -> Name -> Name -> Bool -> Bool -> Q Type
+mkMetaConsType _ _ n conIsRecord conIsInfix = do
+    mbFi <- reifyFixity n
+    promotedT metaConsDataName
+      `appT` litT (strTyLit (nameBase n))
+      `appT` fixityIPromotedType mbFi conIsInfix
+      `appT` promoteBool conIsRecord
+
+promoteBool :: Bool -> Q Type
+promoteBool True  = promotedT trueDataName
+promoteBool False = promotedT falseDataName
+
+fixityIPromotedType :: Maybe Fixity -> Bool -> Q Type
+fixityIPromotedType mbFi True =
+           promotedT infixIDataName
+    `appT` promoteAssociativity a
+    `appT` litT (numTyLit (toInteger n))
+  where
+    Fixity n a = fromMaybe defaultFixity mbFi
+fixityIPromotedType _ False = promotedT prefixIDataName
+
+promoteAssociativity :: FixityDirection -> Q Type
+promoteAssociativity InfixL = promotedT leftAssociativeDataName
+promoteAssociativity InfixR = promotedT rightAssociativeDataName
+promoteAssociativity InfixN = promotedT notAssociativeDataName
+
+mkMetaSelType :: DatatypeVariant_ -> Name -> Name -> Maybe Name
+              -> SelStrictInfo -> Q Type
+mkMetaSelType _ _ _ mbF (SelStrictInfo su ss ds) =
+    let mbSelNameT = case mbF of
+            Just f  -> promotedT justDataName `appT` litT (strTyLit (nameBase f))
+            Nothing -> promotedT nothingDataName
+    in promotedT metaSelDataName
+        `appT` mbSelNameT
+        `appT` promoteUnpackedness su
+        `appT` promoteStrictness ss
+        `appT` promoteDecidedStrictness ds
+
+data SelStrictInfo = SelStrictInfo Unpackedness Strictness DecidedStrictness
+
+promoteUnpackedness :: Unpackedness -> Q Type
+promoteUnpackedness UnspecifiedUnpackedness = promotedT noSourceUnpackednessDataName
+promoteUnpackedness NoUnpack                = promotedT sourceNoUnpackDataName
+promoteUnpackedness Unpack                  = promotedT sourceUnpackDataName
+
+promoteStrictness :: Strictness -> Q Type
+promoteStrictness UnspecifiedStrictness = promotedT noSourceStrictnessDataName
+promoteStrictness Lazy                  = promotedT sourceLazyDataName
+promoteStrictness D.Strict              = promotedT sourceStrictDataName
+
+promoteDecidedStrictness :: DecidedStrictness -> Q Type
+promoteDecidedStrictness DecidedLazy   = promotedT decidedLazyDataName
+promoteDecidedStrictness DecidedStrict = promotedT decidedStrictDataName
+promoteDecidedStrictness DecidedUnpack = promotedT decidedUnpackDataName
+
+reifySelStrictInfo :: Name -> [FieldStrictness] -> Q [SelStrictInfo]
+reifySelStrictInfo conName fs = do
+    dcdStrs <- reifyConStrictness conName
+    let srcUnpks = map fieldUnpackedness fs
+        srcStrs  = map fieldStrictness   fs
+    return $ zipWith3 SelStrictInfo srcUnpks srcStrs dcdStrs
 
 {-
 Note [Forcing buildTypeInstance]

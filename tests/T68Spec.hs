@@ -1,14 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-#if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE DataKinds #-}
-#endif
-
 module T68Spec (main, spec) where
 
-import Generics.Deriving.TH
+import Generics.Deriving.Extra.TH
 import Test.Hspec
 
 main :: IO ()

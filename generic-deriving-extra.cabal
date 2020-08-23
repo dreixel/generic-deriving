@@ -1,0 +1,113 @@
+name:                   generic-deriving-extra
+version:                0.1
+synopsis:               @GHC.Generics@, but with limited support for GADTs
+description:            @generic-deriving-extra@ is a fork of
+                        @generic-deriving@ that implements extremely
+                        rudimentary support for representing GADTs. In
+                        particular, only GADTs with existential contexts and
+                        no existentially quantified type variables are
+                        supported. Essentially, this library implements the
+                        techniques from
+                        <https://ryanglscott.github.io/2018/02/11/how-to-derive-generic-for-some-gadts/ this blog post>,
+                        although this library names its representation type
+                        @(:=>:)@ rather than @ECC@. Read the blog post for a
+                        more detailed explanation of what is and isn't
+                        supported.
+                        .
+                        Here is a description of various modules in this
+                        library:
+                        .
+                        * @Generics.Deriving.Extra.Base@ exports
+                          "GHC.Generics", the @(:=>:)@ data type, and
+                          @Generic(1)@ instances for @(:=>:)@.
+                        .
+                        * @Generics.Deriving.Extra.TH@ implements
+                          Template Haskell functionality for deriving instances
+                          of @Generic(1)@.
+                        .
+                        * Most of the other modules in this library (e.g.,
+                          @Generics.Deriving.Extra.Copoint@) re-export the
+                          corresponding modules from @generic-deriving@, but
+                          with additional instances defined for @(:=>:)@.
+                        .
+                        If you wish to use a datatype-generic programming
+                        library that supports a wider range of GADTs, it is
+                        recommended that you use the @kind-generics@ library.
+                        @generic-deriving-extra@ depends on @kind-apply@, a
+                        dependency of @kind-generics@, in order to make use of
+                        its @(:=>:)@ representation type, but the approach that
+                        @kind-generics@ uses to represent GADTs is otherwise
+                        quite different than @generic-deriving-extra@'s
+                        approach, which aims to piggyback directly on top of
+                        "GHC.Generics".
+homepage:               https://github.com/RyanGlScott/generic-deriving-extra
+bug-reports:            https://github.com/RyanGlScott/generic-deriving-extra/issues
+category:               Generics
+copyright:              (C) 2020 Ryan Scott,
+                        2011-2013 Universiteit Utrecht, University of Oxford
+license:                BSD3
+license-file:           LICENSE
+author:                 Ryan Scott, José Pedro Magalhães
+maintainer:             Ryan Scott <ryan.gl.scott@gmail.com>
+stability:              experimental
+build-type:             Simple
+cabal-version:          >= 1.10
+tested-with:            GHC == 8.6.5
+                      , GHC == 8.8.4
+                      , GHC == 8.10.2
+extra-source-files:     CHANGELOG.md
+                      , README.md
+
+source-repository head
+  type: git
+  location: https://github.com/RyanGlScott/generic-deriving-extra
+
+library
+  hs-source-dirs:       src
+  exposed-modules:      Generics.Deriving.Extra
+                        Generics.Deriving.Extra.Base
+                        Generics.Deriving.Extra.Instances
+                        Generics.Deriving.Extra.Copoint
+                        Generics.Deriving.Extra.ConNames
+                        Generics.Deriving.Extra.Default
+                        Generics.Deriving.Extra.Enum
+                        Generics.Deriving.Extra.Eq
+                        Generics.Deriving.Extra.Foldable
+                        Generics.Deriving.Extra.Functor
+                        Generics.Deriving.Extra.Monoid
+                        Generics.Deriving.Extra.Semigroup
+                        Generics.Deriving.Extra.Show
+                        Generics.Deriving.Extra.Traversable
+                        Generics.Deriving.Extra.Uniplate
+
+                        Generics.Deriving.Extra.TH
+
+  other-modules:        Generics.Deriving.Extra.Base.Internal
+                        Generics.Deriving.Extra.TH.Internal
+
+  build-depends:        base             >= 4.12  && < 5
+                      , containers       >= 0.6   && < 0.7
+                      , generic-deriving >= 1.13  && < 1.14
+                      , kind-apply       >= 0.3   && < 0.4
+                      , template-haskell >= 2.14  && < 2.17
+                      , th-abstraction   >= 0.3   && < 0.4
+
+  default-language:     Haskell2010
+  ghc-options:          -Wall
+
+test-suite spec
+  type:                 exitcode-stdio-1.0
+  main-is:              Spec.hs
+  other-modules:        DefaultSpec
+                        EmptyCaseSpec
+                        ExampleSpec
+                        T68Spec
+                        TypeInTypeSpec
+  build-depends:        base             >= 4.12 && < 5
+                      , generic-deriving-extra
+                      , hspec            >= 2    && < 3
+                      , template-haskell >= 2.14 && < 2.17
+  build-tool-depends:   hspec-discover:hspec-discover
+  hs-source-dirs:       tests
+  default-language:     Haskell2010
+  ghc-options:          -Wall -threaded -rtsopts
