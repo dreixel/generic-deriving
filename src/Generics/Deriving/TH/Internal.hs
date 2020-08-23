@@ -857,9 +857,6 @@ fmapValName = mkNameG_v "base" "GHC.Base" "fmap"
 undefinedValName :: Name
 undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
 
-starKindName :: Name
-starKindName = mkGHCPrimName_tc "GHC.Prim" "*"
-
 decidedLazyDataName :: Name
 decidedLazyDataName = mkGD4'9_d "DecidedLazy"
 
