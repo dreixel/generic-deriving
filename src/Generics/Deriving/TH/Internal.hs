@@ -192,11 +192,7 @@ isInTypeFamilyApp name tyFun tyArgs =
 
 -- | True if the type does not mention the Name
 ground :: Type -> Name -> Bool
-ground (AppT t1 t2) name = ground t1 name && ground t2 name
-ground (SigT t _)   name = ground t name
-ground (VarT t)     name = t /= name
-ground ForallT{}    _    = rankNError
-ground _            _    = True
+ground ty name = name `notElem` freeVariables ty
 
 -- | Construct a type via curried application.
 applyTyToTys :: Type -> [Type] -> Type
