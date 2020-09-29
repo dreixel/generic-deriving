@@ -72,7 +72,7 @@ import           Numeric.Natural (Natural)
 #if MIN_VERSION_base(4,9,0)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg(..), Max, Min, Option, WrappedMonoid)
+import           Data.Semigroup (Arg(..), Max, Min, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -479,9 +479,6 @@ instance GEq Natural where
 
 #if MIN_VERSION_base(4,9,0)
 instance GEq a => GEq (NonEmpty a) where
-  geq = geqdefault
-
-instance GEq a => GEq (Option a) where
   geq = geqdefault
 #endif
 

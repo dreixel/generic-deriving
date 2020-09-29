@@ -66,7 +66,7 @@ import qualified Data.Functor.Product as Functor (Product)
 import qualified Data.Functor.Sum as Functor (Sum)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
+import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -211,9 +211,6 @@ instance GFunctor Min where
   gmap = gmapdefault
 
 instance GFunctor NonEmpty where
-  gmap = gmapdefault
-
-instance GFunctor Option where
   gmap = gmapdefault
 #endif
 

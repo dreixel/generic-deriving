@@ -71,7 +71,7 @@ import           Numeric.Natural (Natural)
 #if MIN_VERSION_base(4,9,0)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
+import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
 #endif
 
 -----------------------------------------------------------------------------
@@ -476,9 +476,6 @@ instance GEnum Natural where
 
 #if MIN_VERSION_base(4,9,0)
 instance GEnum a => GEnum (NonEmpty a) where
-  genum = genumDefault
-
-instance GEnum a => GEnum (Option a) where
   genum = genumDefault
 #endif
 
@@ -1016,13 +1013,6 @@ instance GIx Natural where
 
 #if MIN_VERSION_base(4,9,0)
 instance (GEq a, GEnum a, GIx a) => GIx (NonEmpty a) where
-  range   = rangeDefault
-  index   = indexDefault
-  inRange = inRangeDefault
-#endif
-
-#if MIN_VERSION_base(4,9,0)
-instance (GEq a, GEnum a, GIx a) => GIx (Option a) where
   range   = rangeDefault
   index   = indexDefault
   inRange = inRangeDefault

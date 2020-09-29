@@ -1,4 +1,6 @@
-# next [????.??.??]
+# 1.14 [????.??.??]
+* Remove instances for `Data.Semigroup.Option`, which is deprecated as of
+  `base-4.15.0.0`.
 * Allow building with `template-haskell-2.17.0.0` (GHC 9.0).
 * Fix a bug in which `deriveAll1` would needlessly reject data types whose last
   type parameter appears as an oversaturated argument to a type family.

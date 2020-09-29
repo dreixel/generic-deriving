@@ -81,7 +81,7 @@ import qualified Data.Functor.Product as Functor (Product)
 import qualified Data.Functor.Sum as Functor (Sum)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg, Max, Min, Option, WrappedMonoid)
+import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
 #endif
 
 --------------------------------------------------------------------------------
@@ -241,9 +241,6 @@ instance GFoldable Min where
   gfoldMap = gfoldMapdefault
 
 instance GFoldable NonEmpty where
-  gfoldMap = gfoldMapdefault
-
-instance GFoldable Option where
   gfoldMap = gfoldMapdefault
 #endif
 

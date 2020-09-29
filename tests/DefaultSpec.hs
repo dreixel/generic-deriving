@@ -28,7 +28,7 @@ import Test.Hspec
 #if __GLASGOW_HASKELL__ >= 806
 import Test.Hspec.QuickCheck
 
-import Data.Semigroup (First(..), Option(..))
+import Data.Semigroup (First(..))
 import Data.Foldable (sequenceA_)
 import Generics.Deriving hiding (universe)
 import Generics.Deriving.Default ()
@@ -132,7 +132,7 @@ newtype FirstSemigroup = FirstSemigroup Bool
   deriving (GSemigroup) via (First Bool)
 
 newtype TestFoldable a = TestFoldable (Maybe a)
-  deriving (GFoldable) via (Default1 Option)
+  deriving (GFoldable) via (Default1 Maybe)
 
 newtype TestFunctor a = TestFunctor (Maybe a)
   deriving stock (Eq, Show, Functor)
