@@ -24,3 +24,63 @@ in Haskell to arbitrary classes. It was first described in the paper:
 The current implementation integrates with the new GHC Generics. See
 http://www.haskell.org/haskellwiki/GHC.Generics for more information.
 Template Haskell code is provided for supporting older GHCs.
+
+This library is organized as follows:
+
+* `Generics.Deriving.Base` defines the core functionality for GHC generics,
+  including the `Generic(1)` classes and representation data types.
+  On modern versions of GHC, this simply re-exports `GHC.Generics` from
+  `base`. On older versions of GHC, this module backports parts of
+  `GHC.Generics` that were not included at the time, including `Generic(1)`
+  instances.
+
+* `Generics.Deriving.TH` implements Template Haskell functionality for
+  deriving instances of `Generic(1)`.
+
+* Educational code: in order to provide examples of how to define and use
+  `GHC.Generics`-based defaults, this library offers a number of modules
+  which define examples of type classes along with default implementations
+  for the classes' methods. Currently, the following modules are provided:
+
+  * `Generics.Deriving.Copoint`
+
+  * `Generics.Deriving.ConNames`
+
+  * `Generics.Deriving.Enum`
+
+  * `Generics.Deriving.Eq`
+
+  * `Generics.Deriving.Foldable`
+
+  * `Generics.Deriving.Functor`
+
+  * `Generics.Deriving.Monoid`
+
+  * `Generics.Deriving.Semigroup`
+
+  * `Generics.Deriving.Show`
+
+  * `Generics.Deriving.Traversable`
+
+  * `Generics.Deriving.Uniplate`
+
+  It is worth emphasizing that these modules are primarly intended for
+  educational purposes. Many of the classes in these modules resemble other
+  commonly used classes—for example, `GShow` from `Generics.Deriving.Show`
+  resembles `Show` from `base`—but in general, the classes that
+  `generic-deriving` defines are not drop-in replacements. Moreover, the
+  generic defaults that `generic-deriving` provide often make simplifying
+  assumptions that may violate expectations of how these classes might work
+  elsewhere. For example, the generic default for `GShow` does not behave
+  exactly like `deriving Show` would.
+
+  If you are seeking `GHC.Generics`-based defaults for type classes in
+  `base`, consider using the
+  [`generic-data`](http://hackage.haskell.org/package/generic-data) library.
+
+* `Generics.Deriving.Default` provides newtypes that allow leveraging the
+  generic defaults in this library using the `DerivingVia` GHC language
+  extension.
+
+* `Generics.Deriving` re-exports `Generics.Deriving.Base`,
+  `Generics.Deriving.Default`, and a selection of educational modules.
