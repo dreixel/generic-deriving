@@ -26,6 +26,7 @@ import qualified Data.Set as Set
 import           Data.Set (Set)
 
 import           Language.Haskell.TH.Datatype
+import           Language.Haskell.TH.Datatype.TyVarBndr
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH.Ppr (pprint)
 import           Language.Haskell.TH.Syntax
@@ -101,9 +102,9 @@ hasKindStar _              = False
 
 -- | Converts a VarT or a SigT into Just the corresponding TyVarBndr.
 -- Converts other Types to Nothing.
-typeToTyVarBndr :: Type -> Maybe TyVarBndr
-typeToTyVarBndr (VarT n)          = Just (PlainTV n)
-typeToTyVarBndr (SigT (VarT n) k) = Just (KindedTV n k)
+typeToTyVarBndr :: Type -> Maybe TyVarBndrUnit
+typeToTyVarBndr (VarT n)          = Just (plainTV n)
+typeToTyVarBndr (SigT (VarT n) k) = Just (kindedTV n k)
 typeToTyVarBndr _                 = Nothing
 
 -- | If a Type is a SigT, returns its kind signature. Otherwise, return *.
@@ -199,7 +200,7 @@ applyTyToTys :: Type -> [Type] -> Type
 applyTyToTys = foldl' AppT
 
 -- | Apply a type constructor name to type variable binders.
-applyTyToTvbs :: Name -> [TyVarBndr] -> Type
+applyTyToTvbs :: Name -> [TyVarBndr_ flag] -> Type
 applyTyToTvbs = foldl' (\a -> AppT a . tyVarBndrToType) . ConT
 
 -- | Split an applied type into its individual components. For example, this:
@@ -236,7 +237,7 @@ unapplyTy ty = go ty ty []
 -- @
 -- ([a, b], [a -> b, Char, ()])
 -- @
-uncurryTy :: Type -> ([TyVarBndr], [Type])
+uncurryTy :: Type -> ([TyVarBndrSpec], [Type])
 uncurryTy (AppT (AppT ArrowT t1) t2) =
   let (tvbs, tys) = uncurryTy t2
   in (tvbs, t1:tys)
@@ -247,7 +248,7 @@ uncurryTy (ForallT tvbs _ t) =
 uncurryTy t = ([], [t])
 
 -- | Like uncurryType, except on a kind level.
-uncurryKind :: Kind -> ([TyVarBndr], [Kind])
+uncurryKind :: Kind -> ([TyVarBndrSpec], [Kind])
 #if MIN_VERSION_template_haskell(2,8,0)
 uncurryKind = uncurryTy
 #else
@@ -257,9 +258,8 @@ uncurryKind (ArrowK k1 k2) =
 uncurryKind k = ([], [k])
 #endif
 
-tyVarBndrToType :: TyVarBndr -> Type
-tyVarBndrToType (PlainTV n)    = VarT n
-tyVarBndrToType (KindedTV n k) = SigT (VarT n) k
+tyVarBndrToType :: TyVarBndr_ flag -> Type
+tyVarBndrToType = elimTV VarT (\n k -> SigT (VarT n) k)
 
 -- | Generate a list of fresh names with a common prefix, and numbered suffixes.
 newNameList :: String -> Int -> Q [Name]
@@ -322,9 +322,8 @@ unSigT (SigT t _) = t
 unSigT t          = t
 
 -- | Peel off a kind signature from a TyVarBndr (if it has one).
-unKindedTV :: TyVarBndr -> TyVarBndr
-unKindedTV (KindedTV n _) = PlainTV n
-unKindedTV tvb            = tvb
+unKindedTV :: TyVarBndrUnit -> TyVarBndrUnit
+unKindedTV tvb = elimTV (\_ -> tvb) (\n _ -> plainTV n) tvb
 
 -- | Does the given type mention any of the Names in the list?
 mentionsName :: Type -> [Name] -> Bool
@@ -389,7 +388,7 @@ data GenericKind = Gen0
 -- Determines the universally quantified type variables (possibly after
 -- substituting * in the case of Generic1) and the last type parameter name
 -- (if there is one).
-genericKind :: GenericClass -> [Type] -> ([TyVarBndr], GenericKind)
+genericKind :: GenericClass -> [Type] -> ([TyVarBndrUnit], GenericKind)
 genericKind gClass tySynVars =
   case gClass of
     Generic  -> (freeVariablesWellScoped tySynVars, Gen0)
@@ -518,7 +517,7 @@ checkDataContext dataName _  _ = fail $
   nameBase dataName ++ " must not have a datatype context"
 
 -- | Deriving Generic(1) doesn't work with ExistentialQuantification or GADTs.
-checkExistentialContext :: Name -> [TyVarBndr] -> Cxt -> Q ()
+checkExistentialContext :: Name -> [TyVarBndrUnit] -> Cxt -> Q ()
 checkExistentialContext conName vars ctxt =
   unless (null vars && null ctxt) $ fail $
     nameBase conName ++ " must be a vanilla data constructor"
