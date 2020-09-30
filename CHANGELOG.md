@@ -1,4 +1,4 @@
-# 1.14 [????.??.??]
+# 1.14 [2020.09.30]
 * Remove instances for `Data.Semigroup.Option`, which is deprecated as of
   `base-4.15.0.0`.
 * Allow building with `template-haskell-2.17.0.0` (GHC 9.0).
