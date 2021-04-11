@@ -241,9 +241,9 @@ data family MyType3
 # else
   (a :: *) (b :: *) (c :: * -> *) (d :: *) (e :: *)
 # endif
-newtype instance MyType3 (f p) (f p) f p q = MyType3Newtype q
-data    instance MyType3 Bool  ()    f p q = MyType3True | MyType3False
-data    instance MyType3 Int   ()    f p q = MyType3Hash q Addr# Char# Double# Float# Int# Word#
+newtype instance MyType3 (f p) (f p) f p (q :: *) = MyType3Newtype q
+data    instance MyType3 Bool  ()    f p q        = MyType3True | MyType3False
+data    instance MyType3 Int   ()    f p (q :: *) = MyType3Hash q Addr# Char# Double# Float# Int# Word#
 #endif
 
 $(deriveAll0And1 ''Empty)

@@ -1,4 +1,5 @@
 # next [????.??.??]
+* Make the test suite compile on GHC 9.2 or later.
 * Always import `Data.List` qualified to fix the build with recent GHCs.
 
 # 1.14 [2020.09.30]
