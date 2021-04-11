@@ -18,7 +18,7 @@ import           Control.Monad (unless)
 
 import           Data.Char (isAlphaNum, ord)
 import           Data.Foldable (foldr')
-import           Data.List
+import qualified Data.List as List
 import qualified Data.Map as Map
 import           Data.Map as Map (Map)
 import           Data.Maybe (mapMaybe)
@@ -197,11 +197,11 @@ ground ty name = name `notElem` freeVariables ty
 
 -- | Construct a type via curried application.
 applyTyToTys :: Type -> [Type] -> Type
-applyTyToTys = foldl' AppT
+applyTyToTys = List.foldl' AppT
 
 -- | Apply a type constructor name to type variable binders.
 applyTyToTvbs :: Name -> [TyVarBndr_ flag] -> Type
-applyTyToTvbs = foldl' (\a -> AppT a . tyVarBndrToType) . ConT
+applyTyToTvbs = List.foldl' (\a -> AppT a . tyVarBndrToType) . ConT
 
 -- | Split an applied type into its individual components. For example, this:
 --

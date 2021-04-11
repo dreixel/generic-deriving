@@ -1,3 +1,6 @@
+# next [????.??.??]
+* Always import `Data.List` qualified to fix the build with recent GHCs.
+
 # 1.14 [2020.09.30]
 * Remove instances for `Data.Semigroup.Option`, which is deprecated as of
   `base-4.15.0.0`.
