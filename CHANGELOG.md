@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.14.1 [????.??.??]
 * Backport the `Generic(1)` instances introduced for tuples (8 through 15) in
   `base-4.16`.
 * Make the test suite compile on GHC 9.2 or later.
