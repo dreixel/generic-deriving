@@ -27,8 +27,26 @@
 module Generics.Deriving.Instances (
 -- Only instances from Generics.Deriving.Base
 -- and the Generic1 instances
+#if !(MIN_VERSION_base(4,16,0))
+    Rep0Tuple8
+  , Rep0Tuple9
+  , Rep0Tuple10
+  , Rep0Tuple11
+  , Rep0Tuple12
+  , Rep0Tuple13
+  , Rep0Tuple14
+  , Rep0Tuple15
+  , Rep1Tuple8
+  , Rep1Tuple9
+  , Rep1Tuple10
+  , Rep1Tuple11
+  , Rep1Tuple12
+  , Rep1Tuple13
+  , Rep1Tuple14
+  , Rep1Tuple15
+#endif
 #if !(MIN_VERSION_base(4,14,0))
-    Rep0Kleisli
+  , Rep0Kleisli
   , Rep1Kleisli
 #endif
 #if !(MIN_VERSION_base(4,12,0))
@@ -163,8 +181,1688 @@ import GHC.Exts (Down(..))
 import Control.Arrow (Kleisli(..))
 #endif
 
-#if !(MIN_VERSION_base(4,14,0))
+#if !(MIN_VERSION_base(4,16,0))
 import Generics.Deriving.Base.Internal
+#endif
+
+#if !(MIN_VERSION_base(4,16,0))
+# if MIN_VERSION_base(4,6,0)
+type Rep0Tuple8  a b c d e f g h               = Rep (a, b, c, d, e, f, g, h)
+type Rep0Tuple9  a b c d e f g h i             = Rep (a, b, c, d, e, f, g, h, i)
+type Rep0Tuple10 a b c d e f g h i j           = Rep (a, b, c, d, e, f, g, h, i, j)
+type Rep0Tuple11 a b c d e f g h i j k         = Rep (a, b, c, d, e, f, g, h, i, j, k)
+type Rep0Tuple12 a b c d e f g h i j k l       = Rep (a, b, c, d, e, f, g, h, i, j, k, l)
+type Rep0Tuple13 a b c d e f g h i j k l m     = Rep (a, b, c, d, e, f, g, h, i, j, k, l, m)
+type Rep0Tuple14 a b c d e f g h i j k l m n   = Rep (a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+type Rep0Tuple15 a b c d e f g h i j k l m n o = Rep (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
+type Rep1Tuple8  a b c d e f g               = Rep1 ((,,,,,,,) a b c d e f g)
+type Rep1Tuple9  a b c d e f g h             = Rep1 ((,,,,,,,,) a b c d e f g h)
+type Rep1Tuple10 a b c d e f g h i           = Rep1 ((,,,,,,,,,) a b c d e f g h i)
+type Rep1Tuple11 a b c d e f g h i j         = Rep1 ((,,,,,,,,,,) a b c d e f g h i j)
+type Rep1Tuple12 a b c d e f g h i j k       = Rep1 ((,,,,,,,,,,,) a b c d e f g h i j k)
+type Rep1Tuple13 a b c d e f g h i j k l     = Rep1 ((,,,,,,,,,,,,) a b c d e f g h i j k l)
+type Rep1Tuple14 a b c d e f g h i j k l m   = Rep1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m)
+type Rep1Tuple15 a b c d e f g h i j k l m n = Rep1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n)
+deriving instance Generic (a, b, c, d, e, f, g, h)
+deriving instance Generic (a, b, c, d, e, f, g, h, i)
+deriving instance Generic (a, b, c, d, e, f, g, h, i, j)
+deriving instance Generic (a, b, c, d, e, f, g, h, i, j, k)
+deriving instance Generic (a, b, c, d, e, f, g, h, i, j, k, l)
+deriving instance Generic (a, b, c, d, e, f, g, h, i, j, k, l, m)
+deriving instance Generic (a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+deriving instance Generic (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
+deriving instance Generic1 ((,,,,,,,) a b c d e f g)
+deriving instance Generic1 ((,,,,,,,,) a b c d e f g h)
+deriving instance Generic1 ((,,,,,,,,,) a b c d e f g h i)
+deriving instance Generic1 ((,,,,,,,,,,) a b c d e f g h i j)
+deriving instance Generic1 ((,,,,,,,,,,,) a b c d e f g h i j k)
+deriving instance Generic1 ((,,,,,,,,,,,,) a b c d e f g h i j k l)
+deriving instance Generic1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m)
+deriving instance Generic1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n)
+# else
+type Rep0Tuple8 a b c d e f g h = D1
+                                    D1Tuple8
+                                    (C1
+                                       C1_0Tuple8
+                                       (((S1
+                                            NoSelector
+                                            (Rec0 a)
+                                          :*: S1
+                                                             NoSelector
+                                                             (Rec0
+                                                                b))
+                                         :*: (S1
+                                                             NoSelector
+                                                             (Rec0
+                                                                c)
+                                                           :*: S1
+                                                                              NoSelector
+                                                                              (Rec0
+                                                                                 d)))
+                                        :*: ((S1
+                                                             NoSelector
+                                                             (Rec0
+                                                                e)
+                                                           :*: S1
+                                                                              NoSelector
+                                                                              (Rec0
+                                                                                 f))
+                                                          :*: (S1
+                                                                              NoSelector
+                                                                              (Rec0
+                                                                                 g)
+                                                                            :*: S1
+                                                                                               NoSelector
+                                                                                               (Rec0
+                                                                                                  h)))))
+type Rep1Tuple8 a b c d e f g = D1
+                                  D1Tuple8
+                                  (C1
+                                     C1_0Tuple8
+                                     (((S1
+                                          NoSelector
+                                          (Rec0 a)
+                                        :*: S1
+                                                           NoSelector
+                                                           (Rec0
+                                                              b))
+                                       :*: (S1
+                                                           NoSelector
+                                                           (Rec0
+                                                              c)
+                                                         :*: S1
+                                                                            NoSelector
+                                                                            (Rec0
+                                                                               d)))
+                                      :*: ((S1
+                                                           NoSelector
+                                                           (Rec0
+                                                              e)
+                                                         :*: S1
+                                                                            NoSelector
+                                                                            (Rec0
+                                                                               f))
+                                                        :*: (S1
+                                                                            NoSelector
+                                                                            (Rec0
+                                                                               g)
+                                                                          :*: S1
+                                                                                             NoSelector
+                                                                                             Par1))))
+
+instance Generic (a, b, c, d, e, f, g, h) where
+    type Rep (a, b, c, d, e, f, g, h) = Rep0Tuple8 a b c d e f g h
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             (M1 (K1 g4))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g5))
+                             (M1 (K1 g6)))
+                          ((:*:)
+                             (M1 (K1 g7))
+                             (M1 (K1 g8))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       (M1 (K1 g2)))
+                                                                   ((:*:) (M1 (K1 g3))
+                                                                                       (M1 (K1 g4))))
+                                               ((:*:) ((:*:) (M1 (K1 g5))
+                                                                                       (M1 (K1 g6)))
+                                                                   ((:*:) (M1 (K1 g7))
+                                                                                       (M1 (K1 g8))))))
+            -> (,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 }
+
+instance Generic1 ((,,,,,,,) a b c d e f g) where
+    type Rep1 ((,,,,,,,) a b c d e f g) = Rep1Tuple8 a b c d e f g
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             (M1 (K1 g4))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g5))
+                             (M1 (K1 g6)))
+                          ((:*:)
+                             (M1 (K1 g7))
+                             (M1 (Par1 g8))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       (M1 g2))
+                                                                   ((:*:) (M1 g3)
+                                                                                       (M1 g4)))
+                                               ((:*:) ((:*:) (M1 g5)
+                                                                                       (M1 g6))
+                                                                   ((:*:) (M1 g7)
+                                                                                       (M1 g8)))))
+            -> (,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unPar1 g8) }
+
+data D1Tuple8
+data C1_0Tuple8
+
+instance Datatype D1Tuple8 where
+    datatypeName _ = "(,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple8 where
+    conName _ = "(,,,,,,,)"
+
+-----
+
+type Rep0Tuple9 a b c d e f g h i = D1
+                                      D1Tuple9
+                                      (C1
+                                         C1_0Tuple9
+                                         (((S1
+                                              NoSelector
+                                              (Rec0 a)
+                                            :*: S1
+                                                               NoSelector
+                                                               (Rec0
+                                                                  b))
+                                           :*: (S1
+                                                               NoSelector
+                                                               (Rec0
+                                                                  c)
+                                                             :*: S1
+                                                                                NoSelector
+                                                                                (Rec0
+                                                                                   d)))
+                                          :*: ((S1
+                                                               NoSelector
+                                                               (Rec0
+                                                                  e)
+                                                             :*: S1
+                                                                                NoSelector
+                                                                                (Rec0
+                                                                                   f))
+                                                            :*: (S1
+                                                                                NoSelector
+                                                                                (Rec0
+                                                                                   g)
+                                                                              :*: (S1
+                                                                                                  NoSelector
+                                                                                                  (Rec0
+                                                                                                     h)
+                                                                                                :*: S1
+                                                                                                                   NoSelector
+                                                                                                                   (Rec0
+                                                                                                                      i))))))
+type Rep1Tuple9 a b c d e f g h = D1
+                                    D1Tuple9
+                                    (C1
+                                       C1_0Tuple9
+                                       (((S1
+                                            NoSelector (Rec0 a)
+                                          :*: S1
+                                                             NoSelector
+                                                             (Rec0 b))
+                                         :*: (S1
+                                                             NoSelector
+                                                             (Rec0 c)
+                                                           :*: S1
+                                                                              NoSelector
+                                                                              (Rec0
+                                                                                 d)))
+                                        :*: ((S1
+                                                             NoSelector
+                                                             (Rec0 e)
+                                                           :*: S1
+                                                                              NoSelector
+                                                                              (Rec0
+                                                                                 f))
+                                                          :*: (S1
+                                                                              NoSelector
+                                                                              (Rec0
+                                                                                 g)
+                                                                            :*: (S1
+                                                                                                NoSelector
+                                                                                                (Rec0
+                                                                                                   h)
+                                                                                              :*: S1
+                                                                                                                 NoSelector
+                                                                                                                 Par1)))))
+
+instance Generic (a, b, c, d, e, f, g, h, i) where
+    type Rep (a, b, c, d, e, f, g, h, i) = Rep0Tuple9 a b c d e f g h i
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             (M1 (K1 g4))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g5))
+                             (M1 (K1 g6)))
+                          ((:*:)
+                             (M1 (K1 g7))
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       (M1 (K1 g2)))
+                                                                   ((:*:) (M1 (K1 g3))
+                                                                                       (M1 (K1 g4))))
+                                               ((:*:) ((:*:) (M1 (K1 g5))
+                                                                                       (M1 (K1 g6)))
+                                                                   ((:*:) (M1 (K1 g7))
+                                                                                       ((:*:) (M1 (K1 g8))
+                                                                                                           (M1 (K1 g9)))))))
+            -> (,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 }
+
+instance Generic1 ((,,,,,,,,) a b c d e f g h) where
+    type Rep1 ((,,,,,,,,) a b c d e f g h) = Rep1Tuple9 a b c d e f g h
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             (M1 (K1 g4))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g5))
+                             (M1 (K1 g6)))
+                          ((:*:)
+                             (M1 (K1 g7))
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (Par1 g9)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       (M1 g2))
+                                                                   ((:*:) (M1 g3)
+                                                                                       (M1 g4)))
+                                               ((:*:) ((:*:) (M1 g5)
+                                                                                       (M1 g6))
+                                                                   ((:*:) (M1 g7)
+                                                                                       ((:*:) (M1 g8)
+                                                                                                           (M1 g9))))))
+            -> (,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unPar1 g9) }
+
+data D1Tuple9
+data C1_0Tuple9
+
+instance Datatype D1Tuple9 where
+    datatypeName _ = "(,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple9 where
+    conName _ = "(,,,,,,,,)"
+
+-----
+
+type Rep0Tuple10 a b c d e f g h i j = D1
+                                         D1Tuple10
+                                         (C1
+                                            C1_0Tuple10
+                                            (((S1
+                                                 NoSelector (Rec0 a)
+                                               :*: S1
+                                                                  NoSelector
+                                                                  (Rec0 b))
+                                              :*: (S1
+                                                                  NoSelector
+                                                                  (Rec0 c)
+                                                                :*: (S1
+                                                                                    NoSelector
+                                                                                    (Rec0
+                                                                                       d)
+                                                                                  :*: S1
+                                                                                                     NoSelector
+                                                                                                     (Rec0
+                                                                                                        e))))
+                                             :*: ((S1
+                                                                  NoSelector
+                                                                  (Rec0 f)
+                                                                :*: S1
+                                                                                   NoSelector
+                                                                                   (Rec0
+                                                                                      g))
+                                                               :*: (S1
+                                                                                   NoSelector
+                                                                                   (Rec0
+                                                                                      h)
+                                                                                 :*: (S1
+                                                                                                     NoSelector
+                                                                                                     (Rec0
+                                                                                                        i)
+                                                                                                   :*: S1
+                                                                                                                      NoSelector
+                                                                                                                      (Rec0
+                                                                                                                         j))))))
+type Rep1Tuple10 a b c d e f g h i = D1
+                                       D1Tuple10
+                                       (C1
+                                          C1_0Tuple10
+                                          (((S1
+                                               NoSelector (Rec0 a)
+                                             :*: S1
+                                                                NoSelector
+                                                                (Rec0 b))
+                                            :*: (S1
+                                                                NoSelector
+                                                                (Rec0 c)
+                                                              :*: (S1
+                                                                                  NoSelector
+                                                                                  (Rec0
+                                                                                     d)
+                                                                                :*: S1
+                                                                                                   NoSelector
+                                                                                                   (Rec0
+                                                                                                      e))))
+                                           :*: ((S1
+                                                                NoSelector
+                                                                (Rec0 f)
+                                                              :*: S1
+                                                                                 NoSelector
+                                                                                 (Rec0
+                                                                                    g))
+                                                             :*: (S1
+                                                                                 NoSelector
+                                                                                 (Rec0
+                                                                                    h)
+                                                                               :*: (S1
+                                                                                                   NoSelector
+                                                                                                   (Rec0
+                                                                                                      i)
+                                                                                                 :*: S1
+                                                                                                                    NoSelector
+                                                                                                                    Par1)))))
+
+instance Generic (a, b, c, d, e, f, g, h, i, j) where
+    type Rep (a, b, c, d, e, f, g, h, i, j) = Rep0Tuple10 a b c d e f g h i j
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g6))
+                             (M1 (K1 g7)))
+                          ((:*:)
+                             (M1 (K1 g8))
+                             ((:*:)
+                                (M1 (K1 g9))
+                                (M1 (K1 g10)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       (M1 (K1 g2)))
+                                                                   ((:*:) (M1 (K1 g3))
+                                                                                       ((:*:) (M1 (K1 g4))
+                                                                                                           (M1 (K1 g5)))))
+                                               ((:*:) ((:*:) (M1 (K1 g6))
+                                                                                       (M1 (K1 g7)))
+                                                                   ((:*:) (M1 (K1 g8))
+                                                                                       ((:*:) (M1 (K1 g9))
+                                                                                                           (M1 (K1 g10)))))))
+            -> (,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 }
+
+instance Generic1
+             ((,,,,,,,,,) a b c d e f g h i) where
+    type Rep1 ((,,,,,,,,,) a b c d e f g h i) = Rep1Tuple10 a b c d e f g h i
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g6))
+                             (M1 (K1 g7)))
+                          ((:*:)
+                             (M1 (K1 g8))
+                             ((:*:)
+                                (M1 (K1 g9))
+                                (M1 (Par1 g10)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       (M1 g2))
+                                                                   ((:*:) (M1 g3)
+                                                                                       ((:*:) (M1 g4)
+                                                                                                           (M1 g5))))
+                                               ((:*:) ((:*:) (M1 g6)
+                                                                                       (M1 g7))
+                                                                   ((:*:) (M1 g8)
+                                                                                       ((:*:) (M1 g9)
+                                                                                                           (M1 g10))))))
+            -> (,,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unK1 g9) (unPar1 g10) }
+
+data D1Tuple10
+data C1_0Tuple10
+
+instance Datatype D1Tuple10 where
+    datatypeName _ = "(,,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple10 where
+    conName _ = "(,,,,,,,,,)"
+
+-----
+
+type Rep0Tuple11 a b c d e f g h i j k = D1
+                                           D1Tuple11
+                                           (C1
+                                              C1_0Tuple11
+                                              (((S1
+                                                   NoSelector
+                                                   (Rec0 a)
+                                                 :*: S1
+                                                                    NoSelector
+                                                                    (Rec0 b))
+                                                :*: (S1
+                                                                    NoSelector
+                                                                    (Rec0 c)
+                                                                  :*: (S1
+                                                                                      NoSelector
+                                                                                      (Rec0
+                                                                                         d)
+                                                                                    :*: S1
+                                                                                                       NoSelector
+                                                                                                       (Rec0
+                                                                                                          e))))
+                                               :*: ((S1
+                                                                    NoSelector
+                                                                    (Rec0 f)
+                                                                  :*: (S1
+                                                                                      NoSelector
+                                                                                      (Rec0
+                                                                                         g)
+                                                                                    :*: S1
+                                                                                                       NoSelector
+                                                                                                       (Rec0
+                                                                                                          h)))
+                                                                 :*: (S1
+                                                                                     NoSelector
+                                                                                     (Rec0
+                                                                                        i)
+                                                                                   :*: (S1
+                                                                                                       NoSelector
+                                                                                                       (Rec0
+                                                                                                          j)
+                                                                                                     :*: S1
+                                                                                                                        NoSelector
+                                                                                                                        (Rec0
+                                                                                                                           k))))))
+type Rep1Tuple11 a b c d e f g h i j = D1
+                                         D1Tuple11
+                                         (C1
+                                            C1_0Tuple11
+                                            (((S1
+                                                 NoSelector
+                                                 (Rec0 a)
+                                               :*: S1
+                                                                  NoSelector
+                                                                  (Rec0 b))
+                                              :*: (S1
+                                                                  NoSelector
+                                                                  (Rec0 c)
+                                                                :*: (S1
+                                                                                    NoSelector
+                                                                                    (Rec0
+                                                                                       d)
+                                                                                  :*: S1
+                                                                                                     NoSelector
+                                                                                                     (Rec0
+                                                                                                        e))))
+                                             :*: ((S1
+                                                                  NoSelector
+                                                                  (Rec0 f)
+                                                                :*: (S1
+                                                                                    NoSelector
+                                                                                    (Rec0
+                                                                                       g)
+                                                                                  :*: S1
+                                                                                                     NoSelector
+                                                                                                     (Rec0
+                                                                                                        h)))
+                                                               :*: (S1
+                                                                                   NoSelector
+                                                                                   (Rec0
+                                                                                      i)
+                                                                                 :*: (S1
+                                                                                                     NoSelector
+                                                                                                     (Rec0
+                                                                                                        j)
+                                                                                                   :*: S1
+                                                                                                                      NoSelector
+                                                                                                                      Par1)))))
+
+instance Generic
+             (a, b, c, d, e, f, g, h, i, j, k) where
+    type Rep (a, b, c, d, e, f, g, h, i, j, k) = Rep0Tuple11 a b c d e f g h i j k
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g6))
+                             ((:*:)
+                                (M1 (K1 g7))
+                                (M1 (K1 g8))))
+                          ((:*:)
+                             (M1 (K1 g9))
+                             ((:*:)
+                                (M1 (K1 g10))
+                                (M1 (K1 g11)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       (M1 (K1 g2)))
+                                                                   ((:*:) (M1 (K1 g3))
+                                                                                       ((:*:) (M1 (K1 g4))
+                                                                                                           (M1 (K1 g5)))))
+                                               ((:*:) ((:*:) (M1 (K1 g6))
+                                                                                       ((:*:) (M1 (K1 g7))
+                                                                                                           (M1 (K1 g8))))
+                                                                   ((:*:) (M1 (K1 g9))
+                                                                                       ((:*:) (M1 (K1 g10))
+                                                                                                           (M1 (K1 g11)))))))
+            -> (,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 }
+
+instance Generic1
+             ((,,,,,,,,,,) a b c d e f g h i j) where
+    type Rep1 ((,,,,,,,,,,) a b c d e f g h i j) = Rep1Tuple11 a b c d e f g h i j
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             (M1 (K1 g2)))
+                          ((:*:)
+                             (M1 (K1 g3))
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g6))
+                             ((:*:)
+                                (M1 (K1 g7))
+                                (M1 (K1 g8))))
+                          ((:*:)
+                             (M1 (K1 g9))
+                             ((:*:)
+                                (M1 (K1 g10))
+                                (M1 (Par1 g11)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       (M1 g2))
+                                                                   ((:*:) (M1 g3)
+                                                                                       ((:*:) (M1 g4)
+                                                                                                           (M1 g5))))
+                                               ((:*:) ((:*:) (M1 g6)
+                                                                                       ((:*:) (M1 g7)
+                                                                                                           (M1 g8)))
+                                                                   ((:*:) (M1 g9)
+                                                                                       ((:*:) (M1 g10)
+                                                                                                           (M1 g11))))))
+            -> (,,,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unK1 g9) (unK1 g10)
+                 (unPar1 g11) }
+
+data D1Tuple11
+data C1_0Tuple11
+
+instance Datatype D1Tuple11 where
+    datatypeName _ = "(,,,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple11 where
+    conName _ = "(,,,,,,,,,,)"
+
+-----
+
+type Rep0Tuple12 a b c d e f g h i j k l = D1
+                                             D1Tuple12
+                                             (C1
+                                                C1_0Tuple12
+                                                (((S1
+                                                     NoSelector
+                                                     (Rec0 a)
+                                                   :*: (S1
+                                                                       NoSelector
+                                                                       (Rec0 b)
+                                                                     :*: S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           c)))
+                                                  :*: (S1
+                                                                      NoSelector
+                                                                      (Rec0 d)
+                                                                    :*: (S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           e)
+                                                                                      :*: S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            f))))
+                                                 :*: ((S1
+                                                                      NoSelector
+                                                                      (Rec0 g)
+                                                                    :*: (S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           h)
+                                                                                      :*: S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            i)))
+                                                                   :*: (S1
+                                                                                       NoSelector
+                                                                                       (Rec0
+                                                                                          j)
+                                                                                     :*: (S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            k)
+                                                                                                       :*: S1
+                                                                                                                          NoSelector
+                                                                                                                          (Rec0
+                                                                                                                             l))))))
+type Rep1Tuple12 a b c d e f g h i j k = D1
+                                           D1Tuple12
+                                           (C1
+                                              C1_0Tuple12
+                                              (((S1
+                                                   NoSelector
+                                                   (Rec0 a)
+                                                 :*: (S1
+                                                                     NoSelector
+                                                                     (Rec0 b)
+                                                                   :*: S1
+                                                                                      NoSelector
+                                                                                      (Rec0
+                                                                                         c)))
+                                                :*: (S1
+                                                                    NoSelector
+                                                                    (Rec0 d)
+                                                                  :*: (S1
+                                                                                      NoSelector
+                                                                                      (Rec0
+                                                                                         e)
+                                                                                    :*: S1
+                                                                                                       NoSelector
+                                                                                                       (Rec0
+                                                                                                          f))))
+                                               :*: ((S1
+                                                                    NoSelector
+                                                                    (Rec0 g)
+                                                                  :*: (S1
+                                                                                      NoSelector
+                                                                                      (Rec0
+                                                                                         h)
+                                                                                    :*: S1
+                                                                                                       NoSelector
+                                                                                                       (Rec0
+                                                                                                          i)))
+                                                                 :*: (S1
+                                                                                     NoSelector
+                                                                                     (Rec0
+                                                                                        j)
+                                                                                   :*: (S1
+                                                                                                       NoSelector
+                                                                                                       (Rec0
+                                                                                                          k)
+                                                                                                     :*: S1
+                                                                                                                        NoSelector
+                                                                                                                        Par1)))))
+
+instance Generic
+             (a, b, c, d, e, f, g, h, i, j, k, l) where
+    type Rep (a, b, c, d, e, f, g, h, i, j, k, l) = Rep0Tuple12 a b c d e f g h i j k l
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             (M1 (K1 g4))
+                             ((:*:)
+                                (M1 (K1 g5))
+                                (M1 (K1 g6)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g7))
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9))))
+                          ((:*:)
+                             (M1 (K1 g10))
+                             ((:*:)
+                                (M1 (K1 g11))
+                                (M1 (K1 g12)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       ((:*:) (M1 (K1 g2))
+                                                                                                           (M1 (K1 g3))))
+                                                                   ((:*:) (M1 (K1 g4))
+                                                                                       ((:*:) (M1 (K1 g5))
+                                                                                                           (M1 (K1 g6)))))
+                                               ((:*:) ((:*:) (M1 (K1 g7))
+                                                                                       ((:*:) (M1 (K1 g8))
+                                                                                                           (M1 (K1 g9))))
+                                                                   ((:*:) (M1 (K1 g10))
+                                                                                       ((:*:) (M1 (K1 g11))
+                                                                                                           (M1 (K1 g12)))))))
+            -> (,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 }
+
+instance Generic1
+             ((,,,,,,,,,,,) a b c d e f g h i j k) where
+    type Rep1 ((,,,,,,,,,,,) a b c d e f g h i j k) = Rep1Tuple12 a b c d e f g h i j k
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             (M1 (K1 g4))
+                             ((:*:)
+                                (M1 (K1 g5))
+                                (M1 (K1 g6)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g7))
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9))))
+                          ((:*:)
+                             (M1 (K1 g10))
+                             ((:*:)
+                                (M1 (K1 g11))
+                                (M1 (Par1 g12)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       ((:*:) (M1 g2)
+                                                                                                           (M1 g3)))
+                                                                   ((:*:) (M1 g4)
+                                                                                       ((:*:) (M1 g5)
+                                                                                                           (M1 g6))))
+                                               ((:*:) ((:*:) (M1 g7)
+                                                                                       ((:*:) (M1 g8)
+                                                                                                           (M1 g9)))
+                                                                   ((:*:) (M1 g10)
+                                                                                       ((:*:) (M1 g11)
+                                                                                                           (M1 g12))))))
+            -> (,,,,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unK1 g9) (unK1 g10)
+                 (unK1 g11) (unPar1 g12) }
+
+data D1Tuple12
+data C1_0Tuple12
+
+instance Datatype D1Tuple12 where
+    datatypeName _ = "(,,,,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple12 where
+    conName _ = "(,,,,,,,,,,,)"
+
+-----
+
+type Rep0Tuple13 a b c d e f g h i j k l m = D1
+                                               D1Tuple13
+                                               (C1
+                                                  C1_0Tuple13
+                                                  (((S1
+                                                       NoSelector
+                                                       (Rec0 a)
+                                                     :*: (S1
+                                                                         NoSelector
+                                                                         (Rec0
+                                                                            b)
+                                                                       :*: S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             c)))
+                                                    :*: (S1
+                                                                        NoSelector
+                                                                        (Rec0
+                                                                           d)
+                                                                      :*: (S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             e)
+                                                                                        :*: S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              f))))
+                                                   :*: ((S1
+                                                                        NoSelector
+                                                                        (Rec0
+                                                                           g)
+                                                                      :*: (S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             h)
+                                                                                        :*: S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              i)))
+                                                                     :*: ((S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             j)
+                                                                                        :*: S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              k))
+                                                                                       :*: (S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              l)
+                                                                                                         :*: S1
+                                                                                                                            NoSelector
+                                                                                                                            (Rec0
+                                                                                                                               m))))))
+type Rep1Tuple13 a b c d e f g h i j k l = D1
+                                             D1Tuple13
+                                             (C1
+                                                C1_0Tuple13
+                                                (((S1
+                                                     NoSelector
+                                                     (Rec0 a)
+                                                   :*: (S1
+                                                                       NoSelector
+                                                                       (Rec0
+                                                                          b)
+                                                                     :*: S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           c)))
+                                                  :*: (S1
+                                                                      NoSelector
+                                                                      (Rec0
+                                                                         d)
+                                                                    :*: (S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           e)
+                                                                                      :*: S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            f))))
+                                                 :*: ((S1
+                                                                      NoSelector
+                                                                      (Rec0
+                                                                         g)
+                                                                    :*: (S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           h)
+                                                                                      :*: S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            i)))
+                                                                   :*: ((S1
+                                                                                        NoSelector
+                                                                                        (Rec0
+                                                                                           j)
+                                                                                      :*: S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            k))
+                                                                                     :*: (S1
+                                                                                                         NoSelector
+                                                                                                         (Rec0
+                                                                                                            l)
+                                                                                                       :*: S1
+                                                                                                                          NoSelector
+                                                                                                                          Par1)))))
+
+data D1Tuple13
+data C1_0Tuple13
+
+instance Generic
+             (a, b, c, d, e, f, g, h, i, j, k, l, m) where
+    type Rep (a, b, c, d, e, f, g, h, i, j, k, l, m) = Rep0Tuple13 a b c d e f g h i j k l m
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             (M1 (K1 g4))
+                             ((:*:)
+                                (M1 (K1 g5))
+                                (M1 (K1 g6)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g7))
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g10))
+                                (M1 (K1 g11)))
+                             ((:*:)
+                                (M1 (K1 g12))
+                                (M1 (K1 g13)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       ((:*:) (M1 (K1 g2))
+                                                                                                           (M1 (K1 g3))))
+                                                                   ((:*:) (M1 (K1 g4))
+                                                                                       ((:*:) (M1 (K1 g5))
+                                                                                                           (M1 (K1 g6)))))
+                                               ((:*:) ((:*:) (M1 (K1 g7))
+                                                                                       ((:*:) (M1 (K1 g8))
+                                                                                                           (M1 (K1 g9))))
+                                                                   ((:*:) ((:*:) (M1 (K1 g10))
+                                                                                                           (M1 (K1 g11)))
+                                                                                       ((:*:) (M1 (K1 g12))
+                                                                                                           (M1 (K1 g13)))))))
+            -> (,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 }
+
+instance Generic1
+             ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
+    type Rep1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) = Rep1Tuple13 a b c d e f g h i j k l
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             (M1 (K1 g4))
+                             ((:*:)
+                                (M1 (K1 g5))
+                                (M1 (K1 g6)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g7))
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g10))
+                                (M1 (K1 g11)))
+                             ((:*:)
+                                (M1 (K1 g12))
+                                (M1 (Par1 g13)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       ((:*:) (M1 g2)
+                                                                                                           (M1 g3)))
+                                                                   ((:*:) (M1 g4)
+                                                                                       ((:*:) (M1 g5)
+                                                                                                           (M1 g6))))
+                                               ((:*:) ((:*:) (M1 g7)
+                                                                                       ((:*:) (M1 g8)
+                                                                                                           (M1 g9)))
+                                                                   ((:*:) ((:*:) (M1 g10)
+                                                                                                           (M1 g11))
+                                                                                       ((:*:) (M1 g12)
+                                                                                                           (M1 g13))))))
+            -> (,,,,,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unK1 g9) (unK1 g10)
+                 (unK1 g11) (unK1 g12)
+                 (unPar1 g13) }
+
+instance Datatype D1Tuple13 where
+    datatypeName _ = "(,,,,,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple13 where
+    conName _ = "(,,,,,,,,,,,,)"
+
+-----
+
+type Rep0Tuple14 a b c d e f g h i j k l m n = D1
+                                                 D1Tuple14
+                                                 (C1
+                                                    C1_0Tuple14
+                                                    (((S1
+                                                         NoSelector
+                                                         (Rec0 a)
+                                                       :*: (S1
+                                                                           NoSelector
+                                                                           (Rec0
+                                                                              b)
+                                                                         :*: S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               c)))
+                                                      :*: ((S1
+                                                                           NoSelector
+                                                                           (Rec0
+                                                                              d)
+                                                                         :*: S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               e))
+                                                                        :*: (S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               f)
+                                                                                          :*: S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                g))))
+                                                     :*: ((S1
+                                                                          NoSelector
+                                                                          (Rec0
+                                                                             h)
+                                                                        :*: (S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               i)
+                                                                                          :*: S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                j)))
+                                                                       :*: ((S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               k)
+                                                                                          :*: S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                l))
+                                                                                         :*: (S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                m)
+                                                                                                           :*: S1
+                                                                                                                              NoSelector
+                                                                                                                              (Rec0
+                                                                                                                                 n))))))
+type Rep1Tuple14 a b c d e f g h i j k l m = D1
+                                               D1Tuple14
+                                               (C1
+                                                  C1_0Tuple14
+                                                  (((S1
+                                                       NoSelector
+                                                       (Rec0 a)
+                                                     :*: (S1
+                                                                         NoSelector
+                                                                         (Rec0
+                                                                            b)
+                                                                       :*: S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             c)))
+                                                    :*: ((S1
+                                                                         NoSelector
+                                                                         (Rec0
+                                                                            d)
+                                                                       :*: S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             e))
+                                                                      :*: (S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             f)
+                                                                                        :*: S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              g))))
+                                                   :*: ((S1
+                                                                        NoSelector
+                                                                        (Rec0
+                                                                           h)
+                                                                      :*: (S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             i)
+                                                                                        :*: S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              j)))
+                                                                     :*: ((S1
+                                                                                          NoSelector
+                                                                                          (Rec0
+                                                                                             k)
+                                                                                        :*: S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              l))
+                                                                                       :*: (S1
+                                                                                                           NoSelector
+                                                                                                           (Rec0
+                                                                                                              m)
+                                                                                                         :*: S1
+                                                                                                                            NoSelector
+                                                                                                                            Par1)))))
+
+instance Generic
+             (a, b, c, d, e, f, g, h, i, j, k, l, m, n) where
+    type Rep (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = Rep0Tuple14 a b c d e f g h i j k l m n
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 g14
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))
+                             ((:*:)
+                                (M1 (K1 g6))
+                                (M1 (K1 g7)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g8))
+                             ((:*:)
+                                (M1 (K1 g9))
+                                (M1 (K1 g10))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g11))
+                                (M1 (K1 g12)))
+                             ((:*:)
+                                (M1 (K1 g13))
+                                (M1 (K1 g14)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       ((:*:) (M1 (K1 g2))
+                                                                                                           (M1 (K1 g3))))
+                                                                   ((:*:) ((:*:) (M1 (K1 g4))
+                                                                                                           (M1 (K1 g5)))
+                                                                                       ((:*:) (M1 (K1 g6))
+                                                                                                           (M1 (K1 g7)))))
+                                               ((:*:) ((:*:) (M1 (K1 g8))
+                                                                                       ((:*:) (M1 (K1 g9))
+                                                                                                           (M1 (K1 g10))))
+                                                                   ((:*:) ((:*:) (M1 (K1 g11))
+                                                                                                           (M1 (K1 g12)))
+                                                                                       ((:*:) (M1 (K1 g13))
+                                                                                                           (M1 (K1 g14)))))))
+            -> (,,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 g14 }
+
+instance Generic1
+             ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
+    type Rep1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) = Rep1Tuple14 a b c d e f g h i j k l m
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 g14
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))
+                             ((:*:)
+                                (M1 (K1 g6))
+                                (M1 (K1 g7)))))
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g8))
+                             ((:*:)
+                                (M1 (K1 g9))
+                                (M1 (K1 g10))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g11))
+                                (M1 (K1 g12)))
+                             ((:*:)
+                                (M1 (K1 g13))
+                                (M1 (Par1 g14)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       ((:*:) (M1 g2)
+                                                                                                           (M1 g3)))
+                                                                   ((:*:) ((:*:) (M1 g4)
+                                                                                                           (M1 g5))
+                                                                                       ((:*:) (M1 g6)
+                                                                                                           (M1 g7))))
+                                               ((:*:) ((:*:) (M1 g8)
+                                                                                       ((:*:) (M1 g9)
+                                                                                                           (M1 g10)))
+                                                                   ((:*:) ((:*:) (M1 g11)
+                                                                                                           (M1 g12))
+                                                                                       ((:*:) (M1 g13)
+                                                                                                           (M1 g14))))))
+            -> (,,,,,,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unK1 g9) (unK1 g10)
+                 (unK1 g11) (unK1 g12)
+                 (unK1 g13) (unPar1 g14) }
+
+data D1Tuple14
+data C1_0Tuple14
+
+instance Datatype D1Tuple14 where
+    datatypeName _ = "(,,,,,,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple14 where
+    conName _ = "(,,,,,,,,,,,,,)"
+
+-----
+
+type Rep0Tuple15 a b c d e f g h i j k l m n o = D1
+                                                   D1Tuple15
+                                                   (C1
+                                                      C1_0Tuple15
+                                                      (((S1
+                                                           NoSelector
+                                                           (Rec0 a)
+                                                         :*: (S1
+                                                                             NoSelector
+                                                                             (Rec0
+                                                                                b)
+                                                                           :*: S1
+                                                                                              NoSelector
+                                                                                              (Rec0
+                                                                                                 c)))
+                                                        :*: ((S1
+                                                                             NoSelector
+                                                                             (Rec0
+                                                                                d)
+                                                                           :*: S1
+                                                                                              NoSelector
+                                                                                              (Rec0
+                                                                                                 e))
+                                                                          :*: (S1
+                                                                                              NoSelector
+                                                                                              (Rec0
+                                                                                                 f)
+                                                                                            :*: S1
+                                                                                                               NoSelector
+                                                                                                               (Rec0
+                                                                                                                  g))))
+                                                       :*: (((S1
+                                                                             NoSelector
+                                                                             (Rec0
+                                                                                h)
+                                                                           :*: S1
+                                                                                              NoSelector
+                                                                                              (Rec0
+                                                                                                 i))
+                                                                          :*: (S1
+                                                                                              NoSelector
+                                                                                              (Rec0
+                                                                                                 j)
+                                                                                            :*: S1
+                                                                                                               NoSelector
+                                                                                                               (Rec0
+                                                                                                                  k)))
+                                                                         :*: ((S1
+                                                                                              NoSelector
+                                                                                              (Rec0
+                                                                                                 l)
+                                                                                            :*: S1
+                                                                                                               NoSelector
+                                                                                                               (Rec0
+                                                                                                                  m))
+                                                                                           :*: (S1
+                                                                                                               NoSelector
+                                                                                                               (Rec0
+                                                                                                                  n)
+                                                                                                             :*: S1
+                                                                                                                                NoSelector
+                                                                                                                                (Rec0
+                                                                                                                                   o))))))
+type Rep1Tuple15 a b c d e f g h i j k l m n = D1
+                                                 D1Tuple15
+                                                 (C1
+                                                    C1_0Tuple15
+                                                    (((S1
+                                                         NoSelector
+                                                         (Rec0 a)
+                                                       :*: (S1
+                                                                           NoSelector
+                                                                           (Rec0
+                                                                              b)
+                                                                         :*: S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               c)))
+                                                      :*: ((S1
+                                                                           NoSelector
+                                                                           (Rec0
+                                                                              d)
+                                                                         :*: S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               e))
+                                                                        :*: (S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               f)
+                                                                                          :*: S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                g))))
+                                                     :*: (((S1
+                                                                           NoSelector
+                                                                           (Rec0
+                                                                              h)
+                                                                         :*: S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               i))
+                                                                        :*: (S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               j)
+                                                                                          :*: S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                k)))
+                                                                       :*: ((S1
+                                                                                            NoSelector
+                                                                                            (Rec0
+                                                                                               l)
+                                                                                          :*: S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                m))
+                                                                                         :*: (S1
+                                                                                                             NoSelector
+                                                                                                             (Rec0
+                                                                                                                n)
+                                                                                                           :*: S1
+                                                                                                                              NoSelector
+                                                                                                                              Par1)))))
+
+instance Generic
+             (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) where
+    type Rep (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = Rep0Tuple15 a b c d e f g h i j k l m n o
+
+    from x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 g14 g15
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))
+                             ((:*:)
+                                (M1 (K1 g6))
+                                (M1 (K1 g7)))))
+                       ((:*:)
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9)))
+                             ((:*:)
+                                (M1 (K1 g10))
+                                (M1 (K1 g11))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g12))
+                                (M1 (K1 g13)))
+                             ((:*:)
+                                (M1 (K1 g14))
+                                (M1 (K1 g15)))))) })
+    to (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 (K1 g1))
+                                                                                       ((:*:) (M1 (K1 g2))
+                                                                                                           (M1 (K1 g3))))
+                                                                   ((:*:) ((:*:) (M1 (K1 g4))
+                                                                                                           (M1 (K1 g5)))
+                                                                                       ((:*:) (M1 (K1 g6))
+                                                                                                           (M1 (K1 g7)))))
+                                               ((:*:) ((:*:) ((:*:) (M1 (K1 g8))
+                                                                                                           (M1 (K1 g9)))
+                                                                                       ((:*:) (M1 (K1 g10))
+                                                                                                           (M1 (K1 g11))))
+                                                                   ((:*:) ((:*:) (M1 (K1 g12))
+                                                                                                           (M1 (K1 g13)))
+                                                                                       ((:*:) (M1 (K1 g14))
+                                                                                                           (M1 (K1 g15)))))))
+            -> (,,,,,,,,,,,,,,)
+                 g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 g14 g15 }
+
+instance Generic1
+             ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where
+    type Rep1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) = Rep1Tuple15 a b c d e f g h i j k l m n
+
+    from1 x
+      = M1
+          (case x of {
+             (,,,,,,,,,,,,,,) g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 g14 g15
+               -> M1
+                    ((:*:)
+                       ((:*:)
+                          ((:*:)
+                             (M1 (K1 g1))
+                             ((:*:)
+                                (M1 (K1 g2))
+                                (M1 (K1 g3))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g4))
+                                (M1 (K1 g5)))
+                             ((:*:)
+                                (M1 (K1 g6))
+                                (M1 (K1 g7)))))
+                       ((:*:)
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g8))
+                                (M1 (K1 g9)))
+                             ((:*:)
+                                (M1 (K1 g10))
+                                (M1 (K1 g11))))
+                          ((:*:)
+                             ((:*:)
+                                (M1 (K1 g12))
+                                (M1 (K1 g13)))
+                             ((:*:)
+                                (M1 (K1 g14))
+                                (M1 (Par1 g15)))))) })
+    to1 (M1 x)
+      = case x of {
+          (M1 ((:*:) ((:*:) ((:*:) (M1 g1)
+                                                                                       ((:*:) (M1 g2)
+                                                                                                           (M1 g3)))
+                                                                   ((:*:) ((:*:) (M1 g4)
+                                                                                                           (M1 g5))
+                                                                                       ((:*:) (M1 g6)
+                                                                                                           (M1 g7))))
+                                               ((:*:) ((:*:) ((:*:) (M1 g8)
+                                                                                                           (M1 g9))
+                                                                                       ((:*:) (M1 g10)
+                                                                                                           (M1 g11)))
+                                                                   ((:*:) ((:*:) (M1 g12)
+                                                                                                           (M1 g13))
+                                                                                       ((:*:) (M1 g14)
+                                                                                                           (M1 g15))))))
+            -> (,,,,,,,,,,,,,,)
+                 (unK1 g1) (unK1 g2)
+                 (unK1 g3) (unK1 g4)
+                 (unK1 g5) (unK1 g6)
+                 (unK1 g7) (unK1 g8)
+                 (unK1 g9) (unK1 g10)
+                 (unK1 g11) (unK1 g12)
+                 (unK1 g13) (unK1 g14)
+                 (unPar1 g15) }
+
+data D1Tuple15
+data C1_0Tuple15
+
+instance Datatype D1Tuple15 where
+    datatypeName _ = "(,,,,,,,,,,,,,,)"
+    moduleName _ = "GHC.Tuple"
+
+instance Constructor C1_0Tuple15 where
+    conName _ = "(,,,,,,,,,,,,,,)"
+
+# endif
 #endif
 
 #if !(MIN_VERSION_base(4,14,0))
