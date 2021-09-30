@@ -163,34 +163,68 @@ isInTypeFamilyApp name tyFun tyArgs =
   where
     go :: Name -> Q Bool
     go tcName = do
-      info <- reify tcName
-      case info of
-#if MIN_VERSION_template_haskell(2,11,0)
-        FamilyI (OpenTypeFamilyD (TypeFamilyHead _ bndrs _ _)) _
-          -> withinFirstArgs bndrs
-#elif MIN_VERSION_template_haskell(2,7,0)
-        FamilyI (FamilyD TypeFam _ bndrs _) _
-          -> withinFirstArgs bndrs
-#else
-        TyConI (FamilyD TypeFam _ bndrs _)
-          -> withinFirstArgs bndrs
-#endif
-
-#if MIN_VERSION_template_haskell(2,11,0)
-        FamilyI (ClosedTypeFamilyD (TypeFamilyHead _ bndrs _ _) _) _
-          -> withinFirstArgs bndrs
-#elif MIN_VERSION_template_haskell(2,9,0)
-        FamilyI (ClosedTypeFamilyD _ bndrs _ _) _
-          -> withinFirstArgs bndrs
-#endif
-
-        _ -> return False
+      mbinders <- getTypeFamilyBinders tcName
+      case mbinders of
+        Just bndrs -> withinFirstArgs bndrs
+        Nothing -> return False
       where
         withinFirstArgs :: [a] -> Q Bool
         withinFirstArgs bndrs =
           let firstArgs = take (length bndrs) tyArgs
               argFVs    = freeVariables firstArgs
           in return $ name `elem` argFVs
+
+-- | Checks whether a type is an unsaturated type family
+-- application.
+isUnsaturatedType :: Type -> Q Bool
+isUnsaturatedType = go 0
+  where
+    go :: Int -> Type -> Q Bool
+    go d t = case t of
+      ConT tcName -> check d tcName
+      AppT f _ -> go (d + 1) f
+      InfixT arg1 op arg2 -> go d (ConT op `AppT` arg1 `AppT` arg2)
+      SigT t' _ -> go d t'
+      _ -> return False
+
+    check :: Int -> Name -> Q Bool
+    check d tcName = do
+      mbinders <- getTypeFamilyBinders tcName
+      return $ case mbinders of
+        Just bndrs -> bndrs `longerThan` d
+        Nothing -> False
+      where
+        longerThan :: [a] -> Int -> Bool
+        longerThan _l n | n < 0 = True
+        longerThan [] _ = False
+        longerThan (_ : as) n = longerThan as (n - 1)
+
+-- | Given a name, check if that name is a type family. If
+-- so, return a list of its binders.
+getTypeFamilyBinders :: Name -> Q (Maybe [TyVarBndr ()])
+getTypeFamilyBinders tcName = do
+      info <- reify tcName
+      return $ case info of
+#if MIN_VERSION_template_haskell(2,11,0)
+        FamilyI (OpenTypeFamilyD (TypeFamilyHead _ bndrs _ _)) _
+          -> Just bndrs
+#elif MIN_VERSION_template_haskell(2,7,0)
+        FamilyI (FamilyD TypeFam _ bndrs _) _
+          -> Just bndrs
+#else
+        TyConI (FamilyD TypeFam _ bndrs _)
+          -> Just bndrs
+#endif
+
+#if MIN_VERSION_template_haskell(2,11,0)
+        FamilyI (ClosedTypeFamilyD (TypeFamilyHead _ bndrs _ _) _) _
+          -> Just bndrs
+#elif MIN_VERSION_template_haskell(2,9,0)
+        FamilyI (ClosedTypeFamilyD _ bndrs _ _) _
+          -> Just bndrs
+#endif
+
+        _ -> Nothing
 
 -- | True if the type does not mention the Name
 ground :: Type -> Name -> Bool
@@ -478,6 +512,14 @@ outOfPlaceTyVarError :: Q a
 outOfPlaceTyVarError = fail
   . showString "Constructor must only use its last type variable as"
   . showString " the last argument of a data type"
+  $ ""
+
+-- | The data type mentions the last type variable in a type family
+-- application.
+typeFamilyApplicationError :: Q a
+typeFamilyApplicationError = fail
+  . showString "Constructor must not apply its last type variable"
+  . showString " to an unsaturated type family"
   $ ""
 
 -- | Cannot have a constructor argument of form (forall a1 ... an. <type>)

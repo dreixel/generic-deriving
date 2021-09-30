@@ -84,6 +84,8 @@ module Generics.Deriving.TH (
     , defaultKindSigOptions
     , EmptyCaseOptions
     , defaultEmptyCaseOptions
+    , ComposeLeftOptions (..)
+    , defaultComposeLeftOptions
 
     -- ** Functions with optional arguments
     , deriveAll0Options
@@ -93,6 +95,7 @@ module Generics.Deriving.TH (
     , deriveRepresentable1Options
     , deriveRep0Options
     , deriveRep1Options
+    , deriveRep1AllOptions
 
     , makeFrom0Options
     , makeTo0Options
@@ -177,6 +180,7 @@ data Options = Options
   { repOptions       :: RepOptions
   , kindSigOptions   :: KindSigOptions
   , emptyCaseOptions :: EmptyCaseOptions
+  , composeLeftOptions :: ComposeLeftOptions
   } deriving (Eq, Ord, Read, Show)
 
 -- | Sensible default 'Options'.
@@ -185,6 +189,7 @@ defaultOptions = Options
   { repOptions       = defaultRepOptions
   , kindSigOptions   = defaultKindSigOptions
   , emptyCaseOptions = defaultEmptyCaseOptions
+  , composeLeftOptions = defaultComposeLeftOptions
   }
 
 -- | Configures whether 'Rep'/'Rep1' type instances should be defined inline in a
@@ -214,6 +219,52 @@ type EmptyCaseOptions = Bool
 -- | Sensible default 'EmptyCaseOptions'.
 defaultEmptyCaseOptions :: EmptyCaseOptions
 defaultEmptyCaseOptions = False
+
+-- | 'ComposeLeft' if generated 'Rep1' types should associate compositions
+-- to the left. For example, given
+--
+-- @
+-- newtype Foo a = Foo (Maybe (Either Int [a]))
+-- @
+--
+-- the default, 'ComposeRight', will produce
+--
+-- @
+-- Rep1 Foo :: * -> *
+-- = D1
+--     ('MetaData "Foo" "Ghci1" "interactive" 'True)
+--     (C1
+--        ('MetaCons "Foo" 'PrefixI 'False)
+--        (S1
+--           ('MetaSel
+--              'Nothing 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy)
+--           (Maybe :.: (Either Int :.: Rec1 []))))
+-- @
+--
+-- Setting this to 'ComposeLeft' will instead give
+--
+-- @
+-- Rep1 Foo :: * -> *
+-- = D1
+--     ('MetaData "Foo" "Ghci1" "interactive" 'True)
+--     (C1
+--        ('MetaCons "Foo" 'PrefixI 'False)
+--        (S1
+--           ('MetaSel
+--              'Nothing 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy)
+--           ((Rec1 Maybe :.: Either Int) :.: [])))
+-- @
+--
+-- This method is incompatible with generic instances written for the
+-- standard derivation, but it avoids the use of `fmap` in `from1` and `to1`,
+-- and offers better support for safe coercions. It also allows instances
+-- to be derived for more types, such as @Fix@.
+data ComposeLeftOptions = ComposeRight | ComposeLeft
+  deriving (Eq, Ord, Read, Show)
+
+-- | The standard composition behavior.
+defaultComposeLeftOptions :: ComposeLeftOptions
+defaultComposeLeftOptions = ComposeRight
 
 -- | A backwards-compatible synonym for 'deriveAll0'.
 deriveAll :: Name -> Q [Dec]
@@ -282,7 +333,7 @@ deriveRepresentableCommon :: GenericClass -> Options -> Name -> Q [Dec]
 deriveRepresentableCommon gClass opts n = do
     rep  <- if repOptions opts == InlineRep
                then return []
-               else deriveRepCommon gClass (kindSigOptions opts) n
+               else deriveRepCommon gClass (composeLeftOptions opts) (kindSigOptions opts) n
     inst <- deriveInst gClass opts n
     return (rep ++ inst)
 
@@ -293,7 +344,7 @@ deriveRep0 = deriveRep0Options defaultKindSigOptions
 
 -- | Like 'deriveRep0', but takes an 'KindSigOptions' argument.
 deriveRep0Options :: KindSigOptions -> Name -> Q [Dec]
-deriveRep0Options = deriveRepCommon Generic
+deriveRep0Options = deriveRepCommon Generic defaultComposeLeftOptions
 
 -- | Derive only the 'Rep1' type synonym. Not needed if 'deriveRepresentable1'
 -- is used.
@@ -302,10 +353,15 @@ deriveRep1 = deriveRep1Options defaultKindSigOptions
 
 -- | Like 'deriveRep1', but takes an 'KindSigOptions' argument.
 deriveRep1Options :: KindSigOptions -> Name -> Q [Dec]
-deriveRep1Options = deriveRepCommon Generic1
+deriveRep1Options = deriveRepCommon Generic1 defaultComposeLeftOptions
 
-deriveRepCommon :: GenericClass -> KindSigOptions -> Name -> Q [Dec]
-deriveRepCommon gClass useKindSigs n = do
+-- | Like 'deriveRep1', but takes 'KindSigOptions' and a 'ComposeLeftOptions'
+-- arguments.
+deriveRep1AllOptions :: ComposeLeftOptions -> KindSigOptions -> Name -> Q [Dec]
+deriveRep1AllOptions = deriveRepCommon Generic1
+
+deriveRepCommon :: GenericClass -> ComposeLeftOptions -> KindSigOptions -> Name -> Q [Dec]
+deriveRepCommon gClass cl_opts useKindSigs n = do
   i <- reifyDataInfo n
   let (name, instTys, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
@@ -318,7 +374,7 @@ deriveRepCommon gClass useKindSigs n = do
                       else map unKindedTV tySynVars
   fmap (:[]) $ tySynD (genRepName gClass dv name)
                       tySynVars'
-                      (repType gk dv name Map.empty cons)
+                      (repType gk cl_opts dv name Map.empty cons)
 
 deriveInst :: GenericClass -> Options -> Name -> Q [Dec]
 deriveInst Generic  = deriveInstCommon genericTypeName  repTypeName  Generic  fromValName  toValName
@@ -336,10 +392,11 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
   i <- reifyDataInfo n
   let (name, instTys, cons, dv) = either error id i
       useKindSigs = kindSigOptions opts
+      cl_opts = composeLeftOptions opts
   -- See Note [Forcing buildTypeInstance]
   !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name instTys
   tyInsRHS <- if repOptions opts == InlineRep
-                 then makeRepInline   gClass dv name instTys cons origTy
+                 then makeRepInline   gClass cl_opts dv name instTys cons origTy
                  else makeRepTySynApp gClass dv name              origTy
 
   let origSigTy = if useKindSigs
@@ -347,8 +404,9 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
                      else origTy
   tyIns <- tySynInstDCompat repName Nothing [return origSigTy] (return tyInsRHS)
   let ecOptions = emptyCaseOptions opts
+      clOptions = composeLeftOptions opts
       mkBody maker = [clause [] (normalB $
-        mkCaseExp gClass ecOptions name instTys cons maker) []]
+        mkCaseExp gClass clOptions ecOptions name instTys cons maker) []]
       fcs = mkBody mkFrom
       tcs = mkBody mkTo
 
@@ -449,7 +507,7 @@ Note that you don't pass @b@ twice, only once.
 -- the kind signature, 'makeRep0Inline' has no way of figuring out the kind of
 -- @a@, and the generated type might be completely wrong as a result!
 makeRep0Inline :: Name -> Q Type -> Q Type
-makeRep0Inline n = makeRepCommon Generic InlineRep n . Just
+makeRep0Inline n = makeRepCommon Generic ComposeRight InlineRep n . Just
 
 -- | Generates the full 'Rep1' type inline. Since this type can be quite
 -- large, it is recommended you only use this to define 'Rep1', e.g.,
@@ -466,7 +524,7 @@ makeRep0Inline n = makeRepCommon Generic InlineRep n . Just
 -- the kind signature, 'makeRep1Inline' has no way of figuring out the kind of
 -- @a@, and the generated type might be completely wrong as a result!
 makeRep1Inline :: Name -> Q Type -> Q Type
-makeRep1Inline n = makeRepCommon Generic1 InlineRep n . Just
+makeRep1Inline n = makeRepCommon Generic1 ComposeRight InlineRep n . Just
 
 -- | Generates the 'Rep' type synonym constructor (as opposed to 'deriveRep0',
 -- which generates the type synonym declaration). After splicing it into
@@ -482,7 +540,7 @@ makeRep1Inline n = makeRepCommon Generic1 InlineRep n . Just
 -- 'makeRep0Inline' is not usable on GHC 7.0, 7.2, or 7.4 due to a GHC bug,
 -- so 'makeRep0' still exists for GHC 7.0, 7.2, and 7.4 users.
 makeRep0 :: Name -> Q Type
-makeRep0 n = makeRepCommon Generic TypeSynonymRep n Nothing
+makeRep0 n = makeRepCommon Generic ComposeRight TypeSynonymRep n Nothing
 
 -- | Generates the 'Rep1' type synonym constructor (as opposed to 'deriveRep1',
 -- which generates the type synonym declaration). After splicing it into
@@ -498,7 +556,7 @@ makeRep0 n = makeRepCommon Generic TypeSynonymRep n Nothing
 -- 'makeRep1Inline' is not usable on GHC 7.0, 7.2, or 7.4 due to a GHC bug,
 -- so 'makeRep1' still exists for GHC 7.0, 7.2, and 7.4 users.
 makeRep1 :: Name -> Q Type
-makeRep1 n = makeRepCommon Generic1 TypeSynonymRep n Nothing
+makeRep1 n = makeRepCommon Generic1 ComposeRight TypeSynonymRep n Nothing
 
 -- | Generates the 'Rep' type synonym constructor (as opposed to 'deriveRep0',
 -- which generates the type synonym declaration) applied to its type arguments.
@@ -518,7 +576,7 @@ makeRep1 n = makeRepCommon Generic1 TypeSynonymRep n Nothing
 -- does exactly the same thing but without having to go through an intermediate
 -- type synonym, and as a result, 'makeRep0Inline' tends to be less buggy.
 makeRep0FromType :: Name -> Q Type -> Q Type
-makeRep0FromType n = makeRepCommon Generic TypeSynonymRep n . Just
+makeRep0FromType n = makeRepCommon Generic ComposeRight TypeSynonymRep n . Just
 
 -- | Generates the 'Rep1' type synonym constructor (as opposed to 'deriveRep1',
 -- which generates the type synonym declaration) applied to its type arguments.
@@ -538,14 +596,15 @@ makeRep0FromType n = makeRepCommon Generic TypeSynonymRep n . Just
 -- does exactly the same thing but without having to go through an intermediate
 -- type synonym, and as a result, 'makeRep1Inline' tends to be less buggy.
 makeRep1FromType :: Name -> Q Type -> Q Type
-makeRep1FromType n = makeRepCommon Generic1 TypeSynonymRep n . Just
+makeRep1FromType n = makeRepCommon Generic1 ComposeRight TypeSynonymRep n . Just
 
 makeRepCommon :: GenericClass
+              -> ComposeLeftOptions
               -> RepOptions
               -> Name
               -> Maybe (Q Type)
               -> Q Type
-makeRepCommon gClass repOpts n mbQTy = do
+makeRepCommon gClass cl_opts repOpts n mbQTy = do
   i <- reifyDataInfo n
   let (name, instTys, cons, dv) = either error id i
   -- See Note [Forcing buildTypeInstance]
@@ -553,18 +612,19 @@ makeRepCommon gClass repOpts n mbQTy = do
 
   case (mbQTy, repOpts) of
        (Just qTy, TypeSynonymRep) -> qTy >>= makeRepTySynApp gClass dv name
-       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass dv name instTys cons
+       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass cl_opts dv name instTys cons
        (Nothing,  TypeSynonymRep) -> conT $ genRepName gClass dv name
        (Nothing,  InlineRep)      -> fail "makeRepCommon"
 
 makeRepInline :: GenericClass
+              -> ComposeLeftOptions
               -> DatatypeVariant_
               -> Name
               -> [Type]
               -> [ConstructorInfo]
               -> Type
               -> Q Type
-makeRepInline gClass dv name instTys cons ty = do
+makeRepInline gClass cl_opts dv name instTys cons ty = do
   let instVars = freeVariablesWellScoped [ty]
       (tySynVars, gk)  = genericKind gClass instTys
 
@@ -573,7 +633,7 @@ makeRepInline gClass dv name instTys cons ty = do
         zip (map tvName tySynVars)
             (map (VarT . tvName) instVars)
 
-  repType gk dv name typeSubst cons
+  repType gk cl_opts dv name typeSubst cons
 
 makeRepTySynApp :: GenericClass -> DatatypeVariant_ -> Name
                 -> Type -> Q Type
@@ -595,7 +655,7 @@ makeFrom0 = makeFrom0Options defaultEmptyCaseOptions
 
 -- | Like 'makeFrom0Options', but takes an 'EmptyCaseOptions' argument.
 makeFrom0Options :: EmptyCaseOptions -> Name -> Q Exp
-makeFrom0Options = makeFunCommon mkFrom Generic
+makeFrom0Options = makeFunCommon mkFrom Generic defaultComposeLeftOptions
 
 -- | A backwards-compatible synonym for 'makeTo0'.
 makeTo :: Name -> Q Exp
@@ -607,7 +667,7 @@ makeTo0 = makeTo0Options defaultEmptyCaseOptions
 
 -- | Like 'makeTo0Options', but takes an 'EmptyCaseOptions' argument.
 makeTo0Options :: EmptyCaseOptions -> Name -> Q Exp
-makeTo0Options = makeFunCommon mkTo Generic
+makeTo0Options = makeFunCommon mkTo Generic defaultComposeLeftOptions
 
 -- | Generates a lambda expression which behaves like 'from1'.
 makeFrom1 :: Name -> Q Exp
@@ -615,7 +675,7 @@ makeFrom1 = makeFrom1Options defaultEmptyCaseOptions
 
 -- | Like 'makeFrom1Options', but takes an 'EmptyCaseOptions' argument.
 makeFrom1Options :: EmptyCaseOptions -> Name -> Q Exp
-makeFrom1Options = makeFunCommon mkFrom Generic1
+makeFrom1Options = makeFunCommon mkFrom Generic1 defaultComposeLeftOptions
 
 -- | Generates a lambda expression which behaves like 'to1'.
 makeTo1 :: Name -> Q Exp
@@ -623,18 +683,18 @@ makeTo1 = makeTo1Options defaultEmptyCaseOptions
 
 -- | Like 'makeTo1Options', but takes an 'EmptyCaseOptions' argument.
 makeTo1Options :: EmptyCaseOptions -> Name -> Q Exp
-makeTo1Options = makeFunCommon mkTo Generic1
+makeTo1Options = makeFunCommon mkTo Generic1 defaultComposeLeftOptions
 
 makeFunCommon
-  :: (GenericClass -> EmptyCaseOptions ->  Int -> Int -> Name -> [Type]
+  :: (GenericClass -> ComposeLeftOptions -> EmptyCaseOptions ->  Int -> Int -> Name -> [Type]
                    -> [ConstructorInfo] -> Q Match)
-  -> GenericClass -> EmptyCaseOptions -> Name -> Q Exp
-makeFunCommon maker gClass ecOptions n = do
+  -> GenericClass -> ComposeLeftOptions -> EmptyCaseOptions -> Name -> Q Exp
+makeFunCommon maker gClass clOptions ecOptions n = do
   i <- reifyDataInfo n
   let (name, instTys, cons, _) = either error id i
   -- See Note [Forcing buildTypeInstance]
   buildTypeInstance gClass False name instTys
-    `seq` mkCaseExp gClass ecOptions name instTys cons maker
+    `seq` mkCaseExp gClass clOptions ecOptions name instTys cons maker
 
 genRepName :: GenericClass -> DatatypeVariant_
            -> Name -> Name
@@ -647,25 +707,27 @@ genRepName gClass dv n
   $ nameBase n
 
 repType :: GenericKind
+        -> ComposeLeftOptions
         -> DatatypeVariant_
         -> Name
         -> TypeSubst
         -> [ConstructorInfo]
         -> Q Type
-repType gk dv dt typeSubst cs =
+repType gk cl_opts dv dt typeSubst cs =
     conT d1TypeName `appT` mkMetaDataType dv dt `appT`
-      foldBal sum' (conT v1TypeName) (map (repCon gk dv dt typeSubst) cs)
+      foldBal sum' (conT v1TypeName) (map (repCon gk cl_opts dv dt typeSubst) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
 
 repCon :: GenericKind
+       -> ComposeLeftOptions
        -> DatatypeVariant_
        -> Name
        -> TypeSubst
        -> ConstructorInfo
        -> Q Type
-repCon gk dv dt typeSubst
+repCon gk cl_opts dv dt typeSubst
   (ConstructorInfo { constructorName       = n
                    , constructorVars       = vars
                    , constructorContext    = ctxt
@@ -687,9 +749,10 @@ repCon gk dv dt typeSubst
                      InfixConstructor    -> True
                      RecordConstructor _ -> False
   ssis <- reifySelStrictInfo n bangs
-  repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
+  repConWith gk cl_opts dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
 
 repConWith :: GenericKind
+           -> ComposeLeftOptions
            -> DatatypeVariant_
            -> Name
            -> Name
@@ -700,15 +763,15 @@ repConWith :: GenericKind
            -> Bool
            -> Bool
            -> Q Type
-repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
+repConWith gk cl_opts dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
     let structureType :: Q Type
         structureType = foldBal prodT (conT u1TypeName) f
 
         f :: [Q Type]
         f = case mbSelNames of
-                 Just selNames -> zipWith3 (repField gk dv dt n typeSubst . Just)
+                 Just selNames -> zipWith3 (repField gk cl_opts dv dt n typeSubst . Just)
                                            selNames ssis ts
-                 Nothing       -> zipWith  (repField gk dv dt n typeSubst Nothing)
+                 Nothing       -> zipWith  (repField gk cl_opts dv dt n typeSubst Nothing)
                                            ssis ts
 
     conT c1TypeName
@@ -719,6 +782,7 @@ prodT :: Q Type -> Q Type -> Q Type
 prodT a b = conT productTypeName `appT` a `appT` b
 
 repField :: GenericKind
+         -> ComposeLeftOptions
          -> DatatypeVariant_
          -> Name
          -> Name
@@ -727,10 +791,10 @@ repField :: GenericKind
          -> SelStrictInfo
          -> Type
          -> Q Type
-repField gk dv dt ns typeSubst mbF ssi t =
+repField gk cl_opts dv dt ns typeSubst mbF ssi t =
            conT s1TypeName
     `appT` mkMetaSelType dv dt ns mbF ssi
-    `appT` (repFieldArg gk =<< resolveTypeSynonyms t'')
+    `appT` (repFieldArg cl_opts gk =<< resolveTypeSynonyms t'')
   where
     -- See Note [Generic1 is polykinded in base-4.10]
     t', t'' :: Type
@@ -744,12 +808,44 @@ repField gk dv dt ns typeSubst mbF ssi t =
               _ -> t
     t'' = applySubstitution typeSubst t'
 
-repFieldArg :: GenericKind -> Type -> Q Type
-repFieldArg _ ForallT{} = rankNError
-repFieldArg gk (SigT t _) = repFieldArg gk t
-repFieldArg Gen0 t = boxT t
-repFieldArg (Gen1 name _) (VarT t) | t == name = conT par1TypeName
-repFieldArg gk@(Gen1 name _) t = do
+repFieldArg :: ComposeLeftOptions -> GenericKind -> Type -> Q Type
+repFieldArg ComposeLeft (Gen1 name _) = repFieldArgL name
+repFieldArg ComposeLeft Gen0 = repFieldArgR Gen0
+repFieldArg ComposeRight gk = repFieldArgR gk
+
+repFieldArgL :: Name -> Type -> Q Type
+repFieldArgL name t0 = do
+  if t0 `ground` name
+    then boxT t0
+    else go Nothing t0
+  where
+    go :: Maybe Type -> Type -> Q Type
+    go _ ForallT{} = rankNError
+    go acc (SigT t _) = go acc t
+#if MIN_VERSION_template_haskell(2,11,0)
+    go acc (ParensT t) = go acc t
+    go acc (InfixT ty1 n ty2) = go acc (ConT n `AppT` ty1 `AppT` ty2)
+#endif
+    go acc (VarT t)
+      | t == name
+      = case acc of
+          Nothing -> conT par1TypeName
+          Just acced -> return acced
+    go acc (AppT f x) = do
+      when (not (f `ground` name)) outOfPlaceTyVarError
+      itf <- isUnsaturatedType f
+      when itf typeFamilyApplicationError
+      case acc of
+        Nothing -> go (Just (ConT rec1TypeName `AppT` f)) x
+        Just acced -> go (Just (InfixT acced composeTypeName f)) x
+    go _ _ = fail "Leftist Generic1 deriving: non-derivable type or bug"
+
+repFieldArgR :: GenericKind -> Type -> Q Type
+repFieldArgR _ ForallT{} = rankNError
+repFieldArgR gk (SigT t _) = repFieldArgR gk t
+repFieldArgR Gen0 t = boxT t
+repFieldArgR (Gen1 name _) (VarT t) | t == name = conT par1TypeName
+repFieldArgR gk@(Gen1 name _) t = do
   let (tyHead, tyArgs)   = unapplyTy t
       numLastArgs        = min 1 $ length tyArgs
       (lhsArgs, rhsArgs) = splitAt (length tyArgs - numLastArgs) tyArgs
@@ -763,16 +859,15 @@ repFieldArg gk@(Gen1 name _) t = do
       inspectTy (SigT ty _) = inspectTy ty
       inspectTy beta
         | not (ground beta name)
-        = conT composeTypeName `appT` phiType
-                               `appT` repFieldArg gk beta
+        = infixT phiType composeTypeName (repFieldArgR gk beta)
       inspectTy _ = rec0Type
 
   itf <- isInTypeFamilyApp name tyHead tyArgs
-  if any (not . (`ground` name)) lhsArgs || itf
-     then outOfPlaceTyVarError
-     else case rhsArgs of
-          []   -> rec0Type
-          ty:_ -> inspectTy ty
+  when (any (not . (`ground` name)) lhsArgs) outOfPlaceTyVarError
+  when itf typeFamilyApplicationError
+  case rhsArgs of
+    []   -> rec0Type
+    ty:_ -> inspectTy ty
 
 boxT :: Type -> Q Type
 boxT ty = case unboxedRepNames ty of
@@ -780,17 +875,17 @@ boxT ty = case unboxedRepNames ty of
     Nothing                -> conT rec0TypeName `appT` return ty
 
 mkCaseExp
-  :: GenericClass -> EmptyCaseOptions -> Name -> [Type] -> [ConstructorInfo]
-  -> (GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+  :: GenericClass -> ComposeLeftOptions -> EmptyCaseOptions -> Name -> [Type] -> [ConstructorInfo]
+  -> (GenericClass -> ComposeLeftOptions -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
                    -> [ConstructorInfo] -> Q Match)
   -> Q Exp
-mkCaseExp gClass ecOptions dt instTys cs matchmaker = do
+mkCaseExp gClass clOptions ecOptions dt instTys cs matchmaker = do
   val <- newName "val"
-  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 1 dt instTys cs]
+  lam1E (varP val) $ caseE (varE val) [matchmaker gClass clOptions ecOptions 1 1 dt instTys cs]
 
-mkFrom :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+mkFrom :: GenericClass -> ComposeLeftOptions -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
        -> [ConstructorInfo] -> Q Match
-mkFrom gClass ecOptions m i dt instTys cs = do
+mkFrom gClass cl_opts ecOptions m i dt instTys cs = do
     y <- newName "y"
     match (varP y)
           (normalB $ conE m1DataName `appE` caseE (varE y) cases)
@@ -798,7 +893,7 @@ mkFrom gClass ecOptions m i dt instTys cs = do
   where
     cases = case cs of
               [] -> errorFrom ecOptions dt
-              _  -> zipWith (fromCon gk wrapE (length cs)) [1..] cs
+              _  -> zipWith (fromCon gk cl_opts wrapE (length cs)) [1..] cs
     wrapE e = lrE i m e
     (_, gk) = genericKind gClass instTys
 
@@ -817,9 +912,9 @@ errorFrom useEmptyCase dt
                           ++ nameBase dt))
           []]
 
-mkTo :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+mkTo :: GenericClass -> ComposeLeftOptions -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
      -> [ConstructorInfo] -> Q Match
-mkTo gClass ecOptions m i dt instTys cs = do
+mkTo gClass clOptions ecOptions m i dt instTys cs = do
     y <- newName "y"
     match (conP m1DataName [varP y])
           (normalB $ caseE (varE y) cases)
@@ -827,7 +922,7 @@ mkTo gClass ecOptions m i dt instTys cs = do
   where
     cases = case cs of
               [] -> errorTo ecOptions dt
-              _  -> zipWith (toCon gk wrapP (length cs)) [1..] cs
+              _  -> zipWith (toCon gk clOptions wrapP (length cs)) [1..] cs
     wrapP p = lrP i m p
     (_, gk) = genericKind gClass instTys
 
@@ -852,9 +947,9 @@ ghc7'8OrLater = True
 ghc7'8OrLater = False
 #endif
 
-fromCon :: GenericKind -> (Q Exp -> Q Exp) -> Int -> Int
+fromCon :: GenericKind -> ComposeLeftOptions -> (Q Exp -> Q Exp) -> Int -> Int
         -> ConstructorInfo -> Q Match
-fromCon gk wrap m i
+fromCon gk cl_opts wrap m i
   (ConstructorInfo { constructorName    = cn
                    , constructorVars    = vars
                    , constructorContext = ctxt
@@ -864,23 +959,56 @@ fromCon gk wrap m i
   fNames <- newNameList "f" $ length ts
   match (conP cn (map varP fNames))
         (normalB $ wrap $ lrE i m $ conE m1DataName `appE`
-          foldBal prodE (conE u1DataName) (zipWith (fromField gk) fNames ts)) []
+          foldBal prodE (conE u1DataName) (zipWith (fromField gk cl_opts) fNames ts)) []
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
 
-fromField :: GenericKind -> Name -> Type -> Q Exp
-fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< resolveTypeSynonyms t)
+fromField :: GenericKind -> ComposeLeftOptions -> Name -> Type -> Q Exp
+fromField gk cl_opts nr t = conE m1DataName `appE` (fromFieldWrap gk cl_opts nr =<< resolveTypeSynonyms t)
 
-fromFieldWrap :: GenericKind -> Name -> Type -> Q Exp
-fromFieldWrap _             _  ForallT{}  = rankNError
-fromFieldWrap gk            nr (SigT t _) = fromFieldWrap gk nr t
-fromFieldWrap Gen0          nr t          = conE (boxRepName t) `appE` varE nr
-fromFieldWrap (Gen1 name _) nr t          = wC t name           `appE` varE nr
+fromFieldWrap :: GenericKind -> ComposeLeftOptions -> Name -> Type -> Q Exp
+fromFieldWrap _ _             _  ForallT{}  = rankNError
+fromFieldWrap gk cl_opts           nr (SigT t _) = fromFieldWrap gk cl_opts nr t
+fromFieldWrap Gen0 _         nr t          = conE (boxRepName t) `appE` varE nr
+fromFieldWrap (Gen1 name _) cl_opts nr t          = wC cl_opts t name           `appE` varE nr
 
-wC :: Type -> Name -> Q Exp
-wC (VarT t) name | t == name = conE par1DataName
-wC t name
+wC :: ComposeLeftOptions -> Type -> Name -> Q Exp
+wC ComposeRight = wCR
+wC ComposeLeft = wCL
+
+wCL :: Type -> Name -> Q Exp
+wCL t0 name =
+  if t0 `ground` name
+    then conE (boxRepName t0)
+    else go Nothing t0
+  where
+    go :: Maybe Exp -> Type -> Q Exp
+    go acc (SigT t _) = go acc t
+#if MIN_VERSION_template_haskell(2,11,0)
+    go acc (ParensT t) = go acc t
+    go acc (InfixT ty1 n ty2) = go acc (ConT n `AppT` ty1 `AppT` ty2)
+#endif
+    go acc (VarT t)
+      | t == name
+      = case acc of
+          Nothing -> conE par1DataName
+          Just acced -> return acced
+    go acc (AppT f x) = do
+      when (not (f `ground` name)) outOfPlaceTyVarError
+      itf <- isUnsaturatedType f
+      when itf typeFamilyApplicationError
+      case acc of
+        Nothing -> go (Just (ConE rec1DataName)) x
+        Just acced ->
+          go (Just
+            (UInfixE (ConE comp1DataName) (VarE composeValName) acced)) x
+    go _ _ = fail "Leftist Generic1 deriving: non-derivable type or bug"
+
+
+wCR :: Type -> Name -> Q Exp
+wCR (VarT t) name | t == name = conE par1DataName
+wCR t name
   | ground t name = conE $ boxRepName t
   | otherwise = do
       let (tyHead, tyArgs)   = unapplyTy t
@@ -895,7 +1023,7 @@ wC t name
             = conE rec1DataName
           inspectTy beta = infixApp (conE comp1DataName)
                                     (varE composeValName)
-                                    (varE fmapValName `appE` wC beta name)
+                                    (varE fmapValName `appE` wCR beta name)
 
       itf <- isInTypeFamilyApp name tyHead tyArgs
       if any (not . (`ground` name)) lhsArgs || itf
@@ -907,9 +1035,9 @@ wC t name
 boxRepName :: Type -> Name
 boxRepName = maybe k1DataName snd3 . unboxedRepNames
 
-toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int
+toCon :: GenericKind -> ComposeLeftOptions -> (Q Pat -> Q Pat) -> Int -> Int
       -> ConstructorInfo -> Q Match
-toCon gk wrap m i
+toCon gk cl_opts wrap m i
   (ConstructorInfo { constructorName    = cn
                    , constructorVars    = vars
                    , constructorContext = ctxt
@@ -920,13 +1048,13 @@ toCon gk wrap m i
   match (wrap $ lrP i m $ conP m1DataName
           [foldBal prod (conP u1DataName []) (zipWith (toField gk) fNames ts)])
         (normalB $ foldl appE (conE cn)
-                         (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
+                         (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk cl_opts nr)
                          fNames ts)) []
   where prod x y = conP productDataName [x,y]
 
-toConUnwC :: GenericKind -> Name -> Type -> Q Exp
-toConUnwC Gen0          nr _ = varE nr
-toConUnwC (Gen1 name _) nr t = unwC t name `appE` varE nr
+toConUnwC :: GenericKind -> ComposeLeftOptions -> Name -> Type -> Q Exp
+toConUnwC Gen0          _ nr _ = varE nr
+toConUnwC (Gen1 name _) cl_opts nr t = unwC cl_opts t name `appE` varE nr
 
 toField :: GenericKind -> Name -> Type -> Q Pat
 toField gk nr t = conP m1DataName [toFieldWrap gk nr t]
@@ -935,10 +1063,43 @@ toFieldWrap :: GenericKind -> Name -> Type -> Q Pat
 toFieldWrap Gen0   nr t = conP (boxRepName t) [varP nr]
 toFieldWrap Gen1{} nr _ = varP nr
 
-unwC :: Type -> Name -> Q Exp
-unwC (SigT t _) name = unwC t name
-unwC (VarT t)   name | t == name = varE unPar1ValName
-unwC t name
+unwC :: ComposeLeftOptions -> Type -> Name -> Q Exp
+unwC cl_opts = case cl_opts of
+  ComposeRight -> unwCR
+  ComposeLeft -> unwCL
+
+unwCL :: Type -> Name -> Q Exp
+unwCL t0 name = 
+  if t0 `ground` name
+    then varE (unboxRepName t0)
+    else go Nothing t0
+  where
+    go :: Maybe Exp -> Type -> Q Exp
+    go acc (SigT t _) = go acc t
+#if MIN_VERSION_template_haskell(2,11,0)
+    go acc (ParensT t) = go acc t
+    go acc (InfixT ty1 n ty2) = go acc (ConT n `AppT` ty1 `AppT` ty2)
+#endif
+    go acc (VarT t)
+      | t == name
+      = case acc of
+          Nothing -> varE unPar1ValName
+          Just acced -> return acced
+    go acc (AppT f x) = do
+      when (not (f `ground` name)) outOfPlaceTyVarError
+      itf <- isUnsaturatedType f
+      when itf typeFamilyApplicationError
+      case acc of
+        Nothing -> go (Just (VarE unRec1ValName)) x
+        Just acced ->
+          go (Just
+            (UInfixE acced (VarE composeValName) (VarE unComp1ValName))) x
+    go _ _ = fail "Leftist Generic1 deriving: non-derivable type or bug"
+
+unwCR :: Type -> Name -> Q Exp
+unwCR (SigT t _) name = unwCR t name
+unwCR (VarT t)   name | t == name = varE unPar1ValName
+unwCR t name
   | ground t name = varE $ unboxRepName t
   | otherwise = do
       let (tyHead, tyArgs)   = unapplyTy t
@@ -951,7 +1112,7 @@ unwC t name
           inspectTy (VarT a)
             | a == name
             = varE unRec1ValName
-          inspectTy beta = infixApp (varE fmapValName `appE` unwC beta name)
+          inspectTy beta = infixApp (varE fmapValName `appE` unwCR beta name)
                                     (varE composeValName)
                                     (varE unComp1ValName)
 
