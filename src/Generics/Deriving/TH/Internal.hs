@@ -145,52 +145,61 @@ makeFunKind = makeFunType
 makeFunKind argKinds resKind = foldr' ArrowK resKind argKinds
 #endif
 
--- | Detect if a Name occurs as an argument to some type family. This makes an
--- effort to exclude /oversaturated/ arguments to type families. For instance,
--- if one declared the following type family:
---
--- @
--- type family F a :: Type -> Type
--- @
---
--- Then in the type @F a b@, we would consider @a@ to be an argument to @F@,
--- but not @b@.
-isInTypeFamilyApp :: Name -> Type -> [Type] -> Q Bool
-isInTypeFamilyApp name tyFun tyArgs =
-  case tyFun of
-    ConT tcName -> go tcName
-    _           -> return False
+-- | Remove any outer `SigT` and `ParensT` constructors, and turn
+-- an outermost `InfixT` constructor into plain applications.
+dustOff :: Type -> Type
+dustOff (SigT ty _) = dustOff ty
+#if MIN_VERSION_template_haskell(2,11,0)
+dustOff (ParensT ty) = dustOff ty
+dustOff (InfixT ty1 n ty2) = ConT n `AppT` ty1 `AppT` ty2
+#endif
+dustOff ty = ty
+
+-- | Checks whether a type is an unsaturated type family
+-- application.
+isUnsaturatedType :: Type -> Q Bool
+isUnsaturatedType = go 0 . dustOff
   where
-    go :: Name -> Q Bool
-    go tcName = do
+    -- Expects its argument to be dusted
+    go :: Int -> Type -> Q Bool
+    go d t = case t of
+      ConT tcName -> check d tcName
+      AppT f _ -> go (d + 1) (dustOff f)
+      _ -> return False
+
+    check :: Int -> Name -> Q Bool
+    check d tcName = do
+      mbinders <- getTypeFamilyBinders tcName
+      return $ case mbinders of
+        Just bndrs -> length bndrs > d
+        Nothing -> False
+
+-- | Given a name, check if that name is a type family. If
+-- so, return a list of its binders.
+getTypeFamilyBinders :: Name -> Q (Maybe [TyVarBndr_ ()])
+getTypeFamilyBinders tcName = do
       info <- reify tcName
-      case info of
+      return $ case info of
 #if MIN_VERSION_template_haskell(2,11,0)
         FamilyI (OpenTypeFamilyD (TypeFamilyHead _ bndrs _ _)) _
-          -> withinFirstArgs bndrs
+          -> Just bndrs
 #elif MIN_VERSION_template_haskell(2,7,0)
         FamilyI (FamilyD TypeFam _ bndrs _) _
-          -> withinFirstArgs bndrs
+          -> Just bndrs
 #else
         TyConI (FamilyD TypeFam _ bndrs _)
-          -> withinFirstArgs bndrs
+          -> Just bndrs
 #endif
 
 #if MIN_VERSION_template_haskell(2,11,0)
         FamilyI (ClosedTypeFamilyD (TypeFamilyHead _ bndrs _ _) _) _
-          -> withinFirstArgs bndrs
+          -> Just bndrs
 #elif MIN_VERSION_template_haskell(2,9,0)
         FamilyI (ClosedTypeFamilyD _ bndrs _ _) _
-          -> withinFirstArgs bndrs
+          -> Just bndrs
 #endif
 
-        _ -> return False
-      where
-        withinFirstArgs :: [a] -> Q Bool
-        withinFirstArgs bndrs =
-          let firstArgs = take (length bndrs) tyArgs
-              argFVs    = freeVariables firstArgs
-          in return $ name `elem` argFVs
+        _ -> Nothing
 
 -- | True if the type does not mention the Name
 ground :: Type -> Name -> Bool
@@ -203,29 +212,6 @@ applyTyToTys = List.foldl' AppT
 -- | Apply a type constructor name to type variable binders.
 applyTyToTvbs :: Name -> [TyVarBndr_ flag] -> Type
 applyTyToTvbs = List.foldl' (\a -> AppT a . tyVarBndrToType) . ConT
-
--- | Split an applied type into its individual components. For example, this:
---
--- @
--- Either Int Char
--- @
---
--- would split to this:
---
--- @
--- [Either, Int, Char]
--- @
-unapplyTy :: Type -> (Type, [Type])
-unapplyTy ty = go ty ty []
-  where
-    go :: Type -> Type -> [Type] -> (Type, [Type])
-    go _      (AppT ty1 ty2)     args = go ty1 ty1 (ty2:args)
-    go origTy (SigT ty' _)       args = go origTy ty' args
-#if MIN_VERSION_template_haskell(2,11,0)
-    go origTy (InfixT ty1 n ty2) args = go origTy (ConT n `AppT` ty1 `AppT` ty2) args
-    go origTy (ParensT ty')      args = go origTy ty' args
-#endif
-    go origTy _                  args = (origTy, args)
 
 -- | Split a type signature by the arrows on its spine. For example, this:
 --
@@ -480,10 +466,18 @@ outOfPlaceTyVarError = fail
   . showString " the last argument of a data type"
   $ ""
 
+-- | The data type mentions the last type variable in a type family
+-- application.
+typeFamilyApplicationError :: Q a
+typeFamilyApplicationError = fail
+  . showString "Constructor must not apply its last type variable"
+  . showString " to an unsaturated type family"
+  $ ""
+
 -- | Cannot have a constructor argument of form (forall a1 ... an. <type>)
 -- when deriving Generic(1)
-rankNError :: a
-rankNError = error "Cannot have polymorphic arguments"
+rankNError :: Q a
+rankNError = fail "Cannot have polymorphic arguments"
 
 -- | Boilerplate for top level splices.
 --
