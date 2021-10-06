@@ -119,57 +119,57 @@ import           Language.Haskell.TH
 {- $options
 'Options' gives you a way to further tweak derived 'Generic' and 'Generic1' instances:
 
-* 'RepOptions': By default, all derived 'Rep' and 'Rep1' type instances emit the code
-  directly (the 'InlineRep' option). One can also choose to emit a separate type
-  synonym for the 'Rep' type (this is the functionality of 'deriveRep0' and
-  'deriveRep1') and define a 'Rep' instance in terms of that type synonym (the
-  'TypeSynonymRep' option).
+*   'RepOptions': By default, all derived 'Rep' and 'Rep1' type instances emit the code
+    directly (the 'InlineRep' option). One can also choose to emit a separate type
+    synonym for the 'Rep' type (this is the functionality of 'deriveRep0' and
+    'deriveRep1') and define a 'Rep' instance in terms of that type synonym (the
+    'TypeSynonymRep' option).
 
-* 'KindSigOptions': By default, all derived instances will use explicit kind
-  signatures (when the 'KindSigOptions' is 'True'). You might wish to set the
-  'KindSigOptions' to 'False' if you want a 'Generic'/'Generic1' instance at
-  a particular kind that GHC will infer correctly, but the functions in this
-  module won't guess correctly. For example, the following example will only
-  compile with 'KindSigOptions' set to 'False':
+*   'KindSigOptions': By default, all derived instances will use explicit kind
+    signatures (when the 'KindSigOptions' is 'True'). You might wish to set the
+    'KindSigOptions' to 'False' if you want a 'Generic'/'Generic1' instance at
+    a particular kind that GHC will infer correctly, but the functions in this
+    module won't guess correctly. For example, the following example will only
+    compile with 'KindSigOptions' set to 'False':
 
-  @
-  newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
-  $('deriveAll1Options' False ''Compose)
-  @
+    @
+    newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
+    $('deriveAll1Options' 'defaultOptions'{'kindSigOptions' = False} ''Compose)
+    @
 
-* 'EmptyCaseOptions': By default, all derived instances for empty data types
-  (i.e., data types with no constructors) use 'error' in @from(1)@/@to(1)@.
-  For instance, @data Empty@ would have this derived 'Generic' instance:
+*   'EmptyCaseOptions': By default, all derived instances for empty data types
+    (i.e., data types with no constructors) use 'error' in @from(1)@/@to(1)@.
+    For instance, @data Empty@ would have this derived 'Generic' instance:
 
-  @
-  instance Generic Empty where
-    type Rep Empty = D1 ('MetaData ...) V1
-    from _ = M1 (error "No generic representation for empty datatype Empty")
-    to (M1 _) = error "No generic representation for empty datatype Empty"
-  @
+    @
+    instance Generic Empty where
+      type Rep Empty = D1 ('MetaData ...) V1
+      from _ = M1 (error "No generic representation for empty datatype Empty")
+      to (M1 _) = error "No generic representation for empty datatype Empty"
+    @
 
-  This matches the behavior of GHC up until 8.4, when derived @Generic(1)@
-  instances began to use the @EmptyCase@ extension. In GHC 8.4, the derived
-  'Generic' instance for @Empty@ would instead be:
+    This matches the behavior of GHC up until 8.4, when derived @Generic(1)@
+    instances began to use the @EmptyCase@ extension. In GHC 8.4, the derived
+    'Generic' instance for @Empty@ would instead be:
 
-  @
-  instance Generic Empty where
-    type Rep Empty = D1 ('MetaData ...) V1
-    from x = M1 (case x of {})
-    to (M1 x) = case x of {}
-  @
+    @
+    instance Generic Empty where
+      type Rep Empty = D1 ('MetaData ...) V1
+      from x = M1 (case x of {})
+      to (M1 x) = case x of {}
+    @
 
-  This is a slightly better encoding since, for example, any divergent
-  computations passed to 'from' will actually diverge (as opposed to before,
-  where the result would always be a call to 'error'). On the other hand, using
-  this encoding in @generic-deriving@ has one large drawback: it requires
-  enabling @EmptyCase@, an extension which was only introduced in GHC 7.8
-  (and only received reliable pattern-match coverage checking in 8.2).
+    This is a slightly better encoding since, for example, any divergent
+    computations passed to 'from' will actually diverge (as opposed to before,
+    where the result would always be a call to 'error'). On the other hand, using
+    this encoding in @generic-deriving@ has one large drawback: it requires
+    enabling @EmptyCase@, an extension which was only introduced in GHC 7.8
+    (and only received reliable pattern-match coverage checking in 8.2).
 
-  The 'EmptyCaseOptions' field controls whether code should be emitted that
-  uses @EmptyCase@ (i.e., 'EmptyCaseOptions' set to 'True') or not ('False').
-  The default value is 'False'. Note that even if set to 'True', this option
-  has no effect on GHCs before 7.8, as @EmptyCase@ did not exist then.
+    The 'EmptyCaseOptions' field controls whether code should be emitted that
+    uses @EmptyCase@ (i.e., 'EmptyCaseOptions' set to 'True') or not ('False').
+    The default value is 'False'. Note that even if set to 'True', this option
+    has no effect on GHCs before 7.8, as @EmptyCase@ did not exist then.
 -}
 
 -- | Additional options for configuring derived 'Generic'/'Generic1' instances
