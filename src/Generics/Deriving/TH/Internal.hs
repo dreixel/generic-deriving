@@ -371,22 +371,40 @@ isNewtypeVariant (NewtypeInstance_ {}) = True
 -- | Indicates whether Generic or Generic1 is being derived.
 data GenericClass = Generic | Generic1 deriving Enum
 
--- | Like 'GenericArity', but bundling two things in the 'Gen1' case:
---
--- 1. The 'Name' of the last type parameter.
--- 2. If that last type parameter had kind k (where k is some kind variable),
---    then it has 'Just' the kind variable 'Name'. Otherwise, it has 'Nothing'.
-data GenericKind = Gen0
-                 | Gen1 Name (Maybe Name)
+-- | Records information about the type variables of a data type with a
+-- 'Generic' or 'Generic1' instance.
+data GenericTvbs
+    -- | Information about a data type with a 'Generic' instance.
+  = Gen0
+      { gen0Tvbs :: [TyVarBndrUnit]
+        -- ^ All of the type variable arguments to the data type.
+      }
+    -- | Information about a data type with a 'Generic1' instance.
+  | Gen1
+      { gen1InitTvbs :: [TyVarBndrUnit]
+        -- ^ All of the type variable arguments to the data type except the
+        --   last one. In a @'Generic1' (T a_1 ... a_(n-1))@ instance, the
+        --   'gen1InitTvbs' would be @[a_1, ..., a_(n-1)]@.
+      , gen1LastTvbName :: Name
+        -- ^ The name of the last type variable argument to the data type.
+        --   In a @'Generic1' (T a_1 ... a_(n-1))@ instance, the
+        --   'gen1LastTvbName' name would be @a_n@.
+     , gen1LastTvbKindVar :: Maybe Name
+        -- ^ If the 'gen1LastTvbName' has kind @k@, where @k@ is some kind
+        --   variable, then the 'gen1LastTvbKindVar' is @'Just' k@. Otherwise,
+        --   the 'gen1LastTvbKindVar' is 'Nothing'.
+      }
 
--- Determines the universally quantified type variables (possibly after
--- substituting * in the case of Generic1) and the last type parameter name
--- (if there is one).
-genericKind :: GenericClass -> [Type] -> ([TyVarBndrUnit], GenericKind)
-genericKind gClass tySynVars =
+-- | Compute 'GenericTvbs' from a 'GenericClass' and the type variable
+-- arguments to a data type.
+mkGenericTvbs :: GenericClass -> [Type] -> GenericTvbs
+mkGenericTvbs gClass tySynVars =
   case gClass of
-    Generic  -> (freeVariablesWellScoped tySynVars, Gen0)
-    Generic1 -> (freeVariablesWellScoped initArgs, Gen1 (varTToName lastArg) mbLastArgKindName)
+    Generic  -> Gen0{gen0Tvbs = freeVariablesWellScoped tySynVars}
+    Generic1 -> Gen1{ gen1InitTvbs       = freeVariablesWellScoped initArgs
+                    , gen1LastTvbName    = varTToName lastArg
+                    , gen1LastTvbKindVar = mbLastArgKindName
+                    }
   where
     -- Everything below is only used for Generic1.
     initArgs :: [Type]
@@ -398,6 +416,14 @@ genericKind gClass tySynVars =
     mbLastArgKindName :: Maybe Name
     mbLastArgKindName = starKindStatusToName
                       $ canRealizeKindStar lastArg
+
+-- | Return the type variable arguments to a data type that appear in a
+-- 'Generic' or 'Generic1' instance. For a 'Generic' instance, this consists of
+-- all the type variable arguments. For a 'Generic1' instance, this consists of
+-- all the type variable arguments except for the last one.
+genericInitTvbs :: GenericTvbs -> [TyVarBndrUnit]
+genericInitTvbs (Gen0{gen0Tvbs = tvbs})     = tvbs
+genericInitTvbs (Gen1{gen1InitTvbs = tvbs}) = tvbs
 
 -- | A version of 'DatatypeVariant' in which the data family instance
 -- constructors come equipped with the 'ConstructorInfo' of the first

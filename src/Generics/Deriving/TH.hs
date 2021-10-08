@@ -309,17 +309,18 @@ deriveRepCommon :: GenericClass -> KindSigOptions -> Name -> Q [Dec]
 deriveRepCommon gClass useKindSigs n = do
   i <- reifyDataInfo n
   let (name, instTys, cons, dv) = either error id i
+      gt = mkGenericTvbs gClass instTys
   -- See Note [Forcing buildTypeInstance]
   !_ <- buildTypeInstance gClass useKindSigs name instTys
 
   -- See Note [Kind signatures in derived instances]
-  let (tySynVars, gk) = genericKind gClass instTys
+  let tySynVars  = genericInitTvbs gt
       tySynVars' = if useKindSigs
                       then tySynVars
                       else map unKindedTV tySynVars
   fmap (:[]) $ tySynD (genRepName gClass dv name)
                       tySynVars'
-                      (repType gk dv name Map.empty cons)
+                      (repType gt dv name Map.empty cons)
 
 deriveInst :: GenericClass -> Options -> Name -> Q [Dec]
 deriveInst Generic  = deriveInstCommon genericTypeName  repTypeName  Generic  fromValName  toValName
@@ -336,20 +337,24 @@ deriveInstCommon :: Name
 deriveInstCommon genericName repName gClass fromName toName opts n = do
   i <- reifyDataInfo n
   let (name, instTys, cons, dv) = either error id i
+      gt = mkGenericTvbs gClass instTys
       useKindSigs = kindSigOptions opts
   -- See Note [Forcing buildTypeInstance]
   !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name instTys
   tyInsRHS <- if repOptions opts == InlineRep
-                 then makeRepInline   gClass dv name instTys cons origTy
-                 else makeRepTySynApp gClass dv name              origTy
+                 then makeRepInline gt dv name cons origTy
+                 else makeRepTySynApp gClass dv name origTy
 
   let origSigTy = if useKindSigs
                      then SigT origTy origKind
                      else origTy
   tyIns <- tySynInstDCompat repName Nothing [return origSigTy] (return tyInsRHS)
   let ecOptions = emptyCaseOptions opts
-      mkBody maker = [clause [] (normalB $
-        mkCaseExp gClass ecOptions name instTys cons maker) []]
+      mkBody maker = [clause []
+                             (normalB $
+                              mkCaseExp $
+                              maker gt ecOptions name cons)
+                             []]
       fcs = mkBody mkFrom
       tcs = mkBody mkTo
 
@@ -549,32 +554,32 @@ makeRepCommon :: GenericClass
 makeRepCommon gClass repOpts n mbQTy = do
   i <- reifyDataInfo n
   let (name, instTys, cons, dv) = either error id i
+      gt = mkGenericTvbs gClass instTys
   -- See Note [Forcing buildTypeInstance]
   !_ <- buildTypeInstance gClass False name instTys
 
   case (mbQTy, repOpts) of
        (Just qTy, TypeSynonymRep) -> qTy >>= makeRepTySynApp gClass dv name
-       (Just qTy, InlineRep)      -> qTy >>= makeRepInline   gClass dv name instTys cons
+       (Just qTy, InlineRep)      -> qTy >>= makeRepInline gt dv name cons
        (Nothing,  TypeSynonymRep) -> conT $ genRepName gClass dv name
        (Nothing,  InlineRep)      -> fail "makeRepCommon"
 
-makeRepInline :: GenericClass
+makeRepInline :: GenericTvbs
               -> DatatypeVariant_
               -> Name
-              -> [Type]
               -> [ConstructorInfo]
               -> Type
               -> Q Type
-makeRepInline gClass dv name instTys cons ty = do
+makeRepInline gt dv name cons ty = do
   let instVars = freeVariablesWellScoped [ty]
-      (tySynVars, gk)  = genericKind gClass instTys
+      tySynVars = genericInitTvbs gt
 
       typeSubst :: TypeSubst
       typeSubst = Map.fromList $
         zip (map tvName tySynVars)
             (map (VarT . tvName) instVars)
 
-  repType gk dv name typeSubst cons
+  repType gt dv name typeSubst cons
 
 makeRepTySynApp :: GenericClass -> DatatypeVariant_ -> Name
                 -> Type -> Q Type
@@ -627,15 +632,15 @@ makeTo1Options :: EmptyCaseOptions -> Name -> Q Exp
 makeTo1Options = makeFunCommon mkTo Generic1
 
 makeFunCommon
-  :: (GenericClass -> EmptyCaseOptions ->  Int -> Int -> Name -> [Type]
-                   -> [ConstructorInfo] -> Q Match)
+  :: (GenericTvbs -> EmptyCaseOptions -> Name -> [ConstructorInfo] -> Q Match)
   -> GenericClass -> EmptyCaseOptions -> Name -> Q Exp
 makeFunCommon maker gClass ecOptions n = do
   i <- reifyDataInfo n
   let (name, instTys, cons, _) = either error id i
+      gt = mkGenericTvbs gClass instTys
   -- See Note [Forcing buildTypeInstance]
   buildTypeInstance gClass False name instTys
-    `seq` mkCaseExp gClass ecOptions name instTys cons maker
+    `seq` mkCaseExp (maker gt ecOptions name cons)
 
 genRepName :: GenericClass -> DatatypeVariant_
            -> Name -> Name
@@ -647,26 +652,26 @@ genRepName gClass dv n
   . sanitizeName
   $ nameBase n
 
-repType :: GenericKind
+repType :: GenericTvbs
         -> DatatypeVariant_
         -> Name
         -> TypeSubst
         -> [ConstructorInfo]
         -> Q Type
-repType gk dv dt typeSubst cs =
+repType gt dv dt typeSubst cs =
     conT d1TypeName `appT` mkMetaDataType dv dt `appT`
-      foldBal sum' (conT v1TypeName) (map (repCon gk dv dt typeSubst) cs)
+      foldBal sum' (conT v1TypeName) (map (repCon gt dv dt typeSubst) cs)
   where
     sum' :: Q Type -> Q Type -> Q Type
     sum' a b = conT sumTypeName `appT` a `appT` b
 
-repCon :: GenericKind
+repCon :: GenericTvbs
        -> DatatypeVariant_
        -> Name
        -> TypeSubst
        -> ConstructorInfo
        -> Q Type
-repCon gk dv dt typeSubst
+repCon gt dv dt typeSubst
   (ConstructorInfo { constructorName       = n
                    , constructorVars       = vars
                    , constructorContext    = ctxt
@@ -688,9 +693,9 @@ repCon gk dv dt typeSubst
                      InfixConstructor    -> True
                      RecordConstructor _ -> False
   ssis <- reifySelStrictInfo n bangs
-  repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
+  repConWith gt dv dt n typeSubst mbSelNames ssis ts isRecord isInfix
 
-repConWith :: GenericKind
+repConWith :: GenericTvbs
            -> DatatypeVariant_
            -> Name
            -> Name
@@ -701,15 +706,15 @@ repConWith :: GenericKind
            -> Bool
            -> Bool
            -> Q Type
-repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
+repConWith gt dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
     let structureType :: Q Type
         structureType = foldBal prodT (conT u1TypeName) f
 
         f :: [Q Type]
         f = case mbSelNames of
-                 Just selNames -> zipWith3 (repField gk dv dt n typeSubst . Just)
+                 Just selNames -> zipWith3 (repField gt dv dt n typeSubst . Just)
                                            selNames ssis ts
-                 Nothing       -> zipWith  (repField gk dv dt n typeSubst Nothing)
+                 Nothing       -> zipWith  (repField gt dv dt n typeSubst Nothing)
                                            ssis ts
 
     conT c1TypeName
@@ -719,7 +724,7 @@ repConWith gk dv dt n typeSubst mbSelNames ssis ts isRecord isInfix = do
 prodT :: Q Type -> Q Type -> Q Type
 prodT a b = conT productTypeName `appT` a `appT` b
 
-repField :: GenericKind
+repField :: GenericTvbs
          -> DatatypeVariant_
          -> Name
          -> Name
@@ -728,15 +733,15 @@ repField :: GenericKind
          -> SelStrictInfo
          -> Type
          -> Q Type
-repField gk dv dt ns typeSubst mbF ssi t =
+repField gt dv dt ns typeSubst mbF ssi t =
            conT s1TypeName
     `appT` mkMetaSelType dv dt ns mbF ssi
-    `appT` (repFieldArg gk =<< resolveTypeSynonyms t'')
+    `appT` (repFieldArg gt =<< resolveTypeSynonyms t'')
   where
     -- See Note [Generic1 is polykinded in base-4.10]
     t', t'' :: Type
-    t' = case gk of
-              Gen1 _ (Just _kvName) ->
+    t' = case gt of
+              Gen1{gen1LastTvbKindVar = Just _kvName} ->
 #if MIN_VERSION_base(4,10,0)
                 t
 #else
@@ -745,9 +750,9 @@ repField gk dv dt ns typeSubst mbF ssi t =
               _ -> t
     t'' = applySubstitution typeSubst t'
 
-repFieldArg :: GenericKind -> Type -> Q Type
-repFieldArg Gen0 t = boxT t
-repFieldArg (Gen1 name _) (dustOff -> t0) =
+repFieldArg :: GenericTvbs -> Type -> Q Type
+repFieldArg Gen0{} t = boxT t
+repFieldArg (Gen1{gen1LastTvbName = name}) (dustOff -> t0) =
     go t0 >>= \res -> case res of
       NoPar -> boxT t0
       ArgRes _ r -> return r
@@ -786,18 +791,14 @@ boxT ty = case unboxedRepNames ty of
     Just (boxTyName, _, _) -> conT boxTyName
     Nothing                -> conT rec0TypeName `appT` return ty
 
-mkCaseExp
-  :: GenericClass -> EmptyCaseOptions -> Name -> [Type] -> [ConstructorInfo]
-  -> (GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
-                   -> [ConstructorInfo] -> Q Match)
-  -> Q Exp
-mkCaseExp gClass ecOptions dt instTys cs matchmaker = do
+mkCaseExp :: Q Match -> Q Exp
+mkCaseExp qMatch = do
   val <- newName "val"
-  lam1E (varP val) $ caseE (varE val) [matchmaker gClass ecOptions 1 1 dt instTys cs]
+  lam1E (varP val) $ caseE (varE val) [qMatch]
 
-mkFrom :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+mkFrom :: GenericTvbs -> EmptyCaseOptions -> Name
        -> [ConstructorInfo] -> Q Match
-mkFrom gClass ecOptions m i dt instTys cs = do
+mkFrom gt ecOptions dt cs = do
     y <- newName "y"
     match (varP y)
           (normalB $ conE m1DataName `appE` caseE (varE y) cases)
@@ -805,9 +806,7 @@ mkFrom gClass ecOptions m i dt instTys cs = do
   where
     cases = case cs of
               [] -> errorFrom ecOptions dt
-              _  -> zipWith (fromCon gk wrapE (length cs)) [1..] cs
-    wrapE e = lrE i m e
-    (_, gk) = genericKind gClass instTys
+              _  -> zipWith (fromCon gt id (length cs)) [1..] cs
 
 errorFrom :: EmptyCaseOptions -> Name -> [Q Match]
 errorFrom useEmptyCase dt
@@ -824,9 +823,9 @@ errorFrom useEmptyCase dt
                           ++ nameBase dt))
           []]
 
-mkTo :: GenericClass -> EmptyCaseOptions -> Int -> Int -> Name -> [Type]
+mkTo :: GenericTvbs -> EmptyCaseOptions -> Name
      -> [ConstructorInfo] -> Q Match
-mkTo gClass ecOptions m i dt instTys cs = do
+mkTo gt ecOptions dt cs = do
     y <- newName "y"
     match (conP m1DataName [varP y])
           (normalB $ caseE (varE y) cases)
@@ -834,9 +833,7 @@ mkTo gClass ecOptions m i dt instTys cs = do
   where
     cases = case cs of
               [] -> errorTo ecOptions dt
-              _  -> zipWith (toCon gk wrapP (length cs)) [1..] cs
-    wrapP p = lrP i m p
-    (_, gk) = genericKind gClass instTys
+              _  -> zipWith (toCon gt id (length cs)) [1..] cs
 
 errorTo :: EmptyCaseOptions -> Name -> [Q Match]
 errorTo useEmptyCase dt
@@ -859,9 +856,9 @@ ghc7'8OrLater = True
 ghc7'8OrLater = False
 #endif
 
-fromCon :: GenericKind -> (Q Exp -> Q Exp) -> Int -> Int
+fromCon :: GenericTvbs -> (Q Exp -> Q Exp) -> Int -> Int
         -> ConstructorInfo -> Q Match
-fromCon gk wrap m i
+fromCon gt wrap m i
   (ConstructorInfo { constructorName    = cn
                    , constructorVars    = vars
                    , constructorContext = ctxt
@@ -871,19 +868,19 @@ fromCon gk wrap m i
   fNames <- newNameList "f" $ length ts
   match (conP cn (map varP fNames))
         (normalB $ wrap $ lrE i m $ conE m1DataName `appE`
-          foldBal prodE (conE u1DataName) (zipWith (fromField gk) fNames ts)) []
+          foldBal prodE (conE u1DataName) (zipWith (fromField gt) fNames ts)) []
 
 prodE :: Q Exp -> Q Exp -> Q Exp
 prodE x y = conE productDataName `appE` x `appE` y
 
-fromField :: GenericKind -> Name -> Type -> Q Exp
-fromField gk nr t = conE m1DataName `appE` (fromFieldWrap gk nr =<< resolveTypeSynonyms t)
+fromField :: GenericTvbs -> Name -> Type -> Q Exp
+fromField gt nr t = conE m1DataName `appE` (fromFieldWrap gt nr =<< resolveTypeSynonyms t)
 
-fromFieldWrap :: GenericKind -> Name -> Type -> Q Exp
-fromFieldWrap _             _  ForallT{}  = rankNError
-fromFieldWrap gk            nr (SigT t _) = fromFieldWrap gk nr t
-fromFieldWrap Gen0          nr t          = conE (boxRepName t) `appE` varE nr
-fromFieldWrap (Gen1 name _) nr t          = wC t name           `appE` varE nr
+fromFieldWrap :: GenericTvbs -> Name -> Type -> Q Exp
+fromFieldWrap _                              _  ForallT{}  = rankNError
+fromFieldWrap gt                             nr (SigT t _) = fromFieldWrap gt nr t
+fromFieldWrap Gen0{}                         nr t          = conE (boxRepName t) `appE` varE nr
+fromFieldWrap (Gen1{gen1LastTvbName = name}) nr t          = wC t name           `appE` varE nr
 
 wC :: Type -> Name -> Q Exp
 wC (dustOff -> t0) name =
@@ -918,9 +915,9 @@ wC (dustOff -> t0) name =
 boxRepName :: Type -> Name
 boxRepName = maybe k1DataName snd3 . unboxedRepNames
 
-toCon :: GenericKind -> (Q Pat -> Q Pat) -> Int -> Int
+toCon :: GenericTvbs -> (Q Pat -> Q Pat) -> Int -> Int
       -> ConstructorInfo -> Q Match
-toCon gk wrap m i
+toCon gt wrap m i
   (ConstructorInfo { constructorName    = cn
                    , constructorVars    = vars
                    , constructorContext = ctxt
@@ -929,21 +926,21 @@ toCon gk wrap m i
   checkExistentialContext cn vars ctxt
   fNames <- newNameList "f" $ length ts
   match (wrap $ lrP i m $ conP m1DataName
-          [foldBal prod (conP u1DataName []) (zipWith (toField gk) fNames ts)])
+          [foldBal prod (conP u1DataName []) (zipWith (toField gt) fNames ts)])
         (normalB $ foldl appE (conE cn)
-                         (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gk nr)
+                         (zipWith (\nr -> resolveTypeSynonyms >=> toConUnwC gt nr)
                          fNames ts)) []
   where prod x y = conP productDataName [x,y]
 
-toConUnwC :: GenericKind -> Name -> Type -> Q Exp
-toConUnwC Gen0          nr _ = varE nr
-toConUnwC (Gen1 name _) nr t = unwC t name `appE` varE nr
+toConUnwC :: GenericTvbs -> Name -> Type -> Q Exp
+toConUnwC Gen0{}                         nr _ = varE nr
+toConUnwC (Gen1{gen1LastTvbName = name}) nr t = unwC t name `appE` varE nr
 
-toField :: GenericKind -> Name -> Type -> Q Pat
-toField gk nr t = conP m1DataName [toFieldWrap gk nr t]
+toField :: GenericTvbs -> Name -> Type -> Q Pat
+toField gt nr t = conP m1DataName [toFieldWrap gt nr t]
 
-toFieldWrap :: GenericKind -> Name -> Type -> Q Pat
-toFieldWrap Gen0   nr t = conP (boxRepName t) [varP nr]
+toFieldWrap :: GenericTvbs -> Name -> Type -> Q Pat
+toFieldWrap Gen0{} nr t = conP (boxRepName t) [varP nr]
 toFieldWrap Gen1{} nr _ = varP nr
 
 unwC :: Type -> Name -> Q Exp
