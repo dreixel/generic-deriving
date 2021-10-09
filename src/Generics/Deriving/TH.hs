@@ -337,7 +337,7 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
   -- See Note [Forcing buildTypeInstance]
   !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name instTys
   tyInsRHS <- if repOptions opts == InlineRep
-                 then repType gt dv name mempty cons
+                 then repType gt dv name Map.empty cons
                  else makeRepTySynApp gClass dv name origTy
 
   let origSigTy = if useKindSigs
