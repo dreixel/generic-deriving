@@ -1,3 +1,7 @@
+# next [????.??.??]
+* Fix a bug in which `deriveAll1` could generate ill kinded code when using
+  `kindSigOptions=False`, or when using GHC 8.0 or earlier.
+
 # 1.14.1 [2021.08.30]
 * Backport the `Generic(1)` instances introduced for tuples (8 through 15) in
   `base-4.16`.

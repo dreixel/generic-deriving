@@ -142,6 +142,7 @@ test-suite spec
                         EmptyCaseSpec
                         ExampleSpec
                         T68Spec
+                        T80Spec
                         TypeInTypeSpec
   build-depends:        base             >= 4.3  && < 5
                       , generic-deriving
