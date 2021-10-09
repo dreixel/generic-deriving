@@ -125,18 +125,6 @@ import           Language.Haskell.TH
     'deriveRep1') and define a 'Rep' instance in terms of that type synonym (the
     'TypeSynonymRep' option).
 
-*   'KindSigOptions': By default, all derived instances will use explicit kind
-    signatures (when the 'KindSigOptions' is 'True'). You might wish to set the
-    'KindSigOptions' to 'False' if you want a 'Generic'/'Generic1' instance at
-    a particular kind that GHC will infer correctly, but the functions in this
-    module won't guess correctly. For example, the following example will only
-    compile with 'KindSigOptions' set to 'False':
-
-    @
-    newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
-    $('deriveAll1Options' 'defaultOptions'{'kindSigOptions' = False} ''Compose)
-    @
-
 *   'EmptyCaseOptions': By default, all derived instances for empty data types
     (i.e., data types with no constructors) use 'error' in @from(1)@/@to(1)@.
     For instance, @data Empty@ would have this derived 'Generic' instance:
@@ -170,6 +158,13 @@ import           Language.Haskell.TH
     uses @EmptyCase@ (i.e., 'EmptyCaseOptions' set to 'True') or not ('False').
     The default value is 'False'. Note that even if set to 'True', this option
     has no effect on GHCs before 7.8, as @EmptyCase@ did not exist then.
+
+*   'KindSigOptions': By default, all derived instances will use explicit kind
+    signatures (when the 'KindSigOptions' is 'True'). You might wish to set the
+    'KindSigOptions' to 'False' if you want a 'Generic'/'Generic1' instance at
+    a particular kind that GHC will infer correctly, but the functions in this
+    module won't guess correctly. You probably won't ever need this option
+    unless you are a power user.
 -}
 
 -- | Additional options for configuring derived 'Generic'/'Generic1' instances
@@ -1164,26 +1159,11 @@ Why do we do this? Imagine what the instance would be without the explicit retur
 
 This is an error, since the variable k is now out-of-scope!
 
-Although explicit kind signatures are the right thing to do in most cases, there
-are sadly some degenerate cases where this isn't true. Consider this example:
-
-  newtype Compose (f :: k2 -> *) (g :: k1 -> k2) (a :: k1) = Compose (f (g a))
-
-The Rep1 type instance in a Generic1 instance for Compose would involve the type
-(f :.: Rec1 g), which forces (f :: * -> *). But this library doesn't have very
-sophisticated kind inference machinery (other than what is mentioned in
-Note [Generic1 is polykinded in base-4.10]), so at the moment we
-have no way of actually unifying k1 with *. So the naïve generated Generic1
-instance would be:
-
-  instance Generic1 (Compose (f :: k2 -> *) (g :: k1 -> k2)) where
-    type Rep1 (Compose f g) = ... (f :.: Rec1 g)
-
-This is wrong, since f's kind is overly generalized. To get around this issue,
-there are variants of the TH functions that allow you to configure the KindSigOptions.
-If KindSigOptions is set to False, then generated instances will not include
-explicit kind signatures, leaving it up to GHC's kind inference machinery to
-figure out the correct kinds.
+In the rare event that attaching explicit kind annotations does the wrong
+thing, there are variants of the TH functions that allow configuring the
+KindSigOptions. If KindSigOptions is set to False, then generated instances
+will not include explicit kind signatures, leaving it up to GHC's kind
+inference machinery to figure out the correct kinds.
 
 Note [Generic1 is polykinded in base-4.10]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
