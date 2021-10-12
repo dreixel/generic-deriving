@@ -1148,23 +1148,18 @@ family instances that are distinguished by their kinds:
 If we dropped the kind signature for a in a derived instance for Fam a, then GHC
 would have no way of knowing which instance we are talking about.
 
-Another motivation for explicit kind signatures is the -XTypeInType extension.
-With -XTypeInType, dropping kind signatures can completely change the meaning
-of some data types. For example, there is a substantial difference between these
-two data types:
-
-  data T k (a :: k) = T k
-  data T k a        = T k
-
-In addition to using explicit kind signatures on type variables, we also put
-explicit return kinds in the instance head, so generated instances will look
-something like this:
+In addition to using explicit kind signatures in the instance head, we also put
+explicit kinds in the associated Rep(1) instance. For example, this data type:
 
   data S (a :: k) = S k
+
+Will have the following Generic1 instance generated for it:
+
   instance Generic1 (S :: k -> *) where
     type Rep1 (S :: k -> *) = ... (Rec0 k)
 
-Why do we do this? Imagine what the instance would be without the explicit return kind:
+Why do we do this? Imagine what the instance would be without the explicit kind
+annotation in the Rep1 instance:
 
   instance Generic1 S where
     type Rep1 S = ... (Rec0 k)
