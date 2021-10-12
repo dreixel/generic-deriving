@@ -302,8 +302,9 @@ deriveRep1Options = deriveRepCommon Generic1
 
 deriveRepCommon :: GenericClass -> KindSigOptions -> Name -> Q [Dec]
 deriveRepCommon gClass useKindSigs n = do
-  (name, instTys, cons, dv) <- reifyDataInfo n
-  let gt = mkGenericTvbs gClass instTys
+  i <- reifyDataInfo n
+  let (name, instTys, cons, dv) = either error id i
+      gt = mkGenericTvbs gClass instTys
   -- See Note [Forcing buildTypeInstance]
   !_ <- buildTypeInstance gClass useKindSigs name instTys
 
@@ -329,8 +330,9 @@ deriveInstCommon :: Name
                  -> Name
                  -> Q [Dec]
 deriveInstCommon genericName repName gClass fromName toName opts n = do
-  (name, instTys, cons, dv) <- reifyDataInfo n
-  let gt = mkGenericTvbs gClass instTys
+  i <- reifyDataInfo n
+  let (name, instTys, cons, dv) = either error id i
+      gt = mkGenericTvbs gClass instTys
       useKindSigs = kindSigOptions opts
   -- See Note [Forcing buildTypeInstance]
   !(origTy, origKind) <- buildTypeInstance gClass useKindSigs name instTys
@@ -545,8 +547,9 @@ makeRepCommon :: GenericClass
               -> Maybe (Q Type)
               -> Q Type
 makeRepCommon gClass repOpts n mbQTy = do
-  (name, instTys, cons, dv) <- reifyDataInfo n
-  let gt = mkGenericTvbs gClass instTys
+  i <- reifyDataInfo n
+  let (name, instTys, cons, dv) = either error id i
+      gt = mkGenericTvbs gClass instTys
   -- See Note [Forcing buildTypeInstance]
   !_ <- buildTypeInstance gClass False name instTys
 
@@ -627,8 +630,9 @@ makeFunCommon
   :: (GenericTvbs -> EmptyCaseOptions -> Name -> [ConstructorInfo] -> Q Match)
   -> GenericClass -> EmptyCaseOptions -> Name -> Q Exp
 makeFunCommon maker gClass ecOptions n = do
-  (name, instTys, cons, _) <- reifyDataInfo n
-  let gt = mkGenericTvbs gClass instTys
+  i <- reifyDataInfo n
+  let (name, instTys, cons, _) = either error id i
+      gt = mkGenericTvbs gClass instTys
   -- See Note [Forcing buildTypeInstance]
   buildTypeInstance gClass False name instTys
     `seq` mkCaseExp (maker gt ecOptions name cons)
