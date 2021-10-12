@@ -488,9 +488,9 @@ derivingKindError tyConName = fail
     )
   . showString "‘\n\tClass Generic1 expects an argument of kind "
 #if MIN_VERSION_base(4,10,0)
-  . showString "k -> *"
+  . showString "k -> Type"
 #else
-  . showString "* -> *"
+  . showString "Type -> Type"
 #endif
   $ ""
 
@@ -524,16 +524,15 @@ rankNError = fail "Cannot have polymorphic arguments"
 --
 -- Any other value will result in an exception.
 reifyDataInfo :: Name
-              -> Q (Either String (Name, [Type], [ConstructorInfo], DatatypeVariant_))
-reifyDataInfo name = do
-  return $ Left $ ns ++ " Could not reify " ++ nameBase name
- `recover`
+              -> Q (Name, [Type], [ConstructorInfo], DatatypeVariant_)
+reifyDataInfo name =
   do DatatypeInfo { datatypeContext   = ctxt
                   , datatypeName      = parentName
                   , datatypeInstTypes = tys
                   , datatypeVariant   = variant
                   , datatypeCons      = cons
-                  } <- reifyDatatype name
+                  } <- fail (ns ++ "Could not reify " ++ nameBase name)
+                         `recover` reifyDatatype name
      let variant_ = case variant of
                       Datatype        -> Datatype_
                       Newtype         -> Newtype_
@@ -542,16 +541,17 @@ reifyDataInfo name = do
                       -- so this will always succeed.
                       DataInstance    -> DataInstance_    $ head cons
                       NewtypeInstance -> NewtypeInstance_ $ head cons
-     checkDataContext parentName ctxt $ Right (parentName, tys, cons, variant_)
+     checkDataContext parentName ctxt
+     return (parentName, tys, cons, variant_)
   where
     ns :: String
     ns = "Generics.Deriving.TH.reifyDataInfo: "
 
 -- | One cannot derive Generic(1) instance for anything that uses DatatypeContexts,
 -- so check to make sure the Cxt field of a datatype is null.
-checkDataContext :: Name -> Cxt -> a -> Q a
-checkDataContext _        [] x = return x
-checkDataContext dataName _  _ = fail $
+checkDataContext :: Name -> Cxt -> Q ()
+checkDataContext _        [] = return ()
+checkDataContext dataName _  = fail $
   nameBase dataName ++ " must not have a datatype context"
 
 -- | Deriving Generic(1) doesn't work with ExistentialQuantification or GADTs.
