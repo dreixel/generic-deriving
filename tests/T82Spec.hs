@@ -2,9 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-#if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE PolyKinds #-}
+#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE TypeInType #-}
 #endif
 
 module T82Spec (main, spec) where
