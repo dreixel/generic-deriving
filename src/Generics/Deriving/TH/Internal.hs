@@ -60,10 +60,15 @@ substNamesWithKindStar ns t = foldr' (flip substNameWithKind starK) t ns
 -- StarKindStatus
 -------------------------------------------------------------------------------
 
--- | Whether a type is not of kind *, is of kind *, or is a kind variable.
-data StarKindStatus = NotKindStar
-                    | KindStar
+-- | Whether a type is of kind @*@, a kind variable, or some other kind. The
+-- kind variable case is given special treatment solely to support GHC 8.0 and
+-- earlier, in which Generic1 was not poly-kinded. In order to support deriving
+-- Generic1 instances on these versions of GHC, we must substitute such kinds
+-- with @*@ to ensure that the resulting instance is well kinded.
+-- See @Note [Generic1 is polykinded in base-4.10]@ in "Generics.Deriving.TH".
+data StarKindStatus = KindStar
                     | IsKindVar Name
+                    | OtherKind
   deriving Eq
 
 -- | Does a Type have kind * or k (for some kind variable k)?
@@ -74,7 +79,7 @@ canRealizeKindStar t
 #if MIN_VERSION_template_haskell(2,8,0)
                      SigT _ (VarT k) -> IsKindVar k
 #endif
-                     _               -> NotKindStar
+                     _               -> OtherKind
 
 -- | Returns 'Just' the kind variable 'Name' of a 'StarKindStatus' if it exists.
 -- Otherwise, returns 'Nothing'.
@@ -481,7 +486,12 @@ derivingKindError tyConName = fail
     ( showString (nameBase tyConName)
     . showString " ..."
     )
-  . showString "‘\n\tClass Generic1 expects an argument of kind * -> *"
+  . showString "‘\n\tClass Generic1 expects an argument of kind "
+#if MIN_VERSION_base(4,10,0)
+  . showString "k -> *"
+#else
+  . showString "* -> *"
+#endif
   $ ""
 
 -- | The data type mentions the last type variable in a place other

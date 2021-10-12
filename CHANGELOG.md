@@ -1,6 +1,8 @@
 # next [????.??.??]
 * Fix a bug in which `deriveAll1` could generate ill kinded code when using
   `kindSigOptions=False`, or when using GHC 8.0 or earlier.
+* Fix a bug in which `deriveAll1` would reject data types whose last type
+  variable has a kind besides `Type` or `k` on GHC 8.2 or later.
 
 # 1.14.1 [2021.08.30]
 * Backport the `Generic(1)` instances introduced for tuples (8 through 15) in

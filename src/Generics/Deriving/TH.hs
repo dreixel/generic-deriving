@@ -1023,15 +1023,27 @@ buildTypeInstance gClass useKindSigs tyConName varTysOrig = do
     let remainingLength :: Int
         remainingLength = length varTysOrig - fromEnum gClass
 
+#if !(MIN_VERSION_base(4,10,0))
         droppedTysExp :: [Type]
         droppedTysExp = drop remainingLength varTysExp
 
         droppedStarKindStati :: [StarKindStatus]
         droppedStarKindStati = map canRealizeKindStar droppedTysExp
+#endif
 
-    -- Check there are enough types to drop and that all of them are either of
-    -- kind * or kind k (for some kind variable k). If not, throw an error.
-    when (remainingLength < 0 || any (== NotKindStar) droppedStarKindStati) $
+    -- Check that:
+    --
+    -- 1. There are enough types to drop
+    --
+    -- 2. If using GHC 8.0 or earlier, all types are either of kind * or kind k
+    --    (for some kind variable k). See Note [Generic1 is polykinded in base-4.10].
+    --
+    -- If either of these checks fail, throw an error.
+    when (remainingLength < 0
+#if !(MIN_VERSION_base(4,10,0))
+           || any (== OtherKind) droppedStarKindStati
+#endif
+         ) $
       derivingKindError tyConName
 
         -- Substitute kind * for any dropped kind variables
@@ -1166,7 +1178,7 @@ will not include explicit kind signatures, leaving it up to GHC's kind
 inference machinery to figure out the correct kinds.
 
 Note [Generic1 is polykinded in base-4.10]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Prior to base-4.10, Generic1 :: (* -> *) -> Constraint. This means that if a Generic1
 instance is defined for a polykinded data type like so:
