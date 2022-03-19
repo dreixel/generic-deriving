@@ -2,4 +2,3 @@ distribution:           bionic
 no-tests-no-benchmarks: False
 unconstrained:          False
 local-ghc-options:      -Werror
-ghcup-jobs:             >=8.10
