@@ -995,7 +995,7 @@ prec :: Fixity -> Int
 prec Prefix      = 10
 prec (Infix _ n) = n
 
--- | Datatype to represent the associativy of a constructor
+-- | Datatype to represent the associativity of a constructor
 data Associativity =  LeftAssociative
                    |  RightAssociative
                    |  NotAssociative
