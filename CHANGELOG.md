@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.14.2 [2022.07.23]
 * Fix a bug in which `deriveAll1` could generate ill kinded code when using
   `kindSigOptions=False`, or when using GHC 8.0 or earlier.
 * Fix a bug in which `deriveAll1` would reject data types whose last type
