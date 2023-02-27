@@ -26,7 +26,7 @@ import           Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
-import           Language.Haskell.TH.Datatype
+import           Language.Haskell.TH.Datatype as Datatype
 import           Language.Haskell.TH.Datatype.TyVarBndr
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH.Ppr (pprint)
@@ -510,6 +510,15 @@ typeFamilyApplicationError = fail
   . showString " to an unsaturated type family"
   $ ""
 
+-- | We cannot define implementations for @from(1)@ or @to(1)@ at the term level
+-- for @type data@ declarations, which only exist at the type level.
+typeDataError :: Name -> Q a
+typeDataError dataName = fail
+  . showString "Cannot derive instance for ‘"
+  . showString (nameBase dataName)
+  . showString "‘, which is a ‘type data‘ declaration"
+  $ ""
+
 -- | Cannot have a constructor argument of form (forall a1 ... an. <type>)
 -- when deriving Generic(1)
 rankNError :: Q a
@@ -534,14 +543,17 @@ reifyDataInfo name = do
                   , datatypeVariant   = variant
                   , datatypeCons      = cons
                   } <- reifyDatatype name
-     let variant_ = case variant of
-                      Datatype        -> Datatype_
-                      Newtype         -> Newtype_
-                      -- This isn't total, but the API requires that the data
-                      -- family instance have at least one constructor anyways,
-                      -- so this will always succeed.
-                      DataInstance    -> DataInstance_    $ head cons
-                      NewtypeInstance -> NewtypeInstance_ $ head cons
+     variant_ <- case variant of
+                   Datatype        -> return Datatype_
+                   Newtype         -> return Newtype_
+                   -- This isn't total, but the API requires that the data
+                   -- family instance have at least one constructor anyways,
+                   -- so this will always succeed.
+                   DataInstance    -> return $ DataInstance_    $ head cons
+                   NewtypeInstance -> return $ NewtypeInstance_ $ head cons
+#if MIN_VERSION_th_abstraction(0,5,0)
+                   Datatype.TypeData -> typeDataError parentName
+#endif
      checkDataContext parentName ctxt $ Right (parentName, tys, cons, variant_)
   where
     ns :: String

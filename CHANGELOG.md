@@ -1,3 +1,6 @@
+# next [????.??.??]
+* Support `th-abstraction-0.5.*`.
+
 # 1.14.2 [2022.07.23]
 * Fix a bug in which `deriveAll1` could generate ill kinded code when using
   `kindSigOptions=False`, or when using GHC 8.0 or earlier.
