@@ -1,3 +1,8 @@
+# next [????.??.??]
+* Place `INLINE [1]` pragmas on `from` and `to` implementations when types
+  don't have too many constructors or fields, following the heuristics that GHC
+  9.2+ uses for `Generic` deriving.
+
 # 1.14.3 [2023.02.27]
 * Support `th-abstraction-0.5.*`.
 
