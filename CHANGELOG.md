@@ -1,4 +1,6 @@
 # next [????.??.??]
+* Allow building with GHC backends where `HTYPE_SIG_ATOMIC_T` is not defined,
+  such as the WASM backend.
 * Place `INLINE [1]` pragmas on `from` and `to` implementations when types
   don't have too many constructors or fields, following the heuristics that GHC
   9.2+ uses for `Generic` deriving.
