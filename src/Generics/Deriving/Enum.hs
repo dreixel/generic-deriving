@@ -335,7 +335,11 @@ instance GEnum CShort where
   genum = coerce (genum :: [HTYPE_SHORT])
 
 instance GEnum CSigAtomic where
+#if defined(HTYPE_SIG_ATOMIC_T)
   genum = coerce (genum :: [HTYPE_SIG_ATOMIC_T])
+#else
+  genum = coerce (genum :: [Int32])
+#endif
 
 instance GEnum CSize where
   genum = coerce (genum :: [HTYPE_SIZE_T])
