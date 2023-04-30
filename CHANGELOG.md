@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.14.4 [2023.04.30]
 * Allow building with GHC backends where `HTYPE_SIG_ATOMIC_T` is not defined,
   such as the WASM backend.
 * Place `INLINE [1]` pragmas on `from` and `to` implementations when types
