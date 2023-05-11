@@ -1,3 +1,10 @@
+# next [????.??.??]
+* The Template Haskell machinery now uses `TemplateHaskellQuotes` when
+  building with GHC 8.0+ instead of manually constructing each Template Haskell
+  `Name`. A consequence of this is that `generic-deriving` will now build with
+  GHC 9.8, as `TemplateHaskellQuotes` abstracts over some internal Template
+  Haskell changes introduced in 9.8.
+
 # 1.14.4 [2023.04.30]
 * Allow building with GHC backends where `HTYPE_SIG_ATOMIC_T` is not defined,
   such as the WASM backend.
