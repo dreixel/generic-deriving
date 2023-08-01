@@ -38,6 +38,7 @@ module Generics.Deriving.Enum (
 import           Control.Applicative (Const, ZipList)
 
 import           Data.Int
+import           Data.Maybe (listToMaybe)
 import           Data.Monoid (All, Any, Dual, Product, Sum)
 import qualified Data.Monoid as Monoid (First, Last)
 import Data.Word
@@ -106,9 +107,7 @@ combine f (x:xs) (y:ys) = f x y : combine f xs ys
 
 findIndex :: (a -> Bool) -> [a] -> Maybe Int
 findIndex p xs = let l = [ i | (y,i) <- zip xs [(0::Int)..], p y]
-                 in if (null l)
-                    then Nothing
-                    else Just (head l)
+                 in listToMaybe l
 
 --------------------------------------------------------------------------------
 -- Generic enum
