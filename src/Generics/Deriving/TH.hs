@@ -113,6 +113,7 @@ import           Generics.Deriving.TH.Pre4_9
 #endif
 
 import           Language.Haskell.TH.Datatype
+import           Language.Haskell.TH.Datatype.TyVarBndr
 import           Language.Haskell.TH.Lib
 import           Language.Haskell.TH
 
@@ -314,7 +315,7 @@ deriveRepCommon gClass useKindSigs n = do
                       then tySynVars
                       else map unKindedTV tySynVars
   fmap (:[]) $ tySynD (genRepName gClass dv name)
-                      tySynVars'
+                      (changeTVFlags bndrReq tySynVars')
                       (repType gt dv name Map.empty cons)
 
 deriveInst :: GenericClass -> Options -> Name -> Q [Dec]

@@ -196,7 +196,7 @@ isUnsaturatedType = go 0 . dustOff
 
 -- | Given a name, check if that name is a type family. If
 -- so, return a list of its binders.
-getTypeFamilyBinders :: Name -> Q (Maybe [TyVarBndr_ ()])
+getTypeFamilyBinders :: Name -> Q (Maybe [TyVarBndrVis])
 getTypeFamilyBinders tcName = do
       info <- reify tcName
       return $ case info of
@@ -586,6 +586,13 @@ checkExistentialContext :: Name -> [TyVarBndrUnit] -> Cxt -> Q ()
 checkExistentialContext constrName vars ctxt =
   unless (null vars && null ctxt) $ fail $
     nameBase constrName ++ " must be a vanilla data constructor"
+
+#if !(MIN_VERSION_template_haskell(2,21,0)) && !(MIN_VERSION_th_abstraction(0,6,0))
+type TyVarBndrVis = TyVarBndrUnit
+
+bndrReq :: ()
+bndrReq = ()
+#endif
 
 -------------------------------------------------------------------------------
 -- Quoted names
