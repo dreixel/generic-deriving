@@ -1,4 +1,5 @@
 # next [????.??.??]
+* Support building with `template-haskell-2.21.*` (GHC 9.8).
 * The Template Haskell machinery now uses `TemplateHaskellQuotes` when
   building with GHC 8.0+ instead of manually constructing each Template Haskell
   `Name`. A consequence of this is that `generic-deriving` will now build with
