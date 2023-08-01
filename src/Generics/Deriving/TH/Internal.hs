@@ -558,21 +558,28 @@ reifyDataInfo name = do
                   , datatypeVariant   = variant
                   , datatypeCons      = cons
                   } <- reifyDatatype name
-     variant_ <- case variant of
-                   Datatype        -> return Datatype_
-                   Newtype         -> return Newtype_
-                   -- This isn't total, but the API requires that the data
-                   -- family instance have at least one constructor anyways,
-                   -- so this will always succeed.
-                   DataInstance    -> return $ DataInstance_    $ head cons
-                   NewtypeInstance -> return $ NewtypeInstance_ $ head cons
+     variant_ <-
+       case variant of
+         Datatype          -> return Datatype_
+         Newtype           -> return Newtype_
+         DataInstance      -> return $ DataInstance_    $ headDataFamInstCon parentName cons
+         NewtypeInstance   -> return $ NewtypeInstance_ $ headDataFamInstCon parentName cons
 #if MIN_VERSION_th_abstraction(0,5,0)
-                   Datatype.TypeData -> typeDataError parentName
+         Datatype.TypeData -> typeDataError parentName
 #endif
      checkDataContext parentName ctxt $ Right (parentName, tys, cons, variant_)
   where
     ns :: String
     ns = "Generics.Deriving.TH.reifyDataInfo: "
+
+    -- This isn't total, but the API requires that the data family instance have
+    -- at least one constructor anyways, so this will always succeed.
+    headDataFamInstCon :: Name -> [ConstructorInfo] -> ConstructorInfo
+    headDataFamInstCon dataFamName cons =
+      case cons of
+        con:_ -> con
+        [] -> error $ "reified data family instance without a data constructor: "
+                   ++ nameBase dataFamName
 
 -- | One cannot derive Generic(1) instance for anything that uses DatatypeContexts,
 -- so check to make sure the Cxt field of a datatype is null.
