@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -11,10 +10,6 @@
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 708
-{-# LANGUAGE EmptyCase #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -46,6 +41,7 @@ import           Data.Monoid (Dual)
 import           Generics.Deriving.Base
 import           Generics.Deriving.Foldable
 import           Generics.Deriving.Functor
+import           Generics.Deriving.Absurd
 
 #if MIN_VERSION_base(4,4,0)
 import           Data.Complex (Complex)
@@ -81,12 +77,7 @@ class GTraversable' t where
   gtraverse' :: Applicative f => (a -> f b) -> t a -> f (t b)
 
 instance GTraversable' V1 where
-  gtraverse' _ x = pure $ case x of
-#if __GLASGOW_HASKELL__ >= 708
-                            {}
-#else
-                            !_ -> error "Void gtraverse"
-#endif
+  gtraverse' _ x = absurd1 x
 
 instance GTraversable' U1 where
   gtraverse' _ U1 = pure U1
