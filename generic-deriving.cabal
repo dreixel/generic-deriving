@@ -129,7 +129,7 @@ library
     build-depends:      base >= 4.3 && < 4.9
     other-modules:      Generics.Deriving.TH.Pre4_9
 
-  build-depends:        containers       >= 0.1   && < 0.7
+  build-depends:        containers       >= 0.1   && < 0.8
                       , ghc-prim                     < 1
                       , template-haskell >= 2.4   && < 2.22
                         -- TODO: Eventually, we should bump the lower version
