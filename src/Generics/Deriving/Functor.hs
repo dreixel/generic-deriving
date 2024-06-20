@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -11,10 +10,6 @@
 
 #if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 708
-{-# LANGUAGE EmptyCase #-}
 #endif
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -69,6 +64,8 @@ import qualified Data.Semigroup as Semigroup (First, Last)
 import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
 #endif
 
+import           Generics.Deriving.Absurd (absurd1)
+
 --------------------------------------------------------------------------------
 -- Generic fmap
 --------------------------------------------------------------------------------
@@ -77,12 +74,7 @@ class GFunctor' f where
   gmap' :: (a -> b) -> f a -> f b
 
 instance GFunctor' V1 where
-  gmap' _ x = case x of
-#if __GLASGOW_HASKELL__ >= 708
-                {}
-#else
-                !_ -> error "Void gmap"
-#endif
+  gmap' _ x = absurd1 x
 
 instance GFunctor' U1 where
   gmap' _ U1 = U1

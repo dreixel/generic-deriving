@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -10,10 +9,6 @@
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE Trustworthy #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 708
-{-# LANGUAGE EmptyCase #-}
 #endif
 
 module Generics.Deriving.Show (
@@ -42,6 +37,7 @@ import           Foreign.ForeignPtr (ForeignPtr)
 import           Foreign.Ptr
 
 import           Generics.Deriving.Base
+import           Generics.Deriving.Absurd (absurd1)
 
 import           GHC.Exts hiding (Any)
 
@@ -91,12 +87,7 @@ class GShow' f where
   isNullary = error "generic show (isNullary): unnecessary case"
 
 instance GShow' V1 where
-  gshowsPrec' _ _ x = case x of
-#if __GLASGOW_HASKELL__ >= 708
-                        {}
-#else
-                        !_ -> error "Void gshowsPrec"
-#endif
+  gshowsPrec' _ _ x = absurd1 x
 
 instance GShow' U1 where
   gshowsPrec' _ _ U1 = id

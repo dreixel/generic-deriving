@@ -123,6 +123,7 @@ library
                         Generics.Deriving.Monoid.Internal
                         Generics.Deriving.Semigroup.Internal
                         Generics.Deriving.TH.Internal
+                        Generics.Deriving.Absurd
                         Paths_generic_deriving
   if flag(base-4-9)
     build-depends:      base >= 4.9 && < 5
