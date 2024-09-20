@@ -53,7 +53,7 @@ import Control.Arrow (Kleisli(..))
 #endif
 
 #if !(MIN_VERSION_base(4,16,0))
-import Generics.Deriving.Base.Internal
+import GHC.Generics
 #endif
 
 #if !(MIN_VERSION_base(4,16,0))
