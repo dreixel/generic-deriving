@@ -1,22 +1,11 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Trustworthy #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
-{-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ < 709
-{-# LANGUAGE OverlappingInstances #-}
-#endif
 
 {- |
 Module      :  Generics.Deriving.Uniplate
@@ -83,22 +72,14 @@ instance Uniplate' U1 a where
   transform' _ U1 = U1
   transformM' _ U1 = return U1
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPING #-}
-#endif
-    (Uniplate a) => Uniplate' (K1 i a) a where
+instance {-# OVERLAPPING #-} (Uniplate a) => Uniplate' (K1 i a) a where
   children' (K1 a) = [a]
   descend' f (K1 a) = K1 (f a)
   descendM' f (K1 a) = liftM K1 (f a)
   transform' f (K1 a) = K1 (transform f a)
   transformM' f (K1 a) = liftM K1 (transformM f a)
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPABLE #-}
-#endif
-    Uniplate' (K1 i a) b where
+instance {-# OVERLAPPABLE #-} Uniplate' (K1 i a) b where
   children' (K1 _) = []
   descend' _ (K1 a) = K1 a
   descendM' _ (K1 a) = return (K1 a)
@@ -140,19 +121,11 @@ class Context' f b where
 instance Context' U1 b where
   context' U1 _ = U1
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPING #-}
-#endif
-    Context' (K1 i a) a where
+instance {-# OVERLAPPING #-} Context' (K1 i a) a where
   context' _      []    = error "Generics.Deriving.Uniplate.context: empty list"
   context' (K1 _) (c:_) = K1 c
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPABLE #-}
-#endif
-    Context' (K1 i a) b where
+instance {-# OVERLAPPABLE #-} Context' (K1 i a) b where
   context' (K1 a) _ = K1 a
 
 instance (Context' f b) => Context' (M1 i c f) b where
@@ -162,58 +135,38 @@ instance (Context' f b, Context' g b) => Context' (f :+: g) b where
   context' (L1 a) cs = L1 (context' a cs)
   context' (R1 a) cs = R1 (context' a cs)
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPING #-}
-#endif
-    (Context' g a) => Context' (M1 i c (K1 j a) :*: g) a where
+instance {-# OVERLAPPING #-} (Context' g a) => Context' (M1 i c (K1 j a) :*: g) a where
   context' _                 []     = error "Generics.Deriving.Uniplate.context: empty list"
   context' (M1 (K1 _) :*: b) (c:cs) = M1 (K1 c) :*: context' b cs
 
-instance
-#if __GLASGOW_HASKELL__ >= 709
-    {-# OVERLAPPABLE #-}
-#endif
-    (Context' g b) => Context' (f :*: g) b where
+instance {-# OVERLAPPABLE #-} (Context' g b) => Context' (f :*: g) b where
   context' (a :*: b) cs = a :*: context' b cs
 
 
 class Uniplate a where
   children :: a -> [a]
-#if __GLASGOW_HASKELL__ >= 701
   default children :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
   children = childrendefault
-#endif
 
   context :: a -> [a] -> a
-#if __GLASGOW_HASKELL__ >= 701
   default context :: (Generic a, Context' (Rep a) a) => a -> [a] -> a
   context = contextdefault
-#endif
 
   descend :: (a -> a) -> a -> a
-#if __GLASGOW_HASKELL__ >= 701
   default descend :: (Generic a, Uniplate' (Rep a) a) => (a -> a) -> a -> a
   descend = descenddefault
-#endif
 
   descendM :: Monad m => (a -> m a) -> a -> m a
-#if __GLASGOW_HASKELL__ >= 701
   default descendM :: (Generic a, Uniplate' (Rep a) a, Monad m) => (a -> m a) -> a -> m a
   descendM = descendMdefault
-#endif
 
   transform :: (a -> a) -> a -> a
-#if __GLASGOW_HASKELL__ >= 701
   default transform :: (Generic a, Uniplate' (Rep a) a) => (a -> a) -> a -> a
   transform = transformdefault
-#endif
 
   transformM :: Monad m => (a -> m a) -> a -> m a
-#if __GLASGOW_HASKELL__ >= 701
   default transformM :: (Generic a, Uniplate' (Rep a) a, Monad m) => (a -> m a) -> a -> m a
   transformM = transformMdefault
-#endif
 
 childrendefault :: (Generic a, Uniplate' (Rep a) a) => a -> [a]
 childrendefault = children' . from

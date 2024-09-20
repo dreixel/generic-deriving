@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -6,18 +6,14 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-#if __GLASGOW_HASKELL__ >= 705
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE PolyKinds #-}
-#endif
-
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module ExampleSpec (main, spec) where
 
@@ -234,17 +230,10 @@ data PlainHash a = Hash a Addr# Char# Double# Float# Int# Word#
 -- Test to see if generated names are unique
 data Lexeme = Lexeme
 
-#if MIN_VERSION_template_haskell(2,7,0)
-data family MyType3
-# if __GLASGOW_HASKELL__ >= 705
-  (a :: v) (b :: w) (c :: x)      (d :: y) (e :: z)
-# else
-  (a :: *) (b :: *) (c :: * -> *) (d :: *) (e :: *)
-# endif
+data family MyType3 (a :: v) (b :: w) (c :: x) (d :: y) (e :: z)
 newtype instance MyType3 (f p) (f p) f p (q :: *) = MyType3Newtype q
 data    instance MyType3 Bool  ()    f p q        = MyType3True | MyType3False
 data    instance MyType3 Int   ()    f p (q :: *) = MyType3Hash q Addr# Char# Double# Float# Int# Word#
-#endif
 
 $(deriveAll0And1 ''Empty)
 $(deriveAll0And1 ''(:/:))
@@ -254,26 +243,9 @@ $(deriveAll0And1 ''PlainHash)
 $(deriveAll0     ''ExampleSpec.Lexeme)
 $(deriveAll0     ''Text.Read.Lex.Lexeme)
 
-#if MIN_VERSION_template_haskell(2,7,0)
-# if __GLASGOW_HASKELL__ < 705
--- We can't use deriveAll0And1 on GHC 7.4 due to an old bug :(
-$(deriveMeta 'MyType3Newtype)
-$(deriveRep0 'MyType3Newtype)
-$(deriveRep1 'MyType3Newtype)
-instance Generic (MyType3 (f p) (f p) f p q) where
-    type Rep (MyType3 (f p) (f p) f p q) = $(makeRep0 'MyType3Newtype) f p q
-    from = $(makeFrom0 'MyType3Newtype)
-    to   = $(makeTo0 'MyType3Newtype)
-instance Generic1 (MyType3 (f p) (f p) f p) where
-    type Rep1 (MyType3 (f p) (f p) f p) = $(makeRep1 'MyType3Newtype) f p
-    from1 = $(makeFrom1 'MyType3Newtype)
-    to1   = $(makeTo1 'MyType3Newtype)
-# else
 $(deriveAll0And1 'MyType3Newtype)
-# endif
 $(deriveAll0And1 'MyType3False)
 $(deriveAll0And1 'MyType3Hash)
-#endif
 
 -------------------------------------------------------------------------------
 -- Unit tests

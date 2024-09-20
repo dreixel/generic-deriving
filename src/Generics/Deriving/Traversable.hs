@@ -1,27 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE Safe #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
-{-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 708
-{-# LANGUAGE EmptyCase #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 710
-{-# LANGUAGE Safe #-}
-#elif __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE Trustworthy #-}
-#endif
 
 module Generics.Deriving.Traversable (
   -- * Generic Traversable class
@@ -36,42 +21,22 @@ module Generics.Deriving.Traversable (
   ) where
 
 import           Control.Applicative (Const, WrappedMonad(..), ZipList)
-#if !(MIN_VERSION_base(4,8,0))
-import           Control.Applicative (Applicative(..), (<$>))
-#endif
 
+import           Data.Complex (Complex)
+import           Data.Functor.Identity (Identity)
+import qualified Data.Functor.Product as Functor (Product)
+import qualified Data.Functor.Sum as Functor (Sum)
+import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Monoid as Monoid (First, Last, Product, Sum)
 import           Data.Monoid (Dual)
+import           Data.Ord (Down)
+import           Data.Proxy (Proxy)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
 
 import           Generics.Deriving.Base
 import           Generics.Deriving.Foldable
 import           Generics.Deriving.Functor
-
-#if MIN_VERSION_base(4,4,0)
-import           Data.Complex (Complex)
-#endif
-
-#if MIN_VERSION_base(4,6,0)
-import           Data.Ord (Down)
-#else
-import           GHC.Exts (Down)
-#endif
-
-#if MIN_VERSION_base(4,7,0)
-import           Data.Proxy (Proxy)
-#endif
-
-#if MIN_VERSION_base(4,8,0)
-import           Data.Functor.Identity (Identity)
-#endif
-
-#if MIN_VERSION_base(4,9,0)
-import qualified Data.Functor.Product as Functor (Product)
-import qualified Data.Functor.Sum as Functor (Sum)
-import           Data.List.NonEmpty (NonEmpty)
-import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
-#endif
 
 --------------------------------------------------------------------------------
 -- Generic traverse
@@ -81,12 +46,7 @@ class GTraversable' t where
   gtraverse' :: Applicative f => (a -> f b) -> t a -> f (t b)
 
 instance GTraversable' V1 where
-  gtraverse' _ x = pure $ case x of
-#if __GLASGOW_HASKELL__ >= 708
-                            {}
-#else
-                            !_ -> error "Void gtraverse"
-#endif
+  gtraverse' _ x = pure $ case x of {}
 
 instance GTraversable' U1 where
   gtraverse' _ U1 = pure U1
@@ -133,11 +93,9 @@ instance GTraversable' UWord where
 
 class (GFunctor t, GFoldable t) => GTraversable t where
   gtraverse :: Applicative f => (a -> f b) -> t a -> f (t b)
-#if __GLASGOW_HASKELL__ >= 701
   default gtraverse :: (Generic1 t, GTraversable' (Rep1 t), Applicative f)
                     => (a -> f b) -> t a -> f (t b)
   gtraverse = gtraversedefault
-#endif
 
   gsequenceA :: Applicative f => t (f a) -> f (t a)
   gsequenceA = gtraverse id
@@ -159,15 +117,11 @@ instance GTraversable ((,) a) where
 instance GTraversable [] where
   gtraverse = gtraversedefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GTraversable (Arg a) where
   gtraverse = gtraversedefault
-#endif
 
-#if MIN_VERSION_base(4,4,0)
 instance GTraversable Complex where
   gtraverse = gtraversedefault
-#endif
 
 instance GTraversable (Const m) where
   gtraverse = gtraversedefault
@@ -184,61 +138,47 @@ instance GTraversable (Either a) where
 instance GTraversable Monoid.First where
   gtraverse = gtraversedefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GTraversable (Semigroup.First) where
   gtraverse = gtraversedefault
-#endif
 
-#if MIN_VERSION_base(4,8,0)
 instance GTraversable Identity where
   gtraverse = gtraversedefault
-#endif
 
 instance GTraversable Monoid.Last where
   gtraverse = gtraversedefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GTraversable Semigroup.Last where
   gtraverse = gtraversedefault
 
 instance GTraversable Max where
   gtraverse = gtraversedefault
-#endif
 
 instance GTraversable Maybe where
   gtraverse = gtraversedefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GTraversable Min where
   gtraverse = gtraversedefault
 
 instance GTraversable NonEmpty where
   gtraverse = gtraversedefault
-#endif
 
 instance GTraversable Monoid.Product where
   gtraverse = gtraversedefault
 
-#if MIN_VERSION_base(4,9,0)
 instance (GTraversable f, GTraversable g) => GTraversable (Functor.Product f g) where
   gtraverse = gtraversedefault
-#endif
 
-#if MIN_VERSION_base(4,7,0)
 instance GTraversable Proxy where
   gtraverse = gtraversedefault
-#endif
 
 instance GTraversable Monoid.Sum where
   gtraverse = gtraversedefault
 
-#if MIN_VERSION_base(4,9,0)
 instance (GTraversable f, GTraversable g) => GTraversable (Functor.Sum f g) where
   gtraverse = gtraversedefault
 
 instance GTraversable WrappedMonoid where
   gtraverse = gtraversedefault
-#endif
 
 instance GTraversable ZipList where
   gtraverse = gtraversedefault

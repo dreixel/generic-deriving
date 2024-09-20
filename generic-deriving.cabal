@@ -90,11 +90,6 @@ source-repository head
   type: git
   location: https://github.com/dreixel/generic-deriving
 
-flag base-4-9
-  description:          Use base-4.9 or later. This version of base uses a
-                        DataKinds-based encoding of GHC generics metadata.
-  default:              True
-
 library
   hs-source-dirs:       src
   exposed-modules:      Generics.Deriving
@@ -115,21 +110,16 @@ library
 
                         Generics.Deriving.TH
 
-  other-modules:        Generics.Deriving.Base.Internal
-                        Generics.Deriving.Monoid.Internal
+  other-modules:        Generics.Deriving.Monoid.Internal
                         Generics.Deriving.Semigroup.Internal
                         Generics.Deriving.TH.Internal
+                        Generics.Deriving.TH.Post4_9
                         Paths_generic_deriving
-  if flag(base-4-9)
-    build-depends:      base >= 4.9 && < 5
-    other-modules:      Generics.Deriving.TH.Post4_9
-  else
-    build-depends:      base >= 4.3 && < 4.9
-    other-modules:      Generics.Deriving.TH.Pre4_9
 
-  build-depends:        containers       >= 0.1   && < 0.8
+  build-depends:        base             >= 4.9   && < 5
+                      , containers       >= 0.1   && < 0.8
                       , ghc-prim                     < 1
-                      , template-haskell >= 2.4   && < 2.23
+                      , template-haskell >= 2.11  && < 2.23
                         -- TODO: Eventually, we should bump the lower version
                         -- bounds to >=0.6 so that we can remove some CPP in
                         -- Generics.Deriving.TH.Internal.

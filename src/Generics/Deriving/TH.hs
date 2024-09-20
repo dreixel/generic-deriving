@@ -106,11 +106,7 @@ import           Control.Monad ((>=>), unless, when)
 import qualified Data.Map as Map (empty, fromList)
 
 import           Generics.Deriving.TH.Internal
-#if MIN_VERSION_base(4,9,0)
 import           Generics.Deriving.TH.Post4_9
-#else
-import           Generics.Deriving.TH.Pre4_9
-#endif
 
 import           Language.Haskell.TH.Datatype
 import           Language.Haskell.TH.Datatype.TyVarBndr
@@ -356,21 +352,10 @@ deriveInstCommon genericName repName gClass fromName toName opts n = do
 
       inline_pragmas
         | inlining_useful cons
-#if MIN_VERSION_template_haskell(2,7,0)
         = map (\fun_name ->
                 pragInlD fun_name
-# if MIN_VERSION_template_haskell(2,8,0)
                          Inline FunLike (FromPhase 1)
-# else
-                         (inlineSpecPhase True False True 1)
-# endif
               ) [fromName, toName]
-#else
-        = [] -- Sadly, GHC 7.0 and 7.2 appear to suffer from a bug that
-             -- prevents them from attaching INLINE pragmas to class methods
-             -- via Template Haskell, so don't bother generating any pragmas at
-             -- all for these GHC versions.
-#endif
         | otherwise
         = []
 
@@ -841,7 +826,7 @@ mkFrom gt ecOptions dt cs = do
 
 errorFrom :: EmptyCaseOptions -> Name -> [Q Match]
 errorFrom useEmptyCase dt
-  | useEmptyCase && ghc7'8OrLater
+  | useEmptyCase
   = []
   | otherwise
   = [do z <- newName "z"
@@ -868,7 +853,7 @@ mkTo gt ecOptions dt cs = do
 
 errorTo :: EmptyCaseOptions -> Name -> [Q Match]
 errorTo useEmptyCase dt
-  | useEmptyCase && ghc7'8OrLater
+  | useEmptyCase
   = []
   | otherwise
   = [do z <- newName "z"
@@ -879,13 +864,6 @@ errorTo useEmptyCase dt
             appE (varE errorValName)
                  (stringE $ "No values for empty datatype " ++ nameBase dt))
           []]
-
-ghc7'8OrLater :: Bool
-#if __GLASGOW_HASKELL__ >= 708
-ghc7'8OrLater = True
-#else
-ghc7'8OrLater = False
-#endif
 
 fromCon :: GenericTvbs -> (Q Exp -> Q Exp) -> Int -> Int
         -> ConstructorInfo -> Q Match

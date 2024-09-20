@@ -1,27 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE Safe #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
-{-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 708
-{-# LANGUAGE EmptyCase #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 710
-{-# LANGUAGE Safe #-}
-#elif __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE Trustworthy #-}
-#endif
 
 module Generics.Deriving.Functor (
   -- * Generic Functor class
@@ -37,37 +22,19 @@ module Generics.Deriving.Functor (
 
 import           Control.Applicative (Const, ZipList)
 
-import qualified Data.Monoid as Monoid (First, Last, Product, Sum)
-import           Data.Monoid (Dual)
-
-import           Generics.Deriving.Base
-
-#if MIN_VERSION_base(4,4,0)
 import           Data.Complex (Complex)
-#endif
-
-#if MIN_VERSION_base(4,6,0)
-import           Data.Ord (Down)
-#else
-import           GHC.Exts (Down)
-#endif
-
-#if MIN_VERSION_base(4,7,0)
-import           Data.Proxy (Proxy)
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 import           Data.Functor.Identity (Identity)
-import           Data.Monoid (Alt)
-#endif
-
-#if MIN_VERSION_base(4,9,0)
 import qualified Data.Functor.Product as Functor (Product)
 import qualified Data.Functor.Sum as Functor (Sum)
 import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.Monoid as Monoid (First, Last, Product, Sum)
+import           Data.Monoid (Alt, Dual)
+import           Data.Ord (Down)
+import           Data.Proxy (Proxy)
 import qualified Data.Semigroup as Semigroup (First, Last)
 import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
-#endif
+
+import           Generics.Deriving.Base
 
 --------------------------------------------------------------------------------
 -- Generic fmap
@@ -77,12 +44,7 @@ class GFunctor' f where
   gmap' :: (a -> b) -> f a -> f b
 
 instance GFunctor' V1 where
-  gmap' _ x = case x of
-#if __GLASGOW_HASKELL__ >= 708
-                {}
-#else
-                !_ -> error "Void gmap"
-#endif
+  gmap' _ x = case x of {}
 
 instance GFunctor' U1 where
   gmap' _ U1 = U1
@@ -129,11 +91,9 @@ instance GFunctor' UWord where
 
 class GFunctor f where
   gmap :: (a -> b) -> f a -> f b
-#if __GLASGOW_HASKELL__ >= 701
   default gmap :: (Generic1 f, GFunctor' (Rep1 f))
                => (a -> b) -> f a -> f b
   gmap = gmapdefault
-#endif
 
 gmapdefault :: (Generic1 f, GFunctor' (Rep1 f))
             => (a -> b) -> f a -> f b
@@ -149,20 +109,14 @@ instance GFunctor ((,) a) where
 instance GFunctor [] where
   gmap = gmapdefault
 
-#if MIN_VERSION_base(4,8,0)
 instance GFunctor f => GFunctor (Alt f) where
   gmap = gmapdefault
-#endif
 
-#if MIN_VERSION_base(4,9,0)
 instance GFunctor (Arg a) where
   gmap = gmapdefault
-#endif
 
-#if MIN_VERSION_base(4,4,0)
 instance GFunctor Complex where
   gmap = gmapdefault
-#endif
 
 instance GFunctor (Const m) where
   gmap = gmapdefault
@@ -179,15 +133,11 @@ instance GFunctor (Either a) where
 instance GFunctor Monoid.First where
   gmap = gmapdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GFunctor (Semigroup.First) where
   gmap = gmapdefault
-#endif
 
-#if MIN_VERSION_base(4,8,0)
 instance GFunctor Identity where
   gmap = gmapdefault
-#endif
 
 instance GFunctor IO where
   gmap = fmap
@@ -195,48 +145,38 @@ instance GFunctor IO where
 instance GFunctor Monoid.Last where
   gmap = gmapdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GFunctor Semigroup.Last where
   gmap = gmapdefault
 
 instance GFunctor Max where
   gmap = gmapdefault
-#endif
 
 instance GFunctor Maybe where
   gmap = gmapdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GFunctor Min where
   gmap = gmapdefault
 
 instance GFunctor NonEmpty where
   gmap = gmapdefault
-#endif
 
 instance GFunctor Monoid.Product where
   gmap = gmapdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance (GFunctor f, GFunctor g) => GFunctor (Functor.Product f g) where
   gmap = gmapdefault
-#endif
 
-#if MIN_VERSION_base(4,7,0)
 instance GFunctor Proxy where
   gmap = gmapdefault
-#endif
 
 instance GFunctor Monoid.Sum where
   gmap = gmapdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance (GFunctor f, GFunctor g) => GFunctor (Functor.Sum f g) where
   gmap = gmapdefault
 
 instance GFunctor WrappedMonoid where
   gmap = gmapdefault
-#endif
 
 instance GFunctor ZipList where
   gmap = gmapdefault
