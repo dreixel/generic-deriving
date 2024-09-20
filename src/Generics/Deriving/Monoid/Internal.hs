@@ -1,21 +1,9 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE Safe #-}
-#elif __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE Trustworthy #-}
-#endif
+{-# LANGUAGE TypeOperators #-}
 
 module Generics.Deriving.Monoid.Internal (
 
@@ -74,23 +62,12 @@ module Generics.Deriving.Monoid.Internal (
 --------------------------------------------------------------------------------
 
 import Control.Applicative
+import Data.Functor.Identity (Identity)
 import Data.Monoid
+import Data.Ord (Down)
+import Data.Proxy (Proxy)
 import Generics.Deriving.Base
 import Generics.Deriving.Semigroup.Internal
-
-#if MIN_VERSION_base(4,6,0)
-import Data.Ord (Down)
-#else
-import GHC.Exts (Down)
-#endif
-
-#if MIN_VERSION_base(4,7,0)
-import Data.Proxy (Proxy)
-#endif
-
-#if MIN_VERSION_base(4,8,0)
-import Data.Functor.Identity (Identity)
-#endif
 
 --------------------------------------------------------------------------------
 
@@ -166,13 +143,11 @@ class GSemigroup a => GMonoid a where
   gmconcat :: [a] -> a
   gmconcat = foldr gmappend gmempty
 
-#if __GLASGOW_HASKELL__ >= 701
   default gmempty :: (Generic a, GMonoid' (Rep a)) => a
   gmempty = to gmempty'
 
   default gmappend :: (Generic a, GMonoid' (Rep a)) => a -> a -> a
   gmappend x y = to (gmappend' (from x) (from y))
-#endif
 
 --------------------------------------------------------------------------------
 
@@ -207,11 +182,9 @@ instance GMonoid [a] where
 instance GMonoid (Endo a) where
   gmempty = mempty
   gmappend = mappend
-#if MIN_VERSION_base(4,8,0)
 instance Alternative f => GMonoid (Alt f a) where
   gmempty = mempty
   gmappend = mappend
-#endif
 
 -- Handwritten instances
 instance GMonoid a => GMonoid (Dual a) where
@@ -227,23 +200,13 @@ instance GMonoid a => GMonoid (Down a) where
   gmempty  = gmemptydefault
   gmappend = gmappenddefault
 
-#if MIN_VERSION_base(4,7,0)
-instance GMonoid
-# if MIN_VERSION_base(4,9,0)
-                 (Proxy s)
-# else
-                 (Proxy (s :: *))
-# endif
-                 where
+instance GMonoid (Proxy s) where
   gmempty  = memptydefault
   gmappend = mappenddefault
-#endif
 
-#if MIN_VERSION_base(4,8,0)
 instance GMonoid a => GMonoid (Identity a) where
   gmempty  = gmemptydefault
   gmappend = gmappenddefault
-#endif
 
 -- Tuple instances
 instance (GMonoid a,GMonoid b) => GMonoid (a,b) where

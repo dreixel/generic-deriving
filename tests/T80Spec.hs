@@ -1,11 +1,7 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
-
-#if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
-#endif
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module T80Spec (main, spec) where
 

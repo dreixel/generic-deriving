@@ -36,16 +36,9 @@
 -- the 'Default' family of newtypes and the source of the test suite for
 -- some types which derive instances via these wrappers.
 
-{-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE DefaultSignatures #-}
-# if __GLASGOW_HASKELL__ >= 704
-{-# LANGUAGE Safe #-}
-# else
-{-# LANGUAGE Trustworthy #-}
-# endif
-#endif
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Safe #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Generics.Deriving.Default
@@ -66,9 +59,6 @@ module Generics.Deriving.Default
     -- $other-kinds
   ) where
 
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative ((<$>))
-#endif
 import Control.Monad (liftM)
 
 import Generics.Deriving.Base

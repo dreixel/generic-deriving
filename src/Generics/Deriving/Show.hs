@@ -1,20 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Trustworthy #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 708
-{-# LANGUAGE EmptyCase #-}
-#endif
 
 module Generics.Deriving.Show (
   -- * Generic show class
@@ -31,10 +25,17 @@ module Generics.Deriving.Show (
 import           Control.Applicative (Const, ZipList)
 
 import           Data.Char (GeneralCategory)
+import           Data.Complex (Complex)
+import           Data.Functor.Identity (Identity)
 import           Data.Int
-import           Data.Monoid (All, Any, Dual, Product, Sum)
+import           Data.List.NonEmpty (NonEmpty)
+import           Data.Monoid (All, Alt, Any, Dual, Product, Sum)
 import qualified Data.Monoid as Monoid (First, Last)
+import           Data.Proxy (Proxy)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
 import           Data.Version (Version)
+import           Data.Void (Void)
 import           Data.Word
 
 import           Foreign.C.Types
@@ -45,31 +46,12 @@ import           Generics.Deriving.Base
 
 import           GHC.Exts hiding (Any)
 
+import           Numeric.Natural (Natural)
+
 import           System.Exit (ExitCode)
 import           System.IO (BufferMode, Handle, HandlePosn, IOMode, SeekMode)
 import           System.IO.Error (IOErrorType)
 import           System.Posix.Types
-
-#if MIN_VERSION_base(4,4,0)
-import           Data.Complex (Complex)
-#endif
-
-#if MIN_VERSION_base(4,7,0)
-import           Data.Proxy (Proxy)
-#endif
-
-#if MIN_VERSION_base(4,8,0)
-import           Data.Functor.Identity (Identity)
-import           Data.Monoid (Alt)
-import           Data.Void (Void)
-import           Numeric.Natural (Natural)
-#endif
-
-#if MIN_VERSION_base(4,9,0)
-import           Data.List.NonEmpty (NonEmpty)
-import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg, Max, Min, WrappedMonoid)
-#endif
 
 --------------------------------------------------------------------------------
 -- Generic show
@@ -91,12 +73,7 @@ class GShow' f where
   isNullary = error "generic show (isNullary): unnecessary case"
 
 instance GShow' V1 where
-  gshowsPrec' _ _ x = case x of
-#if __GLASGOW_HASKELL__ >= 708
-                        {}
-#else
-                        !_ -> error "Void gshowsPrec"
-#endif
+  gshowsPrec' _ _ x = case x of {}
 
 instance GShow' U1 where
   gshowsPrec' _ _ U1 = id
@@ -177,11 +154,9 @@ instance GShow' UWord where
 
 class GShow a where
   gshowsPrec :: Int -> a -> ShowS
-#if __GLASGOW_HASKELL__ >= 701
   default gshowsPrec :: (Generic a, GShow' (Rep a))
                      => Int -> a -> ShowS
   gshowsPrec = gshowsPrecdefault
-#endif
 
   gshows :: a -> ShowS
   gshows = gshowsPrec 0
@@ -240,23 +215,14 @@ instance GShow (f (g p)) => GShow ((f :.: g) p) where
 instance GShow All where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,8,0)
 instance GShow (f a) => GShow (Alt f a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow Any where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance (GShow a, GShow b) => GShow (Arg a b) where
   gshowsPrec = gshowsPrecdefault
-#endif
-
-#if !(MIN_VERSION_base(4,9,0))
-instance GShow Arity where
-  gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow Associativity where
   gshowsPrec = gshowsPrecdefault
@@ -333,10 +299,8 @@ instance GShow COff where
   gshowsPrec = showsPrec
 #endif
 
-#if MIN_VERSION_base(4,4,0)
 instance GShow a => GShow (Complex a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow a => GShow (Const a b) where
   gshowsPrec = gshowsPrecdefault
@@ -362,10 +326,8 @@ instance GShow CSpeed where
   gshowsPrec = showsPrec
 #endif
 
-#if MIN_VERSION_base(4,4,0)
 instance GShow CSUSeconds where
   gshowsPrec = showsPrec
-#endif
 
 instance GShow CShort where
   gshowsPrec = showsPrec
@@ -412,10 +374,8 @@ instance GShow CULLong where
 instance GShow CULong where
   gshowsPrec = showsPrec
 
-#if MIN_VERSION_base(4,4,0)
 instance GShow CUSeconds where
   gshowsPrec = showsPrec
-#endif
 
 instance GShow CUShort where
   gshowsPrec = showsPrec
@@ -444,10 +404,8 @@ instance GShow Fd where
 instance GShow a => GShow (Monoid.First a) where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GShow a => GShow (Semigroup.First a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow Fixity where
   gshowsPrec = gshowsPrecdefault
@@ -470,10 +428,8 @@ instance GShow Handle where
 instance GShow HandlePosn where
   gshowsPrec = showsPrec
 
-#if MIN_VERSION_base(4,8,0)
 instance GShow a => GShow (Identity a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow Int where
   gshowsPrec = showsPrec
@@ -511,36 +467,26 @@ instance GShow c => GShow (K1 i c p) where
 instance GShow a => GShow (Monoid.Last a) where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GShow a => GShow (Semigroup.Last a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow (f p) => GShow (M1 i c f p) where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GShow a => GShow (Max a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow a => GShow (Maybe a) where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GShow a => GShow (Min a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
-#if MIN_VERSION_base(4,8,0)
 instance GShow Natural where
   gshowsPrec = showsPrec
-#endif
 
-#if MIN_VERSION_base(4,9,0)
 instance GShow a => GShow (NonEmpty a) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow Ordering where
   gshowsPrec = gshowsPrecdefault
@@ -551,10 +497,8 @@ instance GShow p => GShow (Par1 p) where
 instance GShow a => GShow (Product a) where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,7,0)
 instance GShow (Proxy s) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow (Ptr a) where
   gshowsPrec = showsPrec
@@ -589,10 +533,8 @@ instance GShow (UWord p) where
 instance GShow Version where
   gshowsPrec = gshowsPrecdefault
 
-#if MIN_VERSION_base(4,8,0)
 instance GShow Void where
   gshowsPrec = showsPrec
-#endif
 
 instance GShow Word where
   gshowsPrec = showsPrec
@@ -612,10 +554,8 @@ instance GShow Word64 where
 instance GShow WordPtr where
   gshowsPrec = showsPrec
 
-#if MIN_VERSION_base(4,9,0)
 instance GShow m => GShow (WrappedMonoid m) where
   gshowsPrec = gshowsPrecdefault
-#endif
 
 instance GShow a => GShow (ZipList a) where
   gshowsPrec = gshowsPrecdefault

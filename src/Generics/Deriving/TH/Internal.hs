@@ -1,10 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
-
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TemplateHaskellQuotes #-}
-#endif
 
 {- |
 Module      :  Generics.Deriving.TH.Internal
@@ -31,26 +28,20 @@ import           Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
-import           Language.Haskell.TH.Datatype as Datatype
-import           Language.Haskell.TH.Datatype.TyVarBndr
-import           Language.Haskell.TH.Lib
-import           Language.Haskell.TH.Ppr (pprint)
-import           Language.Haskell.TH.Syntax
-
-#if __GLASGOW_HASKELL__ >= 800
 import qualified Generics.Deriving as GD
 import           Generics.Deriving hiding
                    ( DecidedStrictness(..), Fixity(Infix)
                    , SourceStrictness(..), SourceUnpackedness(..)
                    , datatypeName
                    )
+
 import           GHC.Exts (Addr#, Char#, Double#, Float#, Int#, Word#)
-#else
-# ifndef CURRENT_PACKAGE_KEY
-import           Data.Version (showVersion)
-import           Paths_generic_deriving (version)
-# endif
-#endif
+
+import           Language.Haskell.TH.Datatype as Datatype
+import           Language.Haskell.TH.Datatype.TyVarBndr
+import           Language.Haskell.TH.Lib
+import           Language.Haskell.TH.Ppr (pprint)
+import           Language.Haskell.TH.Syntax
 
 -------------------------------------------------------------------------------
 -- Expanding type synonyms
@@ -59,11 +50,7 @@ import           Paths_generic_deriving (version)
 type TypeSubst = Map Name Type
 
 applySubstitutionKind :: Map Name Kind -> Type -> Type
-#if MIN_VERSION_template_haskell(2,8,0)
 applySubstitutionKind = applySubstitution
-#else
-applySubstitutionKind _ t = t
-#endif
 
 substNameWithKind :: Name -> Kind -> Type -> Type
 substNameWithKind n k = applySubstitutionKind (Map.singleton n k)
@@ -91,9 +78,7 @@ canRealizeKindStar :: Type -> StarKindStatus
 canRealizeKindStar t
   | hasKindStar t = KindStar
   | otherwise = case t of
-#if MIN_VERSION_template_haskell(2,8,0)
                      SigT _ (VarT k) -> IsKindVar k
-#endif
                      _               -> OtherKind
 
 -- | Returns 'Just' the kind variable 'Name' of a 'StarKindStatus' if it exists.
@@ -114,11 +99,7 @@ catKindVarNames = mapMaybe starKindStatusToName
 -- | Returns True if a Type has kind *.
 hasKindStar :: Type -> Bool
 hasKindStar VarT{}         = True
-#if MIN_VERSION_template_haskell(2,8,0)
 hasKindStar (SigT _ StarT) = True
-#else
-hasKindStar (SigT _ StarK) = True
-#endif
 hasKindStar _              = False
 
 -- | Converts a VarT or a SigT into Just the corresponding TyVarBndr.
@@ -159,20 +140,14 @@ makeFunType argTys resTy = foldr' (AppT . AppT ArrowT) resTy argTys
 -- k1 -> k2 -> k3
 -- @
 makeFunKind :: [Kind] -> Kind -> Kind
-#if MIN_VERSION_template_haskell(2,8,0)
 makeFunKind = makeFunType
-#else
-makeFunKind argKinds resKind = foldr' ArrowK resKind argKinds
-#endif
 
 -- | Remove any outer `SigT` and `ParensT` constructors, and turn
 -- an outermost `InfixT` constructor into plain applications.
 dustOff :: Type -> Type
 dustOff (SigT ty _) = dustOff ty
-#if MIN_VERSION_template_haskell(2,11,0)
 dustOff (ParensT ty) = dustOff ty
 dustOff (InfixT ty1 n ty2) = ConT n `AppT` ty1 `AppT` ty2
-#endif
 dustOff ty = ty
 
 -- | Checks whether a type is an unsaturated type family
@@ -200,25 +175,10 @@ getTypeFamilyBinders :: Name -> Q (Maybe [TyVarBndrVis])
 getTypeFamilyBinders tcName = do
       info <- reify tcName
       return $ case info of
-#if MIN_VERSION_template_haskell(2,11,0)
         FamilyI (OpenTypeFamilyD (TypeFamilyHead _ bndrs _ _)) _
           -> Just bndrs
-#elif MIN_VERSION_template_haskell(2,7,0)
-        FamilyI (FamilyD TypeFam _ bndrs _) _
-          -> Just bndrs
-#else
-        TyConI (FamilyD TypeFam _ bndrs _)
-          -> Just bndrs
-#endif
-
-#if MIN_VERSION_template_haskell(2,11,0)
         FamilyI (ClosedTypeFamilyD (TypeFamilyHead _ bndrs _ _) _) _
           -> Just bndrs
-#elif MIN_VERSION_template_haskell(2,9,0)
-        FamilyI (ClosedTypeFamilyD _ bndrs _ _) _
-          -> Just bndrs
-#endif
-
         _ -> Nothing
 
 -- | True if the type does not mention the Name
@@ -256,14 +216,7 @@ uncurryTy t = ([], [t])
 
 -- | Like uncurryType, except on a kind level.
 uncurryKind :: Kind -> ([TyVarBndrSpec], [Kind])
-#if MIN_VERSION_template_haskell(2,8,0)
 uncurryKind = uncurryTy
-#else
-uncurryKind (ArrowK k1 k2) =
-  let (kvbs, ks) = uncurryKind k2
-  in (kvbs, k1:ks)
-uncurryKind k = ([], [k])
-#endif
 
 tyVarBndrToType :: TyVarBndr_ flag -> Type
 tyVarBndrToType = elimTV VarT (\n k -> SigT (VarT n) k)
@@ -304,11 +257,7 @@ isTyVar _          = False
 
 -- | Is the given kind a variable?
 isKindVar :: Kind -> Bool
-#if MIN_VERSION_template_haskell(2,8,0)
 isKindVar = isTyVar
-#else
-isKindVar _ = False -- There are no kind variables
-#endif
 
 -- | Returns 'True' is a 'Type' contains no type variables.
 isTypeMonomorphic :: Type -> Bool
@@ -316,10 +265,7 @@ isTypeMonomorphic = go
   where
     go :: Type -> Bool
     go (AppT t1 t2) = go t1 && go t2
-    go (SigT t _k)  = go t
-#if MIN_VERSION_template_haskell(2,8,0)
-                           && go _k
-#endif
+    go (SigT t k)   = go t && go k
     go VarT{}       = False
     go _            = True
 
@@ -338,10 +284,7 @@ mentionsName = go
   where
     go :: Type -> [Name] -> Bool
     go (AppT t1 t2) names = go t1 names || go t2 names
-    go (SigT t _k)  names = go t names
-#if MIN_VERSION_template_haskell(2,8,0)
-                              || go _k names
-#endif
+    go (SigT t k)   names = go t names || go k names
     go (VarT n)     names = n `elem` names
     go _            _     = False
 
@@ -604,10 +547,6 @@ bndrReq = ()
 -------------------------------------------------------------------------------
 -- Quoted names
 -------------------------------------------------------------------------------
-
-#if __GLASGOW_HASKELL__ >= 800
--- With GHC 8.0 or later, we can simply use TemplateHaskellQuotes to quote each
--- name. Life is good.
 
 comp1DataName :: Name
 comp1DataName = 'Comp1
@@ -889,363 +828,3 @@ sourceUnpackDataName = 'GD.SourceUnpack
 
 packageNameValName :: Name
 packageNameValName = 'packageName
-#else
--- On pre-8.0 GHCs, we do not have access to the TemplateHaskellQuotes
--- extension, so we construct the Template Haskell names by hand.
--- By manually generating these names we avoid needing to use the
--- TemplateHaskell language extension when compiling the generic-deriving library.
--- This allows the library to be used in stage1 cross-compilers.
-
-gdPackageKey :: String
-# ifdef CURRENT_PACKAGE_KEY
-gdPackageKey = CURRENT_PACKAGE_KEY
-# else
-gdPackageKey = "generic-deriving-" ++ showVersion version
-# endif
-
-mkGD4'4_d :: String -> Name
-# if MIN_VERSION_base(4,6,0)
-mkGD4'4_d = mkNameG_d "base" "GHC.Generics"
-# elif MIN_VERSION_base(4,4,0)
-mkGD4'4_d = mkNameG_d "ghc-prim" "GHC.Generics"
-# else
-mkGD4'4_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
-# endif
-
-mkGD4'9_d :: String -> Name
-mkGD4'9_d = mkNameG_d gdPackageKey "Generics.Deriving.Base.Internal"
-
-mkGD4'4_tc :: String -> Name
-# if MIN_VERSION_base(4,6,0)
-mkGD4'4_tc = mkNameG_tc "base" "GHC.Generics"
-# elif MIN_VERSION_base(4,4,0)
-mkGD4'4_tc = mkNameG_tc "ghc-prim" "GHC.Generics"
-# else
-mkGD4'4_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
-# endif
-
-mkGD4'9_tc :: String -> Name
-mkGD4'9_tc = mkNameG_tc gdPackageKey "Generics.Deriving.Base.Internal"
-
-mkGD4'4_v :: String -> Name
-# if MIN_VERSION_base(4,6,0)
-mkGD4'4_v = mkNameG_v "base" "GHC.Generics"
-# elif MIN_VERSION_base(4,4,0)
-mkGD4'4_v = mkNameG_v "ghc-prim" "GHC.Generics"
-# else
-mkGD4'4_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
-# endif
-
-mkGD4'9_v :: String -> Name
-mkGD4'9_v = mkNameG_v gdPackageKey "Generics.Deriving.Base.Internal"
-
-mkBaseName_d :: String -> String -> Name
-mkBaseName_d = mkNameG_d "base"
-
-mkGHCPrimName_d :: String -> String -> Name
-mkGHCPrimName_d = mkNameG_d "ghc-prim"
-
-mkGHCPrimName_tc :: String -> String -> Name
-mkGHCPrimName_tc = mkNameG_tc "ghc-prim"
-
-mkGHCPrimName_v :: String -> String -> Name
-mkGHCPrimName_v = mkNameG_v "ghc-prim"
-
-comp1DataName :: Name
-comp1DataName = mkGD4'4_d "Comp1"
-
-infixDataName :: Name
-infixDataName = mkGD4'4_d "Infix"
-
-k1DataName :: Name
-k1DataName = mkGD4'4_d "K1"
-
-l1DataName :: Name
-l1DataName = mkGD4'4_d "L1"
-
-leftAssociativeDataName :: Name
-leftAssociativeDataName = mkGD4'4_d "LeftAssociative"
-
-m1DataName :: Name
-m1DataName = mkGD4'4_d "M1"
-
-notAssociativeDataName :: Name
-notAssociativeDataName = mkGD4'4_d "NotAssociative"
-
-par1DataName :: Name
-par1DataName = mkGD4'4_d "Par1"
-
-prefixDataName :: Name
-prefixDataName = mkGD4'4_d "Prefix"
-
-productDataName :: Name
-productDataName = mkGD4'4_d ":*:"
-
-r1DataName :: Name
-r1DataName = mkGD4'4_d "R1"
-
-rec1DataName :: Name
-rec1DataName = mkGD4'4_d "Rec1"
-
-rightAssociativeDataName :: Name
-rightAssociativeDataName = mkGD4'4_d "RightAssociative"
-
-u1DataName :: Name
-u1DataName = mkGD4'4_d "U1"
-
-uAddrDataName :: Name
-uAddrDataName = mkGD4'9_d "UAddr"
-
-uCharDataName :: Name
-uCharDataName = mkGD4'9_d "UChar"
-
-uDoubleDataName :: Name
-uDoubleDataName = mkGD4'9_d "UDouble"
-
-uFloatDataName :: Name
-uFloatDataName = mkGD4'9_d "UFloat"
-
-uIntDataName :: Name
-uIntDataName = mkGD4'9_d "UInt"
-
-uWordDataName :: Name
-uWordDataName = mkGD4'9_d "UWord"
-
-c1TypeName :: Name
-c1TypeName = mkGD4'4_tc "C1"
-
-composeTypeName :: Name
-composeTypeName = mkGD4'4_tc ":.:"
-
-constructorTypeName :: Name
-constructorTypeName = mkGD4'4_tc "Constructor"
-
-d1TypeName :: Name
-d1TypeName = mkGD4'4_tc "D1"
-
-genericTypeName :: Name
-genericTypeName = mkGD4'4_tc "Generic"
-
-generic1TypeName :: Name
-generic1TypeName = mkGD4'4_tc "Generic1"
-
-datatypeTypeName :: Name
-datatypeTypeName = mkGD4'4_tc "Datatype"
-
--- This is only used prior to GHC 8.0.
-noSelectorTypeName :: Name
-noSelectorTypeName = mkGD4'4_tc "NoSelector"
-
-par1TypeName :: Name
-par1TypeName = mkGD4'4_tc "Par1"
-
-productTypeName :: Name
-productTypeName = mkGD4'4_tc ":*:"
-
-rec0TypeName :: Name
-rec0TypeName = mkGD4'4_tc "Rec0"
-
-rec1TypeName :: Name
-rec1TypeName = mkGD4'4_tc "Rec1"
-
-repTypeName :: Name
-repTypeName = mkGD4'4_tc "Rep"
-
-rep1TypeName :: Name
-rep1TypeName = mkGD4'4_tc "Rep1"
-
-s1TypeName :: Name
-s1TypeName = mkGD4'4_tc "S1"
-
-selectorTypeName :: Name
-selectorTypeName = mkGD4'4_tc "Selector"
-
-sumTypeName :: Name
-sumTypeName = mkGD4'4_tc ":+:"
-
-u1TypeName :: Name
-u1TypeName = mkGD4'4_tc "U1"
-
-uAddrTypeName :: Name
-uAddrTypeName = mkGD4'9_tc "UAddr"
-
-uCharTypeName :: Name
-uCharTypeName = mkGD4'9_tc "UChar"
-
-uDoubleTypeName :: Name
-uDoubleTypeName = mkGD4'9_tc "UDouble"
-
-uFloatTypeName :: Name
-uFloatTypeName = mkGD4'9_tc "UFloat"
-
-uIntTypeName :: Name
-uIntTypeName = mkGD4'9_tc "UInt"
-
-uWordTypeName :: Name
-uWordTypeName = mkGD4'9_tc "UWord"
-
-v1TypeName :: Name
-v1TypeName = mkGD4'4_tc "V1"
-
-conFixityValName :: Name
-conFixityValName = mkGD4'4_v "conFixity"
-
-conIsRecordValName :: Name
-conIsRecordValName = mkGD4'4_v "conIsRecord"
-
-conNameValName :: Name
-conNameValName = mkGD4'4_v "conName"
-
-datatypeNameValName :: Name
-datatypeNameValName = mkGD4'4_v "datatypeName"
-
-isNewtypeValName :: Name
-isNewtypeValName = mkGD4'4_v "isNewtype"
-
-fromValName :: Name
-fromValName = mkGD4'4_v "from"
-
-from1ValName :: Name
-from1ValName = mkGD4'4_v "from1"
-
-moduleNameValName :: Name
-moduleNameValName = mkGD4'4_v "moduleName"
-
-selNameValName :: Name
-selNameValName = mkGD4'4_v "selName"
-
-seqValName :: Name
-seqValName = mkGHCPrimName_v "GHC.Prim" "seq"
-
-toValName :: Name
-toValName = mkGD4'4_v "to"
-
-to1ValName :: Name
-to1ValName = mkGD4'4_v "to1"
-
-uAddrHashValName :: Name
-uAddrHashValName = mkGD4'9_v "uAddr#"
-
-uCharHashValName :: Name
-uCharHashValName = mkGD4'9_v "uChar#"
-
-uDoubleHashValName :: Name
-uDoubleHashValName = mkGD4'9_v "uDouble#"
-
-uFloatHashValName :: Name
-uFloatHashValName = mkGD4'9_v "uFloat#"
-
-uIntHashValName :: Name
-uIntHashValName = mkGD4'9_v "uInt#"
-
-uWordHashValName :: Name
-uWordHashValName = mkGD4'9_v "uWord#"
-
-unComp1ValName :: Name
-unComp1ValName = mkGD4'4_v "unComp1"
-
-unK1ValName :: Name
-unK1ValName = mkGD4'4_v "unK1"
-
-unPar1ValName :: Name
-unPar1ValName = mkGD4'4_v "unPar1"
-
-unRec1ValName :: Name
-unRec1ValName = mkGD4'4_v "unRec1"
-
-trueDataName, falseDataName :: Name
-# if MIN_VERSION_base(4,4,0)
-trueDataName  = mkGHCPrimName_d "GHC.Types" "True"
-falseDataName = mkGHCPrimName_d "GHC.Types" "False"
-# else
-trueDataName  = mkGHCPrimName_d "GHC.Bool"  "True"
-falseDataName = mkGHCPrimName_d "GHC.Bool"  "False"
-# endif
-
-nothingDataName, justDataName :: Name
-# if MIN_VERSION_base(4,8,0)
-nothingDataName = mkBaseName_d "GHC.Base"   "Nothing"
-justDataName    = mkBaseName_d "GHC.Base"   "Just"
-# else
-nothingDataName = mkBaseName_d "Data.Maybe" "Nothing"
-justDataName    = mkBaseName_d "Data.Maybe" "Just"
-# endif
-
-mkGHCPrim_tc :: String -> Name
-mkGHCPrim_tc = mkNameG_tc "ghc-prim" "GHC.Prim"
-
-addrHashTypeName :: Name
-addrHashTypeName = mkGHCPrim_tc "Addr#"
-
-charHashTypeName :: Name
-charHashTypeName = mkGHCPrim_tc "Char#"
-
-doubleHashTypeName :: Name
-doubleHashTypeName = mkGHCPrim_tc "Double#"
-
-floatHashTypeName :: Name
-floatHashTypeName = mkGHCPrim_tc "Float#"
-
-intHashTypeName :: Name
-intHashTypeName = mkGHCPrim_tc "Int#"
-
-wordHashTypeName :: Name
-wordHashTypeName = mkGHCPrim_tc "Word#"
-
-composeValName :: Name
-composeValName = mkNameG_v "base" "GHC.Base" "."
-
-errorValName :: Name
-errorValName = mkNameG_v "base" "GHC.Err" "error"
-
-fmapValName :: Name
-fmapValName = mkNameG_v "base" "GHC.Base" "fmap"
-
-undefinedValName :: Name
-undefinedValName = mkNameG_v "base" "GHC.Err" "undefined"
-
-decidedLazyDataName :: Name
-decidedLazyDataName = mkGD4'9_d "DecidedLazy"
-
-decidedStrictDataName :: Name
-decidedStrictDataName = mkGD4'9_d "DecidedStrict"
-
-decidedUnpackDataName :: Name
-decidedUnpackDataName = mkGD4'9_d "DecidedUnpack"
-
-infixIDataName :: Name
-infixIDataName = mkGD4'9_d "InfixI"
-
-metaConsDataName :: Name
-metaConsDataName = mkGD4'9_d "MetaCons"
-
-metaDataDataName :: Name
-metaDataDataName = mkGD4'9_d "MetaData"
-
-metaSelDataName :: Name
-metaSelDataName = mkGD4'9_d "MetaSel"
-
-noSourceStrictnessDataName :: Name
-noSourceStrictnessDataName = mkGD4'9_d "NoSourceStrictness"
-
-noSourceUnpackednessDataName :: Name
-noSourceUnpackednessDataName = mkGD4'9_d "NoSourceUnpackedness"
-
-prefixIDataName :: Name
-prefixIDataName = mkGD4'9_d "PrefixI"
-
-sourceLazyDataName :: Name
-sourceLazyDataName = mkGD4'9_d "SourceLazy"
-
-sourceNoUnpackDataName :: Name
-sourceNoUnpackDataName = mkGD4'9_d "SourceNoUnpack"
-
-sourceStrictDataName :: Name
-sourceStrictDataName = mkGD4'9_d "SourceStrict"
-
-sourceUnpackDataName :: Name
-sourceUnpackDataName = mkGD4'9_d "SourceUnpack"
-
-packageNameValName :: Name
-packageNameValName = mkGD4'4_v "packageName"
-#endif

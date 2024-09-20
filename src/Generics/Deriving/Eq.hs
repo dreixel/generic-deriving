@@ -1,20 +1,14 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MagicHash #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE Trustworthy #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
-{-# LANGUAGE PolyKinds #-}
-#endif
 
 #include "HsBaseConfig.h"
 
@@ -33,10 +27,17 @@ module Generics.Deriving.Eq (
 import           Control.Applicative (Const, ZipList)
 
 import           Data.Char (GeneralCategory)
+import           Data.Complex (Complex)
+import           Data.Functor.Identity (Identity)
 import           Data.Int
+import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Monoid as Monoid (First, Last)
-import           Data.Monoid (All, Any, Dual, Product, Sum)
+import           Data.Monoid (All, Alt, Any, Dual, Product, Sum)
+import           Data.Proxy (Proxy)
+import qualified Data.Semigroup as Semigroup (First, Last)
+import           Data.Semigroup (Arg(..), Max, Min, WrappedMonoid)
 import           Data.Version (Version)
+import           Data.Void (Void)
 import           Data.Word
 
 import           Foreign.C.Error
@@ -49,31 +50,12 @@ import           Generics.Deriving.Base
 
 import           GHC.Exts hiding (Any)
 
+import           Numeric.Natural (Natural)
+
 import           System.Exit (ExitCode)
 import           System.IO (BufferMode, Handle, HandlePosn, IOMode, SeekMode)
 import           System.IO.Error (IOErrorType)
 import           System.Posix.Types
-
-#if MIN_VERSION_base(4,4,0)
-import           Data.Complex (Complex)
-#endif
-
-#if MIN_VERSION_base(4,7,0)
-import           Data.Proxy (Proxy)
-#endif
-
-#if MIN_VERSION_base(4,8,0)
-import           Data.Functor.Identity (Identity)
-import           Data.Monoid (Alt)
-import           Data.Void (Void)
-import           Numeric.Natural (Natural)
-#endif
-
-#if MIN_VERSION_base(4,9,0)
-import           Data.List.NonEmpty (NonEmpty)
-import qualified Data.Semigroup as Semigroup (First, Last)
-import           Data.Semigroup (Arg(..), Max, Min, WrappedMonoid)
-#endif
 
 --------------------------------------------------------------------------------
 -- Generic show
@@ -118,20 +100,12 @@ instance GEq' UInt where
 instance GEq' UWord where
   geq' (UWord w1) (UWord w2)     = isTrue# (eqWord# w1 w2)
 
-#if !(MIN_VERSION_base(4,7,0))
-isTrue# :: Bool -> Bool
-isTrue# = id
-#endif
-
 
 class GEq a where
   geq :: a -> a -> Bool
 
-
-#if __GLASGOW_HASKELL__ >= 701
   default geq :: (Generic a, GEq' (Rep a)) => a -> a -> Bool
   geq = geqdefault
-#endif
 
 geqdefault :: (Generic a, GEq' (Rep a)) => a -> a -> Bool
 geqdefault x y = geq' (from x) (from y)
@@ -175,23 +149,14 @@ instance GEq (f (g p)) => GEq ((f :.: g) p) where
 instance GEq All where
   geq = geqdefault
 
-#if MIN_VERSION_base(4,8,0)
 instance GEq (f a) => GEq (Alt f a) where
   geq = geqdefault
-#endif
 
 instance GEq Any where
   geq = geqdefault
 
-#if !(MIN_VERSION_base(4,9,0))
-instance GEq Arity where
-  geq = geqdefault
-#endif
-
-#if MIN_VERSION_base(4,9,0)
 instance GEq a => GEq (Arg a b) where
   geq (Arg a _) (Arg b _) = geq a b
-#endif
 
 instance GEq Associativity where
   geq = geqdefault
@@ -267,10 +232,8 @@ instance GEq COff where
   geq = (==)
 #endif
 
-#if MIN_VERSION_base(4,4,0)
 instance GEq a => GEq (Complex a) where
   geq = geqdefault
-#endif
 
 instance GEq a => GEq (Const a b) where
   geq = geqdefault
@@ -296,10 +259,8 @@ instance GEq CSpeed where
   geq = (==)
 #endif
 
-#if MIN_VERSION_base(4,4,0)
 instance GEq CSUSeconds where
   geq = (==)
-#endif
 
 instance GEq CShort where
   geq = (==)
@@ -346,10 +307,8 @@ instance GEq CULLong where
 instance GEq CULong where
   geq = (==)
 
-#if MIN_VERSION_base(4,4,0)
 instance GEq CUSeconds where
   geq = (==)
-#endif
 
 instance GEq CUShort where
   geq = (==)
@@ -357,10 +316,8 @@ instance GEq CUShort where
 instance GEq CWchar where
   geq = (==)
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq DecidedStrictness where
   geq = geqdefault
-#endif
 
 instance GEq Double where
   geq = (==)
@@ -386,10 +343,8 @@ instance GEq Fd where
 instance GEq a => GEq (Monoid.First a) where
   geq = geqdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq a => GEq (Semigroup.First a) where
   geq = geqdefault
-#endif
 
 instance GEq Fixity where
   geq = geqdefault
@@ -412,10 +367,8 @@ instance GEq Handle where
 instance GEq HandlePosn where
   geq = (==)
 
-#if MIN_VERSION_base(4,8,0)
 instance GEq a => GEq (Identity a) where
   geq = geqdefault
-#endif
 
 instance GEq Int where
   geq = (==)
@@ -453,10 +406,8 @@ instance GEq c => GEq (K1 i c p) where
 instance GEq a => GEq (Monoid.Last a) where
   geq = geqdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq a => GEq (Semigroup.Last a) where
   geq = geqdefault
-#endif
 
 instance GEq (f p) => GEq (M1 i c f p) where
   geq = geqdefault
@@ -464,23 +415,17 @@ instance GEq (f p) => GEq (M1 i c f p) where
 instance GEq a => GEq (Maybe a) where
   geq = geqdefault
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq a => GEq (Max a) where
   geq = geqdefault
 
 instance GEq a => GEq (Min a) where
   geq = geqdefault
-#endif
 
-#if MIN_VERSION_base(4,8,0)
 instance GEq Natural where
   geq = (==)
-#endif
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq a => GEq (NonEmpty a) where
   geq = geqdefault
-#endif
 
 instance GEq Ordering where
   geq = geqdefault
@@ -491,16 +436,8 @@ instance GEq p => GEq (Par1 p) where
 instance GEq a => GEq (Product a) where
   geq = geqdefault
 
-#if MIN_VERSION_base(4,7,0)
-instance GEq
-# if MIN_VERSION_base(4,9,0)
-             (Proxy s)
-# else
-             (Proxy (s :: *))
-# endif
-             where
+instance GEq (Proxy s) where
   geq = geqdefault
-#endif
 
 instance GEq (Ptr a) where
   geq = (==)
@@ -514,13 +451,11 @@ instance GEq SeekMode where
 instance GEq (StablePtr a) where
   geq = (==)
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq SourceStrictness where
   geq = geqdefault
 
 instance GEq SourceUnpackedness where
   geq = geqdefault
-#endif
 
 instance GEq a => GEq (Sum a) where
   geq = geqdefault
@@ -549,10 +484,8 @@ instance GEq (UWord p) where
 instance GEq Version where
   geq = (==)
 
-#if MIN_VERSION_base(4,8,0)
 instance GEq Void where
   geq = (==)
-#endif
 
 instance GEq Word where
   geq = (==)
@@ -572,10 +505,8 @@ instance GEq Word64 where
 instance GEq WordPtr where
   geq = (==)
 
-#if MIN_VERSION_base(4,9,0)
 instance GEq m => GEq (WrappedMonoid m) where
   geq = geqdefault
-#endif
 
 instance GEq a => GEq (ZipList a) where
   geq = geqdefault

@@ -1,21 +1,9 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
-
-#if __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE DefaultSignatures #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 705
 {-# LANGUAGE PolyKinds #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE Safe #-}
-#elif __GLASGOW_HASKELL__ >= 701
-{-# LANGUAGE Trustworthy #-}
-#endif
+{-# LANGUAGE TypeOperators #-}
 
 module Generics.Deriving.Semigroup.Internal (
   -- * Generic semigroup class
@@ -30,31 +18,14 @@ module Generics.Deriving.Semigroup.Internal (
   ) where
 
 import Control.Applicative
-import Data.Monoid as Monoid
-#if MIN_VERSION_base(4,5,0)
-  hiding ((<>))
-#endif
-import Generics.Deriving.Base
-
-#if MIN_VERSION_base(4,6,0)
-import Data.Ord (Down)
-#else
-import GHC.Exts (Down)
-#endif
-
-#if MIN_VERSION_base(4,7,0)
-import Data.Proxy (Proxy)
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 import Data.Functor.Identity (Identity)
-import Data.Void (Void)
-#endif
-
-#if MIN_VERSION_base(4,9,0)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Monoid as Monoid hiding ((<>))
+import Data.Ord (Down)
+import Data.Proxy (Proxy)
 import Data.Semigroup as Semigroup
-#endif
+import Data.Void (Void)
+import Generics.Deriving.Base
 
 -------------------------------------------------------------------------------
 
@@ -79,10 +50,8 @@ instance (GSemigroup' f, GSemigroup' g) => GSemigroup' (f :*: g) where
 infixr 6 `gsappend`
 class GSemigroup a where
   gsappend :: a -> a -> a
-#if __GLASGOW_HASKELL__ >= 701
   default gsappend :: (Generic a, GSemigroup' (Rep a)) => a -> a -> a
   gsappend = gsappenddefault
-#endif
 
   gstimes :: Integral b => b -> a -> a
   gstimes y0 x0
@@ -98,13 +67,10 @@ class GSemigroup a where
         | y == 1 = gsappend x z
         | otherwise = g (gsappend x x) (pred y `quot` 2) (gsappend x z)
 
-#if MIN_VERSION_base(4,9,0)
-  -- | Only available with @base-4.9@ or later
   gsconcat :: NonEmpty a -> a
   gsconcat (a :| as) = go a as where
     go b (c:cs) = gsappend b (go c cs)
     go b []     = b
-#endif
 
 infixr 6 `gsappenddefault`
 gsappenddefault :: (Generic a, GSemigroup' (Rep a)) => a -> a -> a
@@ -133,10 +99,8 @@ instance GSemigroup [a] where
   gsappend = mappend
 instance GSemigroup (Endo a) where
   gsappend = mappend
-#if MIN_VERSION_base(4,8,0)
 instance Alternative f => GSemigroup (Alt f a) where
   gsappend = mappend
-#endif
 
 -- Handwritten instances
 instance GSemigroup a => GSemigroup (Dual a) where
@@ -155,26 +119,15 @@ instance GSemigroup (Either a b) where
   gsappend Left{} b = b
   gsappend a      _ = a
 
-#if MIN_VERSION_base(4,7,0)
-instance GSemigroup
-# if MIN_VERSION_base(4,9,0)
-                 (Proxy s)
-# else
-                 (Proxy (s :: *))
-# endif
-                 where
+instance GSemigroup (Proxy s) where
   gsappend    = gsappenddefault
-#endif
 
-#if MIN_VERSION_base(4,8,0)
 instance GSemigroup a => GSemigroup (Identity a) where
   gsappend = gsappenddefault
 
 instance GSemigroup Void where
   gsappend a _ = a
-#endif
 
-#if MIN_VERSION_base(4,9,0)
 instance GSemigroup (Semigroup.First a) where
   gsappend = (<>)
 
@@ -189,7 +142,6 @@ instance Ord a => GSemigroup (Min a) where
 
 instance GSemigroup (NonEmpty a) where
   gsappend = (<>)
-#endif
 
 -- Tuple instances
 instance (GSemigroup a,GSemigroup b) => GSemigroup (a,b) where
