@@ -1,4 +1,4 @@
-# next [????.??.??]
+# 1.14.6 [2024.12.05]
 * Drop support for GHC 7.10 and earlier.
 
 # 1.14.5 [2023.08.06]
