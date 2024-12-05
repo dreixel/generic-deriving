@@ -82,6 +82,7 @@ tested-with:
                       , GHC == 9.6.6
                       , GHC == 9.8.4
                       , GHC == 9.10.1
+                      , GHC == 9.12.1
 
 extra-source-files:     CHANGELOG.md
                       , README.md
@@ -119,7 +120,7 @@ library
   build-depends:        base             >= 4.9   && < 5
                       , containers       >= 0.1   && < 0.8
                       , ghc-prim                     < 1
-                      , template-haskell >= 2.11  && < 2.23
+                      , template-haskell >= 2.11  && < 2.24
                         -- TODO: Eventually, we should bump the lower version
                         -- bounds to >=0.6 so that we can remove some CPP in
                         -- Generics.Deriving.TH.Internal.
