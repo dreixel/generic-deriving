@@ -118,7 +118,7 @@ library
                         Paths_generic_deriving
 
   build-depends:        base             >= 4.9   && < 5
-                      , containers       >= 0.1   && < 0.8
+                      , containers       >= 0.1   && < 0.9
                       , ghc-prim                     < 1
                       , template-haskell >= 2.11  && < 2.24
                         -- TODO: Eventually, we should bump the lower version
