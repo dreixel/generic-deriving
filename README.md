@@ -1,6 +1,5 @@
 ## `generic-deriving`: Generic programming library for generalised deriving
 [![Hackage](https://img.shields.io/hackage/v/generic-deriving.svg)][Hackage: generic-deriving]
-[![Hackage Dependencies](https://img.shields.io/hackage-deps/v/generic-deriving.svg)](http://packdeps.haskellers.com/reverse/generic-deriving)
 [![Haskell Programming Language](https://img.shields.io/badge/language-Haskell-blue.svg)][Haskell.org]
 [![BSD3 License](http://img.shields.io/badge/license-BSD3-brightgreen.svg)][tl;dr Legal: BSD3]
 [![Build Status](https://github.com/dreixel/generic-deriving/workflows/Haskell-CI/badge.svg)](https://github.com/dreixel/generic-deriving/actions?query=workflow%3AHaskell-CI)
